@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { AppSessionProvider } from "@/components/session-provider"
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,12 +20,15 @@ export const metadata: Metadata = {
   description: "Created by HL Financial Strategies",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
-        <Toaster richColors position="top-center" />
+        {children} 
+        <AppSessionProvider>
+          {children}
+          <Toaster richColors position="top-center" />
+        </AppSessionProvider>
       </body>
     </html>
   )
