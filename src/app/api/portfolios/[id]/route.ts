@@ -1,15 +1,16 @@
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  const session = await auth()
+  const params = await props.params;
+  const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -18,14 +19,20 @@ export async function GET(
         id: params.id,
         userId: session.user.id,
       },
-    })
+    });
 
     if (!portfolio) {
-      return NextResponse.json({ error: "Portfolio not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Portfolio not found" },
+        { status: 404 },
+      );
     }
 
-    return NextResponse.json(portfolio)
+    return NextResponse.json(portfolio);
   } catch {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

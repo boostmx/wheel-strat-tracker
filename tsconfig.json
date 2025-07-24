@@ -22,8 +22,15 @@
       "@/*": ["./src/*"]
     },
     "typeRoots": ["./node_modules/@types", "./src/types"]
-
   },
-  "include": ["src","next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "middleware.js", "middleware.js"],
+  "include": [
+    "src",
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "middleware.js",
+    "middleware.js"
+  ],
   "exclude": ["node_modules"]
 }

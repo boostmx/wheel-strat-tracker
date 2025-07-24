@@ -1,5 +1,7 @@
-import { PortfolioPageClient } from "@/components/portfolio-page-client"
+import { PortfolioPageClient } from "@/components/portfolio-page-client";
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <PortfolioPageClient id={params.id} />
+export default async function Page(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const id = await params.id;
+  return <PortfolioPageClient id={id} />;
 }

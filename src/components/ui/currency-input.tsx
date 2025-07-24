@@ -1,30 +1,37 @@
-"use client"
+"use client";
 
-import { Input } from "@/components/ui/input"
-import { ChangeEvent } from "react"
+import { Input } from "@/components/ui/input";
+import { ChangeEvent } from "react";
 
 interface CurrencyInputProps {
-  value: string
-  onChange: (value: { formatted: string; raw: number }) => void
-  placeholder?: string
-  disabled?: boolean
+  value: string;
+  onChange: (value: { formatted: string; raw: number }) => void;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
-export function CurrencyInput({ value, onChange, placeholder, disabled }: CurrencyInputProps) {
+export function CurrencyInput({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: CurrencyInputProps) {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/[^0-9.]/g, "")
-    const raw = parseFloat(rawValue)
-    const formatted = isNaN(raw) ? "" : new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(raw)
+    const rawValue = e.target.value.replace(/[^0-9.]/g, "");
+    const raw = parseFloat(rawValue);
+    const formatted = isNaN(raw)
+      ? ""
+      : new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 0,
+        }).format(raw);
 
     onChange({
       formatted: formatted || "",
       raw: isNaN(raw) ? 0 : raw,
-    })
-  }
+    });
+  };
 
   return (
     <Input
@@ -36,5 +43,5 @@ export function CurrencyInput({ value, onChange, placeholder, disabled }: Curren
       disabled={disabled}
       className="appearance-none"
     />
-  )
+  );
 }

@@ -1,40 +1,39 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
-import { toast } from 'sonner'
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
-    const res = await signIn('credentials', {
+    const res = await signIn("credentials", {
       username,
       password,
       redirect: false,
-      callbackUrl: '/dashboard',
-    })
+      callbackUrl: "/dashboard",
+    });
 
     if (res?.ok) {
-        toast.success('Signed in successfully')
-        router.push(res.url || '/dashboard')
+      toast.success("Signed in successfully");
+      router.push(res.url || "/dashboard");
     } else {
-        toast.error('Invalid credentials')
+      toast.error("Invalid credentials");
     }
 
-
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen">
@@ -57,11 +56,11 @@ export default function LoginPage() {
               required
             />
             <Button className="w-full" type="submit" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

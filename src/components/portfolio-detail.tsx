@@ -1,17 +1,17 @@
 // components/portfolio-detail.tsx
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/navigation";
 
 interface Portfolio {
-  id: string
-  name: string | null
-  startingCapital: number
-  currentCapital: number
+  id: string;
+  name: string | null;
+  startingCapital: number;
+  currentCapital: number;
 }
 
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
-  const router = useRouter()
+  const router = useRouter();
 
   return (
     <div className="space-y-6">
@@ -27,8 +27,14 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         </button>
       </div>
       <div className="rounded-lg border p-4 bg-white shadow-sm space-y-2">
-        <p><strong>Starting Capital:</strong> ${portfolio.startingCapital.toLocaleString()}</p>
-        <p><strong>Current Capital:</strong> ${portfolio.currentCapital.toLocaleString()}</p>
+        <p>
+          <strong>Starting Capital:</strong> $
+          {portfolio.startingCapital.toLocaleString()}
+        </p>
+        <p>
+          <strong>Current Capital:</strong> $
+          {portfolio.currentCapital.toLocaleString()}
+        </p>
       </div>
 
       {/* 🔜 Placeholder sections */}
@@ -46,5 +52,5 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

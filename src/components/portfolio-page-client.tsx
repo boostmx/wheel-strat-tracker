@@ -1,30 +1,24 @@
-import { PortfolioDetail } from "./portfolio-detail"
-import { notFound } from "next/navigation"
+import { PortfolioDetail } from "./portfolio-detail";
+import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 
-interface Props {
-  id: string
-}
+export async function PortfolioPageClient({ id }: { id: string }) {
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
 
-export async function PortfolioPageClient({ id }: Props) {
-    console.log("ID:", id);
-    
-  try {
-    const baseUrl =
-      process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000"
+  const cookieStore = cookies();
 
-    const res = await fetch(`${baseUrl}/api/portfolios/${id}`, {
-      cache: "no-store",
-    })
+  const res = await fetch(`${baseUrl}/api/portfolios/${id}`, {
+    cache: "no-store",
+    headers: {
+      Cookie: cookieStore.toString(),
+    },
+  });
 
-    if (!res.ok) return notFound()
+  if (!res.ok) return notFound();
 
-    const portfolio = await res.json()
-    console.log("Portfolio:", portfolio);
-    return <PortfolioDetail portfolio={portfolio} />
-  } catch (err) {
-    console.error("Failed to fetch portfolio", err)
-    return notFound()
-  }
+  const portfolio = await res.json();
+
+  return <PortfolioDetail portfolio={portfolio} />;
 }

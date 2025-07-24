@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import { usePathname } from "next/navigation"
-import { SessionProvider } from "next-auth/react"
-import { SiteHeader } from "@/components/site-header"
-import { SWRConfig } from "swr"
+import { usePathname } from "next/navigation";
+import { SessionProvider } from "next-auth/react";
+import { SiteHeader } from "@/components/site-header";
+import { SWRConfig } from "swr";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
-  const hideHeaderRoutes = ["/","/login"]
-  const showHeader = !hideHeaderRoutes.includes(pathname)
+  const hideHeaderRoutes = ["/", "/login"];
+  const showHeader = !hideHeaderRoutes.includes(pathname);
 
   return (
     <SessionProvider>
       <SWRConfig
         value={{
-          fetcher: (url: string) => fetch(url).then(res => res.json()),
+          fetcher: (url: string) => fetch(url).then((res) => res.json()),
           shouldRetryOnError: false,
         }}
       >
@@ -23,5 +23,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </SWRConfig>
     </SessionProvider>
-  )
+  );
 }

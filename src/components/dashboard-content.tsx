@@ -1,21 +1,23 @@
-"use client"
+"use client";
 
-import useSWR from "swr"
-import Link from "next/link"
-import { useSession } from "next-auth/react"
-import { CreatePortfolioModal } from "@/components/create-portfolio-modal"
+import useSWR from "swr";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { CreatePortfolioModal } from "@/components/create-portfolio-modal";
 
 interface Portfolio {
-  id: string
-  name: string | null
+  id: string;
+  name: string | null;
 }
 
 export default function DashboardContent() {
-  const { data: session } = useSession()
+  const { data: session } = useSession();
 
-  const { data: portfolios = [], error, isLoading } = useSWR<Portfolio[]>(
-    session?.user?.id ? "/api/portfolios" : null
-  )
+  const {
+    data: portfolios = [],
+    error,
+    isLoading,
+  } = useSWR<Portfolio[]>(session?.user?.id ? "/api/portfolios" : null);
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -52,5 +54,5 @@ export default function DashboardContent() {
         </div>
       )}
     </div>
-  )
+  );
 }

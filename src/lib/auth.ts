@@ -1,9 +1,9 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import CredentialsProvider from "next-auth/providers/credentials"
-import bcrypt from "bcrypt"
-import type { NextAuthOptions } from "next-auth"
-import { getServerSession } from "next-auth"
-import prisma from "@/lib/prisma"
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcrypt";
+import type { NextAuthOptions } from "next-auth";
+import { getServerSession } from "next-auth";
+import prisma from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -16,21 +16,24 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) return null
+        if (!credentials?.username || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
-        })
+        });
 
-        if (!user) return null
+        if (!user) return null;
 
-        const isValid = await bcrypt.compare(credentials.password, user.password)
-        if (!isValid) return null
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password,
+        );
+        if (!isValid) return null;
 
         return {
           id: user.id,
           username: user.username,
-        }
+        };
       },
     }),
   ],
@@ -42,10 +45,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.sub = user.id
-        token.username = user.username as string
+        token.sub = user.id;
+        token.username = user.username as string;
       }
-      return token
+      return token;
     },
 
     async session({ session, token }) {
@@ -53,9 +56,9 @@ export const authOptions: NextAuthOptions = {
         session.user = {
           id: token.sub,
           username: token.username as string,
-        }
+        };
       }
-      return session
+      return session;
     },
   },
 
@@ -64,9 +67,8 @@ export const authOptions: NextAuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-}
+};
 
 export async function auth() {
-  return await getServerSession(authOptions)
+  return await getServerSession(authOptions);
 }
-
