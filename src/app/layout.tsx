@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
-import { AppSessionProvider } from "@/components/session-provider"
-
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,10 +23,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children} 
-        <AppSessionProvider>
           {children}
           <Toaster richColors position="top-center" />
-        </AppSessionProvider>
       </body>
     </html>
   )
