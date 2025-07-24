@@ -2,6 +2,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
 import type { NextAuthOptions } from "next-auth"
+import { getServerSession } from "next-auth"
 import prisma from "@/lib/prisma"
 
 export const authOptions: NextAuthOptions = {
@@ -64,3 +65,8 @@ export const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 }
+
+export async function auth() {
+  return await getServerSession(authOptions)
+}
+

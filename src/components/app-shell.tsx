@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header"
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  const hideHeaderRoutes = ["/login"]
+  const hideHeaderRoutes = ["/","/login"]
   const showHeader = !hideHeaderRoutes.includes(pathname)
 
   return (
