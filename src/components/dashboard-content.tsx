@@ -1,7 +1,7 @@
 "use client"
 
+import useSWR from "swr"
 import Link from "next/link"
-import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { CreatePortfolioModal } from "@/components/create-portfolio-modal"
 
@@ -12,37 +12,22 @@ interface Portfolio {
 
 export default function DashboardContent() {
   const { data: session } = useSession()
-  const [portfolios, setPortfolios] = useState<Portfolio[]>([])
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchPortfolios = async () => {
-      try {
-        const res = await fetch("/api/portfolio")
-        const data = await res.json()
-        setPortfolios(data)
-      } catch (error) {
-        console.error("Failed to fetch portfolios:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (session?.user?.id) {
-      fetchPortfolios()
-    }
-  }, [session])
-
+  const { data: portfolios = [], error, isLoading } = useSWR<Portfolio[]>(
+    session?.user?.id ? "/api/portfolios" : null
+  )
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
 
-      {loading ? (
+      {isLoading ? (
         <p className="text-gray-500">Loading portfolios...</p>
-      ) : portfolios.length === 0 ? (
+      ) : error ? (
+        <p className="text-red-500">Failed to load portfolios.</p>
+      ) : portfolios?.length === 0 ? (
         <div className="rounded-lg border border-gray-200 p-6 text-center shadow-sm bg-white">
           <p className="text-gray-600 mb-4 text-sm">
-            You don’t have a portfolio yet.
+            No portfolios found. Create your first portfolio to get started.
           </p>
           <CreatePortfolioModal />
         </div>
