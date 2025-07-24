@@ -11,8 +11,8 @@ export function SiteHeader() {
   return (
     <header className="w-full border-b px-6 py-4 flex items-center justify-between bg-white shadow-sm">
       <div className="flex items-center space-x-4">
-        <Link href="/positions" className="text-lg font-semibold hover:underline">Portfolio</Link>
         <Link href="/dashboard" className="text-lg font-semibold hover:underline">Dashboard</Link>
+        <Link href="/positions" className="text-lg font-semibold hover:underline">Portfolio</Link>
         <Link href="/trades/new" className="text-lg font-semibold hover:underline">New Trade</Link>
       </div>
 

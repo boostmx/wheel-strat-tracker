@@ -24,12 +24,14 @@ model User {
 }
 
 model Portfolio {
-  id        String   @id @default(cuid())
-  name      String
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  trades    Trade[]
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  name            String
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String
+  trades          Trade[]
+  startingCapital Float
+  currentCapital  Float
+  createdAt       DateTime @default(now())
 }
 
 model Trade {

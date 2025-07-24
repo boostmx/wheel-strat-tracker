@@ -22,12 +22,12 @@ export default function LoginPage() {
       username,
       password,
       redirect: false,
-      callbackUrl: '/positions', // Redirect to trade tracker page after login
+      callbackUrl: '/dashboard',
     })
 
     if (res?.ok) {
         toast.success('Signed in successfully')
-        router.push(res.url || '/positions')
+        router.push(res.url || '/dashboard')
     } else {
         toast.error('Invalid credentials')
     }

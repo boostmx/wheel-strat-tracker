@@ -16,11 +16,6 @@ export async function GET() {
     data: {
       username: 'admin',
       password: hashed,
-      portfolios: {
-        create: {
-          name: 'Default Portfolio',
-        },
-      },
     },
   })
 
