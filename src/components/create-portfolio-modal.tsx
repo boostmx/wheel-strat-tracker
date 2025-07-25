@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { mutate } from "swr";
 
 export function CreatePortfolioModal() {
   const [open, setOpen] = useState(false);
@@ -34,7 +35,8 @@ export function CreatePortfolioModal() {
     setIsLoading(false);
 
     if (res.ok) {
-      toast.success("Portfolio created!");
+      toast.success("A new portfolio has been added!");
+      mutate("/api/portfolios");
       setOpen(false);
       setName("");
       setCapitalFormatted("");
