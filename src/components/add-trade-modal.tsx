@@ -21,7 +21,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Currency } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -33,16 +33,22 @@ import { cn } from "@/lib/utils";
 export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
   const [open, setOpen] = useState(false);
   const [ticker, setTicker] = useState("");
-
   const [strikePrice, setStrikePrice] = useState({ formatted: "", raw: 0 });
   const [expirationDate, setExpirationDate] = useState<Date | undefined>();
-  const [type, setType] = useState("Cash Secured Put");
+
+  //Options for trade types on select dropdown
+  const tradeTypeOptions = [
+    { label: "Cash Secured Put", value: "CashSecuredPut" },
+    { label: "Covered Call", value: "CoveredCall" },
+    { label: "Put", value: "Put" },
+    { label: "Call", value: "Call" },
+  ];
+
+  const [type, setType] = useState("CashSecuredPut");
+
   const [contracts, setContracts] = useState(1);
   const [contractPrice, setContractPrice] = useState({ formatted: "", raw: 0 });
-
   const [isLoading, setIsLoading] = useState(false);
-
-  const [tradeDate, setTradeDate] = useState<Date | undefined>();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +61,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
           portfolioId,
           ticker,
           strikePrice: strikePrice.raw,
-          expirationDate: expirationDate?.toISOString().split("T")[0],
+          expirationDate: expirationDate?.toISOString(),
           type,
           contracts: Number(contracts),
           contractPrice: contractPrice.raw,
@@ -64,6 +70,12 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
           "Content-Type": "application/json",
         },
       });
+
+      if (!expirationDate) {
+        toast.error("Please select an expiration date.");
+        setIsLoading(false);
+        return;
+      }
 
       if (!res.ok) {
         const err = await res.json();
@@ -110,7 +122,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
             <Label htmlFor="strikePrice">Strike Price</Label>
 
             <CurrencyInput
-              value={strikePrice.formatted}
+              value={strikePrice}
               onChange={setStrikePrice}
               placeholder="e.g. $170"
             />
@@ -124,18 +136,20 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
-                    !tradeDate && "text-muted-foreground",
+                    !expirationDate && "text-muted-foreground",
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {tradeDate ? format(tradeDate, "PPP") : "Pick a trade date"}
+                  {expirationDate
+                    ? format(expirationDate, "PPP")
+                    : "Pick a trade date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={tradeDate}
-                  onSelect={setTradeDate}
+                  selected={expirationDate}
+                  onSelect={setExpirationDate}
                   initialFocus
                 />
               </PopoverContent>
@@ -151,10 +165,11 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
               onChange={(e) => setType(e.target.value)}
               required
             >
-              <option>Cash Secured Put</option>
-              <option>Covered Call</option>
-              <option>Put</option>
-              <option>Call</option>
+              {tradeTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -181,7 +196,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
           <div className="space-y-1.5">
             <Label htmlFor="contractPrice">Premium per Contract</Label>
             <CurrencyInput
-              value={contractPrice.formatted}
+              value={contractPrice}
               onChange={setContractPrice}
               placeholder="e.g. $2.40"
             />
