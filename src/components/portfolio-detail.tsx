@@ -4,16 +4,21 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddTradeModal } from "@/components/add-trade-modal";
-
-interface Portfolio {
-  id: string;
-  name: string | null;
-  startingCapital: number;
-  currentCapital: number;
-}
+import { OpenTradesTable } from "@/components/open-trades-table";
+import { ClosedTradesTable } from "@/components/closed-trades-table";
+import { Portfolio } from "@/types";
+import { useTrades } from "@/hooks/useTrades";
 
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const router = useRouter();
+  const { trades: openTrades, isLoading: loadingOpen } = useTrades(
+    portfolio.id,
+    "open",
+  );
+  const { trades: closedTrades, isLoading: loadingClosed } = useTrades(
+    portfolio.id,
+    "closed",
+  );
 
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
@@ -44,12 +49,20 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         <AddTradeModal portfolioId={portfolio.id} />
       </div>
       <div className="rounded border bg-white p-6 text-gray-500 text-sm italic shadow-sm">
-        Open positions table will go here.
+        {loadingOpen ? (
+          <p>Loading open trades...</p>
+        ) : (
+          <OpenTradesTable trades={openTrades} />
+        )}
       </div>
 
       <h2 className="text-xl font-semibold mt-10">Closed Positions</h2>
       <div className="rounded border bg-white p-6 text-gray-500 text-sm italic shadow-sm">
-        Closed positions table will go here.
+        {loadingClosed ? (
+          <p>Loading closed trades...</p>
+        ) : (
+          <ClosedTradesTable trades={closedTrades} />
+        )}
       </div>
     </div>
   );

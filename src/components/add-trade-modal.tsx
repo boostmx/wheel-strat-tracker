@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { mutate } from "swr";
 
 import {
   Dialog,
@@ -82,13 +83,14 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
         throw new Error(err.error || "Failed to add trade");
       }
 
-      toast.success("Trade added");
+      toast.success("Trade added successfully!");
       setOpen(false);
       setTicker("");
       setStrikePrice({ formatted: "", raw: 0 });
       setExpirationDate(undefined);
       setContracts(1);
       setContractPrice({ formatted: "", raw: 0 });
+      mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
     } catch (err) {
       toast.error("Failed to add trade");
       console.error(err);
