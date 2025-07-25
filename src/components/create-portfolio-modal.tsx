@@ -18,8 +18,7 @@ import { mutate } from "swr";
 export function CreatePortfolioModal() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [capitalFormatted, setCapitalFormatted] = useState("");
-  const [capitalRaw, setCapitalRaw] = useState(0);
+  const [capital, setCapital] = useState({ formatted: "", raw: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -29,7 +28,7 @@ export function CreatePortfolioModal() {
     const res = await fetch("/api/portfolios", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, startingCapital: capitalRaw }),
+      body: JSON.stringify({ name, startingCapital: capital.raw }),
     });
 
     setIsLoading(false);
@@ -39,8 +38,7 @@ export function CreatePortfolioModal() {
       mutate("/api/portfolios");
       setOpen(false);
       setName("");
-      setCapitalFormatted("");
-      setCapitalRaw(0);
+      setCapital({ formatted: "", raw: 0 });
       router.refresh();
     } else {
       toast.error("Failed to create portfolio");
@@ -66,17 +64,14 @@ export function CreatePortfolioModal() {
           />
 
           <CurrencyInput
-            value={capitalFormatted}
-            onChange={({ formatted, raw }) => {
-              setCapitalFormatted(formatted);
-              setCapitalRaw(raw);
-            }}
+            value={capital.formatted}
+            onChange={setCapital}
             placeholder="Starting Capital"
           />
 
           <Button
             onClick={handleSubmit}
-            disabled={isLoading || !name || capitalRaw <= 0}
+            disabled={isLoading || !name || capital.raw <= 0}
           >
             {isLoading ? "Creating..." : "Create Portfolio"}
           </Button>

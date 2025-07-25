@@ -17,26 +17,33 @@ export function CurrencyInput({
   disabled,
 }: CurrencyInputProps) {
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/[^0-9.]/g, "");
+    const input = e.target.value;
+
+    // Clean input, allow decimals
+    const rawValue = input.replace(/[^0-9.]/g, "");
+
+    // Only allow one decimal point
+    const parts = rawValue.split(".");
+    if (parts.length > 2) return;
+
     const raw = parseFloat(rawValue);
     const formatted = isNaN(raw)
       ? ""
       : new Intl.NumberFormat("en-US", {
           style: "currency",
           currency: "USD",
-          maximumFractionDigits: 0,
+          maximumFractionDigits: 2,
         }).format(raw);
 
     onChange({
-      formatted: formatted || "",
+      formatted: rawValue === "" ? "" : formatted,
       raw: isNaN(raw) ? 0 : raw,
     });
   };
 
   return (
     <Input
-      inputMode="numeric"
-      pattern="[0-9]*"
+      inputMode="decimal"
       value={value}
       onChange={handleChange}
       placeholder={placeholder}

@@ -1,7 +1,9 @@
-// components/portfolio-detail.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { AddTradeModal } from "@/components/add-trade-modal";
 
 interface Portfolio {
   id: string;
@@ -14,42 +16,40 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const router = useRouter();
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">
           {portfolio.name || "Unnamed Portfolio"}
         </h1>
-        <button
-          onClick={() => router.back()}
-          className="text-blue-600 hover:underline text-sm"
-        >
-          ← Back
-        </button>
-      </div>
-      <div className="rounded-lg border p-4 bg-white shadow-sm space-y-2">
-        <p>
-          <strong>Starting Capital:</strong> $
-          {portfolio.startingCapital.toLocaleString()}
-        </p>
-        <p>
-          <strong>Current Capital:</strong> $
-          {portfolio.currentCapital.toLocaleString()}
-        </p>
+        <Button variant="default" onClick={() => router.back()}>
+          Back
+        </Button>
       </div>
 
-      {/* 🔜 Placeholder sections */}
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-2">Add New Trade</h2>
-        <div className="border p-4 rounded bg-gray-50 text-gray-500 italic">
-          Trade entry form goes here...
-        </div>
+      <Card className="bg-white shadow-sm">
+        <CardContent className="p-6 space-y-2">
+          <p>
+            <strong>Starting Capital:</strong> ${" "}
+            {portfolio.startingCapital.toLocaleString()}
+          </p>
+          <p>
+            <strong>Current Capital:</strong> ${" "}
+            {portfolio.currentCapital.toLocaleString()}
+          </p>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Open Positions</h2>
+        <AddTradeModal portfolioId={portfolio.id} />
+      </div>
+      <div className="rounded border bg-white p-6 text-gray-500 text-sm italic shadow-sm">
+        Open positions table will go here.
       </div>
 
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-2">Trade History</h2>
-        <div className="border p-4 rounded bg-gray-50 text-gray-500 italic">
-          Trade table goes here...
-        </div>
+      <h2 className="text-xl font-semibold mt-10">Closed Positions</h2>
+      <div className="rounded border bg-white p-6 text-gray-500 text-sm italic shadow-sm">
+        Closed positions table will go here.
       </div>
     </div>
   );
