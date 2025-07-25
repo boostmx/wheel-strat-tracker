@@ -71,7 +71,7 @@ export default function DashboardContent() {
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6">
           {portfolios.map((p) => (
             <Card
               key={p.id}
@@ -83,7 +83,7 @@ export default function DashboardContent() {
                     onClick={(e) => e.stopPropagation()}
                     className="absolute top-2 right-2 px-2 py-1 text-sm text-red-600 border border-red-500 rounded hover:bg-red-50 transition"
                   >
-                    Delete
+                    -
                   </button>
                 </AlertDialogTrigger>
 
@@ -109,7 +109,7 @@ export default function DashboardContent() {
 
               <Link href={`/portfolio/${p.id}`}>
                 <CardContent className="p-4 space-y-2 cursor-pointer">
-                  <h2 className="text-lg font-semibold text-green-600">
+                  <h2 className="text-lg font-semibold text-green-600 mt-4">
                     {p.name || "Unnamed Portfolio"}
                   </h2>
                   <p className="text-sm text-gray-600">
