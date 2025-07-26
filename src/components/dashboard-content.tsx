@@ -71,7 +71,7 @@ export default function DashboardContent() {
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6">
+        <ul className="space-y-4">
           {portfolios.map((p) => (
             <Card
               key={p.id}
@@ -83,7 +83,7 @@ export default function DashboardContent() {
                     onClick={(e) => e.stopPropagation()}
                     className="absolute top-2 right-2 px-2 py-1 text-sm text-red-600 border border-red-500 rounded hover:bg-red-50 transition"
                   >
-                    -
+                    Delete
                   </button>
                 </AlertDialogTrigger>
 
@@ -108,16 +108,15 @@ export default function DashboardContent() {
               </AlertDialog>
 
               <Link href={`/portfolio/${p.id}`}>
-                <CardContent className="p-4 space-y-2 cursor-pointer">
-                  <h2 className="text-lg font-semibold text-green-600 mt-4">
+                <CardContent className="p-6 space-y-3 cursor-pointer">
+                  <h2 className="text-xl font-semibold text-green-600">
                     {p.name || "Unnamed Portfolio"}
                   </h2>
-                  <p className="text-sm text-gray-600">
-                    Starting Capital: ${p.startingCapital.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Current Capital: ${p.currentCapital.toLocaleString()}
-                  </p>
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <p>Starting Capital: ${p.startingCapital.toLocaleString()}</p>
+                    <p>Current Capital: ${p.currentCapital.toLocaleString()}</p>
+                    <p className="italic text-gray-500">More metrics coming soon...</p>
+                  </div>
                 </CardContent>
               </Link>
             </Card>
