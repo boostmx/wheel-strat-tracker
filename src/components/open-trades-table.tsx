@@ -1,11 +1,20 @@
+// components/open-trades-table.tsx
 "use client";
 
-import { Trade } from "@/types";
-import { format } from "date-fns";
 import { useState } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  SortingState,
+} from "@tanstack/react-table";
+
+import { Trade } from "@/types";
+import { useTradeTable } from "@/hooks/useTradeTables";
 import { CloseTradeModal } from "@/components/close-trade-modal";
-import { mutate } from "swr";
 import { Button } from "@/components/ui/button";
+import { mutate } from "swr";
 
 export function OpenTradesTable({
   trades,
@@ -18,70 +27,68 @@ export function OpenTradesTable({
     id: string;
     strikePrice: number;
     contracts: number;
-    ticker: string;
-    type: string;
-    expirationDate: string;
   } | null>(null);
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const { columns, data } = useTradeTable(trades);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   if (!trades || trades.length === 0) {
     return <p>No open trades yet.</p>;
   }
 
-  function formatOptionType(type: string): string {
-    return type
-      .replace(/([A-Z])/g, " $1")
-      .trim()
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
   return (
-    <>
-      <table className="w-full text-sm text-left text-gray-700">
+    <div className="w-full overflow-x-auto">
+      <table className="min-w-full text-sm text-left text-gray-700">
         <thead className="bg-gray-100">
-          <tr>
-            <th className="px-4 py-2 not-italic">Ticker</th>
-            <th className="px-4 py-2 not-italic">Strike</th>
-            <th className="px-4 py-2 not-italic">Type</th>
-            <th className="px-4 py-2 not-italic">Expiration</th>
-            <th className="px-4 py-2 not-italic">Contracts</th>
-            <th className="px-4 py-2 not-italic">Premium</th>
-            <th className="px-4 py-2 not-italic">Action</th>
-          </tr>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  className="px-4 py-2 font-semibold cursor-pointer select-none"
+                  onClick={header.column.getToggleSortingHandler()}
+                >
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext(),
+                  )}
+                  {{
+                    asc: " ↑",
+                    desc: " ↓",
+                  }[header.column.getIsSorted() as string] ?? null}
+                </th>
+              ))}
+              <th className="px-4 py-2 font-semibold">Action</th>
+            </tr>
+          ))}
         </thead>
         <tbody>
-          {trades.map((trade) => (
-            <tr
-              key={trade.id}
-              className="border-t odd:bg-white even:bg-gray-50"
-            >
-              <td className="px-4 py-2 font-semibold not-italic">
-                {trade.ticker}
-              </td>
-              <td className="px-4 py-2 not-italic">
-                ${trade.strikePrice.toFixed(2)}
-              </td>
-              <td className="px-4 py-2 not-italic">
-                {formatOptionType(trade.type)}
-              </td>
-              <td className="px-4 py-2 not-italic">
-                {format(new Date(trade.expirationDate), "MMM d, yyyy")}
-              </td>
-              <td className="px-4 py-2 not-italic">{trade.contracts}</td>
-              <td className="px-4 py-2 not-italic">
-                ${trade.contractPrice.toFixed(2)}
-              </td>
-              <td className="px-4 py-2 not-italic">
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className="border-t">
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} className="px-4 py-2">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+              <td className="px-4 py-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() =>
                     setSelectedTrade({
-                      id: trade.id,
-                      strikePrice: trade.strikePrice,
-                      contracts: trade.contracts,
-                      ticker: trade.ticker,
-                      type: trade.type,
-                      expirationDate: trade.expirationDate,
+                      id: row.original.id,
+                      strikePrice: row.original.strikePrice,
+                      contracts: row.original.contracts,
                     })
                   }
                 >
@@ -104,11 +111,8 @@ export function OpenTradesTable({
             mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
             mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`);
           }}
-          ticker={selectedTrade.ticker}
-          expirationDate={selectedTrade.expirationDate}
-          type={selectedTrade.type}
         />
       )}
-    </>
+    </div>
   );
 }

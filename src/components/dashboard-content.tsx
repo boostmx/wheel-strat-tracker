@@ -113,9 +113,13 @@ export default function DashboardContent() {
                     {p.name || "Unnamed Portfolio"}
                   </h2>
                   <div className="text-sm text-gray-700 space-y-1">
-                    <p>Starting Capital: ${p.startingCapital.toLocaleString()}</p>
+                    <p>
+                      Starting Capital: ${p.startingCapital.toLocaleString()}
+                    </p>
                     <p>Current Capital: ${p.currentCapital.toLocaleString()}</p>
-                    <p className="italic text-gray-500">More metrics coming soon...</p>
+                    <p className="italic text-gray-500">
+                      More metrics coming soon...
+                    </p>
                   </div>
                 </CardContent>
               </Link>
