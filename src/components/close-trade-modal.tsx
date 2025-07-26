@@ -41,22 +41,21 @@ export function CloseTradeModal({
   const [fullClose, setFullClose] = useState(true);
   const [contractsToClose, setContractsToClose] = useState(contracts);
   const [closingPrice, setClosingPrice] = useState({
-  formatted: "",
-  raw: 0,
-});
-
+    formatted: "",
+    raw: 0,
+  });
 
   useEffect(() => {
     if (isOpen) {
       setFullClose(true);
       setContractsToClose(contracts);
-       setClosingPrice({ formatted: "", raw: 0 });
+      setClosingPrice({ formatted: "", raw: 0 });
     }
   }, [isOpen, contracts]);
 
   const handleSubmit = async () => {
     const numContracts = Number(contractsToClose);
-    const price = closingPrice.raw
+    const price = closingPrice.raw;
 
     if (!price || numContracts <= 0 || numContracts > contracts) {
       toast.error("Invalid closing price or contract count");
@@ -157,11 +156,10 @@ export function CloseTradeModal({
           )}
 
           <CurrencyInput
-  value={closingPrice}
-  onChange={setClosingPrice}
-  placeholder="Closing price per contract"
-/>
-
+            value={closingPrice}
+            onChange={setClosingPrice}
+            placeholder="Closing price per contract"
+          />
 
           <Button onClick={handleSubmit} className="w-full">
             Submit

@@ -17,18 +17,6 @@ export function SiteHeader() {
         >
           Dashboard
         </Link>
-        <Link
-          href="/positions"
-          className="text-lg font-semibold hover:underline"
-        >
-          Portfolio
-        </Link>
-        <Link
-          href="/trades/new"
-          className="text-lg font-semibold hover:underline"
-        >
-          New Trade
-        </Link>
       </div>
 
       <div className="flex items-center space-x-4">

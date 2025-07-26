@@ -48,7 +48,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         <h2 className="text-xl font-semibold">Open Positions</h2>
         <AddTradeModal portfolioId={portfolio.id} />
       </div>
-      <div className="rounded border bg-white p-6 text-gray-500 text-sm italic shadow-sm">
+      <div className="w-full rounded-lg bg-white p-6 text-gray-700 text-sm shadow-sm">
         {loadingOpen ? (
           <p>Loading open trades...</p>
         ) : (
@@ -57,7 +57,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
       </div>
 
       <h2 className="text-xl font-semibold mt-10">Closed Positions</h2>
-      <div className="rounded border bg-white p-6 text-gray-500 text-sm italic shadow-sm">
+      <div className="w-full rounded-lg bg-white p-6 text-gray-700 text-sm shadow-sm">
         {loadingClosed ? (
           <p>Loading closed trades...</p>
         ) : (

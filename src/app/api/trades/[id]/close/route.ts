@@ -20,9 +20,9 @@ export async function POST(
     return new Response("Trade not found", { status: 404 });
   }
 
-  const premiumCaptured = contractsToClose * closingPrice * 100;
-  const percentPL =
-    (premiumCaptured / (trade.strikePrice * contractsToClose * 100)) * 100;
+  const entry = trade.entryPrice ?? trade.contractPrice;
+  const premiumCaptured = (entry - closingPrice) * contractsToClose * 100;
+  const percentPL = (premiumCaptured / (entry * contractsToClose * 100)) * 100;
 
   if (fullClose || contractsToClose === trade.contracts) {
     await prisma.trade.update({
@@ -32,6 +32,7 @@ export async function POST(
         closedAt: new Date(),
         closingPrice,
         premiumCaptured,
+        percentPL,
       },
     });
   } else {
@@ -56,6 +57,7 @@ export async function POST(
         status: "closed",
         closingPrice,
         premiumCaptured,
+        percentPL,
         closedAt: new Date(),
       },
     });

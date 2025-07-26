@@ -47,6 +47,7 @@ model Trade {
   closedAt        DateTime?
   closingPrice    Float?
   premiumCaptured Float?
+  percentPL       Float?
   portfolio       Portfolio   @relation(fields: [portfolioId], references: [id])
   portfolioId     String
   createdAt       DateTime    @default(now())

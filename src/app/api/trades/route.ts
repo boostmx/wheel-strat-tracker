@@ -88,9 +88,8 @@ export async function GET(req: Request) {
         status,
         portfolioId,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy:
+        status === "closed" ? { closedAt: "desc" } : { createdAt: "desc" },
     });
 
     return NextResponse.json(trades);

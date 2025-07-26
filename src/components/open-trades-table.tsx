@@ -28,12 +28,11 @@ export function OpenTradesTable({
   }
 
   function formatOptionType(type: string): string {
-  return type
-    .replace(/([A-Z])/g, " $1")
-    .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
+    return type
+      .replace(/([A-Z])/g, " $1")
+      .trim()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
 
   return (
     <>
@@ -51,15 +50,26 @@ export function OpenTradesTable({
         </thead>
         <tbody>
           {trades.map((trade) => (
-            <tr key={trade.id} className="border-t odd:bg-white even:bg-gray-50">
-              <td className="px-4 py-2 font-semibold not-italic">{trade.ticker}</td>
-              <td className="px-4 py-2 not-italic">${trade.strikePrice.toFixed(2)}</td>
-              <td className="px-4 py-2 not-italic">{formatOptionType(trade.type)}</td>
+            <tr
+              key={trade.id}
+              className="border-t odd:bg-white even:bg-gray-50"
+            >
+              <td className="px-4 py-2 font-semibold not-italic">
+                {trade.ticker}
+              </td>
+              <td className="px-4 py-2 not-italic">
+                ${trade.strikePrice.toFixed(2)}
+              </td>
+              <td className="px-4 py-2 not-italic">
+                {formatOptionType(trade.type)}
+              </td>
               <td className="px-4 py-2 not-italic">
                 {format(new Date(trade.expirationDate), "MMM d, yyyy")}
               </td>
               <td className="px-4 py-2 not-italic">{trade.contracts}</td>
-              <td className="px-4 py-2 not-italic">${trade.contractPrice.toFixed(2)}</td>
+              <td className="px-4 py-2 not-italic">
+                ${trade.contractPrice.toFixed(2)}
+              </td>
               <td className="px-4 py-2 not-italic">
                 <Button
                   variant="outline"
