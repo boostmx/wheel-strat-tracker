@@ -107,6 +107,7 @@ async function main() {
         closingPrice: 0.05,
         closedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // closed yesterday
         portfolioId: portfolio.id,
+        percentPL: 34.23,
       },
       // Open CSP on NVDA
       {
@@ -134,6 +135,7 @@ async function main() {
         closingPrice: 0,
         closedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
         portfolioId: portfolio.id,
+        percentPL: 45.87,
       },
       // Open CC on MSFT
       {
@@ -161,6 +163,7 @@ async function main() {
         closingPrice: 0,
         closedAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000),
         portfolioId: portfolio.id,
+        percentPL: -15.67,
       },
     ],
   })
