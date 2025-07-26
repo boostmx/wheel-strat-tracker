@@ -43,7 +43,6 @@ model Trade {
   contracts       Int
   contractPrice   Float
   entryPrice      Float?
-  capitalUsed     Float?
   status          TradeStatus @default(open)
   closedAt        DateTime?
   closingPrice    Float?

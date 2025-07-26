@@ -52,7 +52,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         {loadingOpen ? (
           <p>Loading open trades...</p>
         ) : (
-          <OpenTradesTable trades={openTrades} />
+          <OpenTradesTable trades={openTrades} portfolioId={portfolio.id} />
         )}
       </div>
 

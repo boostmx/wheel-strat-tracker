@@ -9,38 +9,45 @@ export function ClosedTradesTable({ trades }: { trades: Trade[] }) {
     return <p>No closed trades yet.</p>;
   }
 
+  function formatOptionType(type: string): string {
+  return type
+    .replace(/([A-Z])/g, " $1")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
   return (
     <table className="w-full text-sm text-left text-gray-700">
       <thead className="bg-gray-100">
         <tr>
-          <th className="px-4 py-2">Ticker</th>
-          <th className="px-4 py-2">Strike</th>
-          <th className="px-4 py-2">Type</th>
-          <th className="px-4 py-2">Expiration</th>
-          <th className="px-4 py-2">Contracts</th>
-          <th className="px-4 py-2">Premium</th>
-          <th className="px-4 py-2">Closed At</th>
-          <th className="px-4 py-2">Premium Captured</th>
+          <th className="px-4 py-2 not-italic">Ticker</th>
+          <th className="px-4 py-2 not-italic">Strike</th>
+          <th className="px-4 py-2 not-italic">Type</th>
+          <th className="px-4 py-2 not-italic">Expiration</th>
+          <th className="px-4 py-2 not-italic">Contracts</th>
+          <th className="px-4 py-2 not-italic">Premium</th>
+          <th className="px-4 py-2 not-italic">Closed At</th>
+          <th className="px-4 py-2 not-italic">Premium Captured</th>
         </tr>
       </thead>
       <tbody>
         {trades.map((trade) => (
-          <tr key={trade.id} className="border-t">
-            <td className="px-4 py-2 font-medium">{trade.ticker}</td>
-            <td className="px-4 py-2">${trade.strikePrice.toFixed(2)}</td>
-            <td className="px-4 py-2">{trade.type}</td>
-            <td className="px-4 py-2">
+          <tr key={trade.id} className="border-t odd:bg-white even:bg-gray-50">
+            <td className="px-4 py-2 font-semibold">{trade.ticker}</td>
+            <td className="px-4 py-2 not-italic">${trade.strikePrice.toFixed(2)}</td>
+            <td className="px-4 py-2 not-italic">{formatOptionType(trade.type)}</td>
+            <td className="px-4 py-2 not-italic">
               {format(new Date(trade.expirationDate), "MMM d, yyyy")}
             </td>
-            <td className="px-4 py-2">{trade.contracts}</td>
-            <td className="px-4 py-2">${trade.contractPrice.toFixed(2)}</td>
-            <td className="px-4 py-2">
+            <td className="px-4 py-2 not-italic">{trade.contracts}</td>
+            <td className="px-4 py-2 not-italic">${trade.contractPrice.toFixed(2)}</td>
+            <td className="px-4 py-2 not-italic">
               {trade.closedAt
                 ? format(new Date(trade.closedAt), "MMM d, yyyy")
                 : "-"}
             </td>
-            <td className="px-4 py-2">
-              {trade.premiumCaptured !== null
+            <td className="px-4 py-2 not-italic">
+              {trade.premiumCaptured != null
                 ? `$${trade.premiumCaptured.toFixed(2)}`
                 : "-"}
             </td>
