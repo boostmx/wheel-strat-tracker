@@ -17,6 +17,13 @@ datasource db {
 
 model User {
   id        String     @id @default(cuid())
+  firstName String
+  lastName  String
+  // Potential login via email later
+  email     String     @unique
+  bio       String?
+  avatarUrl String?
+  isAdmin   Boolean    @default(false)
   username  String     @unique
   password  String
   portfolios Portfolio[]
@@ -48,7 +55,7 @@ model Trade {
   closingPrice    Float?
   premiumCaptured Float?
   percentPL       Float?
-  portfolio       Portfolio   @relation(fields: [portfolioId], references: [id])
+  portfolio       Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   portfolioId     String
   createdAt       DateTime    @default(now())
 }

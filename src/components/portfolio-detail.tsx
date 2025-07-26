@@ -61,7 +61,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         {loadingClosed ? (
           <p>Loading closed trades...</p>
         ) : (
-          <ClosedTradesTable trades={closedTrades} portfolioId={portfolio.id} />
+          <ClosedTradesTable trades={closedTrades} />
         )}
       </div>
     </div>

@@ -15,10 +15,8 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 
 export function ClosedTradesTable({
   trades,
-  portfolioId,
 }: {
   trades: Trade[];
-  portfolioId: string;
 }) {
   const { columns, data } = useTradeTable(trades, { isClosed: true });
 
