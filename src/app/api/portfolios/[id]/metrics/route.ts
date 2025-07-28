@@ -31,7 +31,7 @@ export async function GET(
     },
   });
 
-  const capitalUsed = openTrades.reduce((sum, trade) => {
+  const capitalUsed = openTrades.reduce((sum: number, trade) => {
     return sum + trade.contracts * trade.strikePrice * 100;
   }, 0);
 
