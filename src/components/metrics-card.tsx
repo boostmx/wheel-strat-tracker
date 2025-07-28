@@ -11,7 +11,12 @@ interface MetricsCardProps {
 
 export function MetricsCard({ label, value, className }: MetricsCardProps) {
   return (
-    <Card className={clsx("w-full max-w-[200px] text-center shadow-sm border", className)}>
+    <Card
+      className={clsx(
+        "w-full max-w-[200px] text-center shadow-sm border",
+        className,
+      )}
+    >
       <CardHeader>
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {label}

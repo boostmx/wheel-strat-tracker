@@ -1,11 +1,11 @@
-import { prisma } from "../src/lib/prisma"
-import bcrypt from "bcrypt"
+import { prisma } from "../src/lib/prisma";
+import bcrypt from "bcrypt";
 
 async function main() {
-  const testUserId = "test-user-id"
-  const testUsername = "hung"
-  const testPassword = "hung" // plaintext for testing
-  const passwordHash = await bcrypt.hash(testPassword, 10)
+  const testUserId = "test-user-id";
+  const testUsername = "hung";
+  const testPassword = "hung"; // plaintext for testing
+  const passwordHash = await bcrypt.hash(testPassword, 10);
 
   // ✅ Upsert test user
   const user = await prisma.user.upsert({
@@ -22,9 +22,9 @@ async function main() {
       avatarUrl: "https://example.com/avatar-hung.png",
       isAdmin: true,
     },
-  })
+  });
 
-  console.log(`👤 Seeded user: ${user.username}`)
+  console.log(`👤 Seeded user: ${user.username}`);
 
   await prisma.user.createMany({
     data: [
@@ -52,18 +52,20 @@ async function main() {
       },
     ],
     skipDuplicates: true,
-  })
+  });
 
-  console.log("👥 Additional test users seeded")
+  console.log("👥 Additional test users seeded");
 
   // ✅ Check if portfolio already exists
   const existingPortfolio = await prisma.portfolio.findFirst({
     where: { userId: user.id },
-  })
+  });
 
   if (existingPortfolio) {
-    console.log("📦 Portfolio already exists. Skipping portfolio/trade seeding.")
-    return
+    console.log(
+      "📦 Portfolio already exists. Skipping portfolio/trade seeding.",
+    );
+    return;
   }
 
   // ✅ Create a test portfolio
@@ -74,9 +76,9 @@ async function main() {
       startingCapital: 500000,
       currentCapital: 500000,
     },
-  })
+  });
 
-  console.log(`📦 Created portfolio: ${portfolio.name}`)
+  console.log(`📦 Created portfolio: ${portfolio.name}`);
 
   // ✅ Add some trades to the portfolio
   await prisma.trade.createMany({
@@ -166,17 +168,17 @@ async function main() {
         percentPL: -15.67,
       },
     ],
-  })
+  });
 
-  console.log(`📈 Added trades to portfolio`)
+  console.log(`📈 Added trades to portfolio`);
 }
 
 main()
   .then(() => {
-    console.log("🌱 Seed completed.")
-    process.exit(0)
+    console.log("🌱 Seed completed.");
+    process.exit(0);
   })
   .catch((err) => {
-    console.error("❌ Seed failed:", err)
-    process.exit(1)
-  })
+    console.error("❌ Seed failed:", err);
+    process.exit(1);
+  });

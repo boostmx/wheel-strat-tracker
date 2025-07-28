@@ -61,8 +61,8 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         <MetricsCard
           label="Win Rate"
           value={
-            metrics?.winRate != null 
-              ? `${(metrics.winRate * 100).toFixed(2)}%` 
+            metrics?.winRate != null
+              ? `${(metrics.winRate * 100).toFixed(2)}%`
               : "Loading..."
           }
           className={
@@ -72,6 +72,70 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           }
         />
       </div>
+
+      <MetricsCard
+        label="Annualized Return"
+        value={
+          metrics?.annualizedReturn != null
+            ? `${(metrics.annualizedReturn * 100).toFixed(2)}%`
+            : "Loading..."
+        }
+        className={
+          metrics?.annualizedReturn != null
+            ? metrics.annualizedReturn > 0.1
+              ? "text-green-500"
+              : "text-yellow-500"
+            : ""
+        }
+      />
+
+      <MetricsCard
+        label="Max Drawdown"
+        value={
+          metrics?.maxDrawdown != null
+            ? `${(metrics.maxDrawdown * 100).toFixed(2)}%`
+            : "Loading..."
+        }
+        className={
+          metrics?.maxDrawdown != null
+            ? metrics.maxDrawdown < -0.2
+              ? "text-red-500"
+              : "text-yellow-500"
+            : ""
+        }
+      />
+
+      <MetricsCard
+        label="Sharpe Ratio"
+        value={
+          metrics?.sharpeRatio != null
+            ? metrics.sharpeRatio.toFixed(2)
+            : "Loading..."
+        }
+        className={
+          metrics?.sharpeRatio != null
+            ? metrics.sharpeRatio >= 1
+              ? "text-green-500"
+              : "text-yellow-500"
+            : ""
+        }
+      />
+
+      <MetricsCard
+        label="Total Return"
+        value={
+          metrics?.totalReturn != null
+            ? `${(metrics.totalReturn * 100).toFixed(2)}%`
+            : "Loading..."
+        }
+        className={
+          metrics?.totalReturn != null
+            ? metrics.totalReturn > 0
+              ? "text-green-500"
+              : "text-red-500"
+            : ""
+        }
+      />
 
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Open Positions</h2>

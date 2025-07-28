@@ -13,11 +13,7 @@ import {
 } from "@tanstack/react-table";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
-export function ClosedTradesTable({
-  trades,
-}: {
-  trades: Trade[];
-}) {
+export function ClosedTradesTable({ trades }: { trades: Trade[] }) {
   const { columns, data } = useTradeTable(trades, { isClosed: true });
 
   const [sorting, setSorting] = useState<SortingState>([]);
