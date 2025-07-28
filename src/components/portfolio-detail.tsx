@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddTradeModal } from "@/components/add-trade-modal";
@@ -23,15 +24,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
     "closed",
   );
 
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-
-  useEffect(() => {
-    async function fetchMetrics() {
-      const data = await getPortfolioMetrics(portfolio.id);
-      setMetrics(data);
-    }
-    fetchMetrics();
-  }, [portfolio.id]);
+  const { data: metrics } = useSWR(["portfolioMetrics", portfolio.id], () => getPortfolioMetrics(portfolio.id));
 
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
@@ -56,7 +49,14 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         <Card className="bg-white shadow-sm rounded-lg">
           <CardContent className="p-6">
             <p className="text-base font-medium text-gray-600">Current Capital</p>
-            <p className="text-3xl font-bold text-green-600">
+            <p
+              className={`text-3xl font-bold ${
+                metrics?.capitalUsed != null &&
+                portfolio.startingCapital - metrics.capitalUsed < 0
+                  ? "text-red-600"
+                  : "text-green-600"
+              }`}
+            >
               $
               {metrics?.capitalUsed != null
                 ? (

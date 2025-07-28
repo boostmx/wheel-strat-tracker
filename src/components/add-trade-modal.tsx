@@ -91,6 +91,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
       setContracts(1);
       setContractPrice({ formatted: "", raw: 0 });
       mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
+      mutate(["portfolioMetrics", portfolioId]);
     } catch (err) {
       toast.error("Failed to add trade");
       console.error(err);
