@@ -33,6 +33,12 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          bio: user.bio ?? undefined,
+          avatarUrl: user.avatarUrl ?? undefined,
+          isAdmin: user.isAdmin,
         };
       },
     }),
@@ -47,6 +53,12 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.sub = user.id;
         token.username = user.username as string;
+        token.firstName = user.firstName;
+        token.lastName = user.lastName;
+        token.email = user.email;
+        token.avatarUrl = user.avatarUrl;
+        token.bio = user.bio;
+        token.isAdmin = user.isAdmin;
       }
       return token;
     },
@@ -56,6 +68,11 @@ export const authOptions: NextAuthOptions = {
         session.user = {
           id: token.sub,
           username: token.username as string,
+          firstName: token.firstName as string,
+          lastName: token.lastName as string,
+          email: token.email as string,
+          bio: token.bio as string,
+          avatarUrl: token.avatarUrl as string,
         };
       }
       return session;

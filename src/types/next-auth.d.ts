@@ -6,11 +6,23 @@ declare module "next-auth" {
     user: {
       id: string;
       username?: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      bio?: string;
+      avatarUrl?: string;
+      isAdmin?: boolean; // Optional, depending on your user model
     } & DefaultSession["user"];
   }
 
   interface User {
     id: string;
     username?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    bio?: string;
+    avatarUrl?: string;
+    isAdmin?: boolean; 
   }
 }

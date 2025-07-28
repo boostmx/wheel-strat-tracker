@@ -22,7 +22,7 @@ export function SiteHeader() {
       <div className="flex items-center space-x-4">
         {session?.user?.username && (
           <span className="text-sm text-gray-600">
-            Hi, <strong>{session.user.username}</strong>
+            Hi, <strong>{session.user.firstName}</strong>
           </span>
         )}
         <button
