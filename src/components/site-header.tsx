@@ -2,6 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 
 export function SiteHeader() {
   const { data: session, status } = useSession();
@@ -10,15 +11,15 @@ export function SiteHeader() {
 
   return (
     <header className="w-full border-b px-6 py-4 flex items-center justify-between bg-white shadow-sm">
-      <div className="flex items-center space-x-4">
-        <Link
-          href="/dashboard"
-          className="text-lg font-semibold hover:underline"
-        >
-          Dashboard
+      {/* Logo and Business Name */}
+      <div className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <Image src="/logo.png" alt="HL Financial Strategies" width={32} height={32} />
+          <span className="text-lg font-semibold text-gray-800">HL Financial Strategies</span>
         </Link>
       </div>
 
+      {/* Session Controls */}
       <div className="flex items-center space-x-4">
         {session?.user?.username && (
           <span className="text-sm text-gray-600">

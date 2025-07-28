@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +37,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4">
+      <h1 className="text-2xl font-bold italic mb-6 text-primary">Wheel Strategy Tracker</h1>
       <Card className="w-full max-w-md p-4 shadow-md">
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,6 +63,9 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+      <p className="text-sm text-muted-foreground mt-4">
+        developed by HL Financial Strategies
+      </p>
     </div>
   );
 }
