@@ -20,3 +20,11 @@ export interface Portfolio {
   startingCapital: number;
   currentCapital: number;
 }
+
+export interface Metrics {
+  winRate: number | null;
+  totalReturn: number | null;
+  annualizedReturn: number | null;
+  maxDrawdown: number | null;
+  sharpeRatio: number | null;
+}

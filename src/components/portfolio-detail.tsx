@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddTradeModal } from "@/components/add-trade-modal";
 import { OpenTradesTable } from "@/components/open-trades-table";
 import { ClosedTradesTable } from "@/components/closed-trades-table";
-import { Portfolio } from "@/types";
+import { Portfolio, Metrics } from "@/types";
 import { useTrades } from "@/hooks/useTrades";
+import { MetricsCard } from "@/components/metrics-card";
+import { getPortfolioMetrics } from "@/lib/getPortfolioMetrics";
 
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const router = useRouter();
@@ -19,6 +22,16 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
     portfolio.id,
     "closed",
   );
+
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+
+  useEffect(() => {
+    async function fetchMetrics() {
+      const data = await getPortfolioMetrics(portfolio.id);
+      setMetrics(data);
+    }
+    fetchMetrics();
+  }, [portfolio.id]);
 
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
@@ -43,6 +56,22 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           </p>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricsCard
+          label="Win Rate"
+          value={
+            metrics?.winRate != null 
+              ? `${(metrics.winRate * 100).toFixed(2)}%` 
+              : "Loading..."
+          }
+          className={
+            metrics?.winRate != null && metrics.winRate > 0.5
+              ? "text-green-600"
+              : "text-red-600"
+          }
+        />
+      </div>
 
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Open Positions</h2>
