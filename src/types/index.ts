@@ -19,6 +19,7 @@ export interface Portfolio {
   name: string | null;
   startingCapital: number;
   currentCapital: number;
+  capitalUsed?: number;
 }
 
 export interface Metrics {
@@ -27,4 +28,5 @@ export interface Metrics {
   annualizedReturn: number | null;
   maxDrawdown: number | null;
   sharpeRatio: number | null;
+  capitalUsed?: number;
 }

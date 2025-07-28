@@ -8,6 +8,15 @@ export async function GET(
   const { id } = await props.params;
   const portfolioId = id;
 
+  const portfolio = await prisma.portfolio.findUnique({
+    where: { id: portfolioId },
+    select: { startingCapital: true },
+  });
+
+  if (!portfolio) {
+    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+  }
+
   const closedTrades = await prisma.trade.findMany({
     where: {
       portfolioId,
@@ -15,8 +24,21 @@ export async function GET(
     },
   });
 
+  const openTrades = await prisma.trade.findMany({
+    where: {
+      portfolioId,
+      status: "open",
+    },
+  });
+
+  const capitalUsed = openTrades.reduce((sum, trade) => {
+    return sum + trade.contracts * trade.strikePrice * 100;
+  }, 0);
+
   if (!closedTrades.length) {
     return NextResponse.json({
+      startingCapital: portfolio.startingCapital,
+      capitalUsed,
       totalReturn: 0,
       annualizedReturn: 0,
       maxDrawdown: 0,
@@ -52,13 +74,13 @@ export async function GET(
   ).length;
   const winRate = winCount / closedTrades.length;
 
-  // Basic Sharpe approximation
-  const sharpeRatio = totalReturn / 0.15; // Assuming 15% std deviation
+  const sharpeRatio = totalReturn / 0.15;
 
-  // Max drawdown stub (replace with equity curve logic if needed)
   const maxDrawdown = 0;
 
   return NextResponse.json({
+    startingCapital: portfolio.startingCapital,
+    capitalUsed,
     totalReturn,
     annualizedReturn,
     maxDrawdown,

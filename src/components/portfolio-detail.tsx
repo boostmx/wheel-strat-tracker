@@ -44,20 +44,31 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         </Button>
       </div>
 
-      <Card className="bg-white shadow-sm">
-        <CardContent className="p-6 space-y-2">
-          <p>
-            <strong>Starting Capital:</strong> ${" "}
-            {portfolio.startingCapital.toLocaleString()}
-          </p>
-          <p>
-            <strong>Current Capital:</strong> ${" "}
-            {portfolio.currentCapital.toLocaleString()}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="bg-white shadow-sm rounded-lg">
+          <CardContent className="p-6">
+            <p className="text-base font-medium text-gray-600">Starting Capital</p>
+            <p className="text-3xl font-bold text-gray-900">
+              ${portfolio.startingCapital.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white shadow-sm rounded-lg">
+          <CardContent className="p-6">
+            <p className="text-base font-medium text-gray-600">Current Capital</p>
+            <p className="text-3xl font-bold text-green-600">
+              $
+              {metrics?.capitalUsed != null
+                ? (
+                    portfolio.startingCapital - metrics.capitalUsed
+                  ).toLocaleString()
+                : "Loading..."}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricsCard
           label="Win Rate"
           value={
@@ -71,71 +82,67 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               : "text-red-600"
           }
         />
+        <MetricsCard
+          label="Ann. Return"
+          value={
+            metrics?.annualizedReturn != null
+              ? `${(metrics.annualizedReturn * 100).toFixed(2)}%`
+              : "Loading..."
+          }
+          className={
+            metrics?.annualizedReturn != null
+              ? metrics.annualizedReturn > 0.1
+                ? "text-green-500"
+                : "text-yellow-500"
+              : ""
+          }
+        />
+        <MetricsCard
+          label="Max Drawdown"
+          value={
+            metrics?.maxDrawdown != null
+              ? `${(metrics.maxDrawdown * 100).toFixed(2)}%`
+              : "Loading..."
+          }
+          className={
+            metrics?.maxDrawdown != null
+              ? metrics.maxDrawdown < -0.2
+                ? "text-red-500"
+                : "text-yellow-500"
+              : ""
+          }
+        />
+        <MetricsCard
+          label="Sharpe Ratio"
+          value={
+            metrics?.sharpeRatio != null
+              ? metrics.sharpeRatio.toFixed(2)
+              : "Loading..."
+          }
+          className={
+            metrics?.sharpeRatio != null
+              ? metrics.sharpeRatio >= 1
+                ? "text-green-500"
+                : "text-yellow-500"
+              : ""
+          }
+        />
+        <MetricsCard
+          label="Total Return"
+          value={
+            metrics?.totalReturn != null
+              ? `${(metrics.totalReturn * 100).toFixed(2)}%`
+              : "Loading..."
+          }
+          className={
+            metrics?.totalReturn != null
+              ? metrics.totalReturn > 0
+                ? "text-green-500"
+                : "text-red-500"
+              : ""
+          }
+        />
       </div>
-
-      <MetricsCard
-        label="Annualized Return"
-        value={
-          metrics?.annualizedReturn != null
-            ? `${(metrics.annualizedReturn * 100).toFixed(2)}%`
-            : "Loading..."
-        }
-        className={
-          metrics?.annualizedReturn != null
-            ? metrics.annualizedReturn > 0.1
-              ? "text-green-500"
-              : "text-yellow-500"
-            : ""
-        }
-      />
-
-      <MetricsCard
-        label="Max Drawdown"
-        value={
-          metrics?.maxDrawdown != null
-            ? `${(metrics.maxDrawdown * 100).toFixed(2)}%`
-            : "Loading..."
-        }
-        className={
-          metrics?.maxDrawdown != null
-            ? metrics.maxDrawdown < -0.2
-              ? "text-red-500"
-              : "text-yellow-500"
-            : ""
-        }
-      />
-
-      <MetricsCard
-        label="Sharpe Ratio"
-        value={
-          metrics?.sharpeRatio != null
-            ? metrics.sharpeRatio.toFixed(2)
-            : "Loading..."
-        }
-        className={
-          metrics?.sharpeRatio != null
-            ? metrics.sharpeRatio >= 1
-              ? "text-green-500"
-              : "text-yellow-500"
-            : ""
-        }
-      />
-
-      <MetricsCard
-        label="Total Return"
-        value={
-          metrics?.totalReturn != null
-            ? `${(metrics.totalReturn * 100).toFixed(2)}%`
-            : "Loading..."
-        }
-        className={
-          metrics?.totalReturn != null
-            ? metrics.totalReturn > 0
-              ? "text-green-500"
-              : "text-red-500"
-            : ""
-        }
-      />
 
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Open Positions</h2>
