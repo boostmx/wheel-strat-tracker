@@ -1,14 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddTradeModal } from "@/components/add-trade-modal";
 import { OpenTradesTable } from "@/components/open-trades-table";
 import { ClosedTradesTable } from "@/components/closed-trades-table";
-import { Portfolio, Metrics } from "@/types";
+import { Portfolio } from "@/types";
 import { useTrades } from "@/hooks/useTrades";
 import { MetricsCard } from "@/components/metrics-card";
 import { getPortfolioMetrics } from "@/lib/getPortfolioMetrics";
