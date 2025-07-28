@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Trade } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -31,7 +32,7 @@ export async function GET(
     },
   });
 
-  const capitalUsed = openTrades.reduce((sum: number, trade) => {
+  const capitalUsed = openTrades.reduce((sum: number, trade:Trade) => {
     return sum + trade.contracts * trade.strikePrice * 100;
   }, 0);
 
