@@ -30,7 +30,9 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppShell>{children}</AppShell>
+        <div className="bg-muted min-h-screen">
+          <AppShell>{children}</AppShell>
+        </div>
         <Toaster richColors position="top-center" />
       </body>
     </html>

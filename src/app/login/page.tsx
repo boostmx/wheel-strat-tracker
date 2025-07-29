@@ -36,7 +36,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-muted px-4">
       <h1 className="text-2xl font-bold italic mb-6 text-primary">Wheel Strategy Tracker</h1>
       <Card className="w-full max-w-md p-4 shadow-md">
         <CardContent>
@@ -64,6 +64,12 @@ export default function LoginPage() {
       </Card>
       <p className="text-sm text-muted-foreground mt-4">
         developed by HL Financial Strategies
+      </p>
+      <p className="text-sm mt-2 text-center">
+        Don’t have an account?{" "}
+        <a href="/signup" className="text-blue-600 hover:underline font-medium">
+          Sign up here
+        </a>
       </p>
     </div>
   );
