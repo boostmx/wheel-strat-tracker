@@ -10,13 +10,14 @@ export async function PortfolioPageClient({ id }: { id: string }) {
   const cookie = headersList.get("cookie") || "";
   console.log("BaseURL is: " + baseUrl);
 
+  console.log("Fetching portfolio at:", `${baseUrl}/api/portfolios/${id}`);
   const res = await fetch(`${baseUrl}/api/portfolios/${id}`, {
     cache: "no-store",
     headers: {
       Cookie: cookie,
     },
   });
-
+  console.log("Fetched portfolio now at:", `${baseUrl}/api/portfolios/${id}`);
   if (!res.ok) return notFound();
 
   const portfolio = await res.json();
