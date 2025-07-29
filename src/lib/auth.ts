@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         path: "/",
         secure: process.env.NODE_ENV === "production",
         domain:
-          process.env.NODE_ENV === "production"
+          process.env.NEXT_PUBLIC_SITE_URL?.includes("hlfinancialstrategies.com")
             ? ".hlfinancialstrategies.com"
             : undefined,
       },
