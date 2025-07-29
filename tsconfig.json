@@ -4,7 +4,6 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "commonjs",
@@ -13,6 +12,14 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    // "tsBuildInfoFile": ".next/cache/tsconfig.tsbuildinfo",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+
     "types": ["node"],
     "plugins": [
       {
@@ -24,6 +31,7 @@
     },
     "typeRoots": ["./node_modules/@types"]
   },
+
   "include": [
     "src",
     "prisma",
@@ -32,6 +40,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "middleware.js"
-  ],
+, "tailwind.config.js"  ],
+
   "exclude": ["node_modules"]
 }
