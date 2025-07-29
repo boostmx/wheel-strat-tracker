@@ -5,11 +5,10 @@ import { getBaseUrl } from "@/lib/getBaseUrl";
 
 export async function PortfolioPageClient({ id }: { id: string }) {
   const baseUrl = getBaseUrl(); // Use the utility function for the base URL
+  console.log("BaseURL is: " + baseUrl); 
 
   const headersList = await headers();
   const cookie = headersList.get("cookie") || "";
-  console.log("BaseURL is: " + baseUrl);
-
   console.log("Fetching portfolio at:", `${baseUrl}/api/portfolios/${id}`);
   const res = await fetch(`${baseUrl}/api/portfolios/${id}`, {
     cache: "no-store",

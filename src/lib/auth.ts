@@ -8,6 +8,22 @@ import prisma from "@/lib/prisma";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        domain:
+          process.env.NODE_ENV === "production"
+            ? ".hlfinancialstrategies.com"
+            : undefined,
+      },
+    },
+  },
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
