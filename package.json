@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "ts-node prisma/seed.ts",
+    "seed:production": "ts-node prisma/seed.production.ts",
     "reset": "prisma db push --force-reset && pnpm seed",
     "prisma:generate": "prisma generate"
   },

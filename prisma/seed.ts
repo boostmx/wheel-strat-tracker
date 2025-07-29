@@ -2,6 +2,11 @@ import { prisma } from "../src/lib/prisma";
 import bcrypt from "bcrypt";
 
 async function main() {
+  // 🧼 Clean up existing data
+  await prisma.trade.deleteMany({});
+  await prisma.portfolio.deleteMany({});
+  await prisma.user.deleteMany({});
+
   const testUserId = "test-user-id";
   const testUsername = "hung";
   const testPassword = "hung"; // plaintext for testing
