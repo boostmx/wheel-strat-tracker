@@ -18,6 +18,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Wheel Strategy Tracker",
   description: "Created by HL Financial Strategies",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon-32x32.png",
+  }
 };
 
 export default async function RootLayout({
