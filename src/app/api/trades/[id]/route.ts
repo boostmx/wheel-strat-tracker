@@ -1,7 +1,34 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+
+/**
+ * GET request to fetch a single trade by its ID.
+ */
+export async function GET(
+  _req: Request,
+  props: { params: Promise<{ id: string }> }
+) {
+  const { id } = await props.params;
+
+  try {
+    const trade = await prisma.trade.findUnique({
+      where: { id },
+    });
+
+    if (!trade) {
+      return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(trade);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+
 /***
- * PATCH request to update a trade's entry price, expiration date, and notes.
+ * PATCH request to update a trade's expiration date and notes.
  * 
  */
 export async function PATCH(
@@ -11,7 +38,7 @@ export async function PATCH(
   const { id } = await props.params;
   const body = await req.json();
 
-  const { entryPrice, expirationDate, notes } = body;
+  const { expirationDate, notes } = body;
 
   if (!expirationDate) {
     return NextResponse.json({ error: "Missing expirationDate" }, { status: 400 });
@@ -21,7 +48,6 @@ export async function PATCH(
     const updated = await prisma.trade.update({
       where: { id },
       data: {
-        entryPrice: entryPrice === null ? null : Number(entryPrice),
         expirationDate: new Date(expirationDate),
         notes,
       },
