@@ -10,6 +10,7 @@ export interface Trade {
   contractPrice: number;
   closingPrice?: number;
   closedAt?: string | null;
+  createdAt: string | null
   premiumCaptured?: number | null;
   percentPL?: number | null;
 }

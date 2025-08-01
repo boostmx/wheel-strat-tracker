@@ -35,6 +35,15 @@ export const useTradeTable = (
           year: "numeric",
         }),
     }),
+    columnHelper.accessor<"createdAt", string>("createdAt", {
+      header: "Opened",
+      cell: (info) =>
+        new Date(info.getValue()).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+    }),
     columnHelper.accessor<"contracts", number>("contracts", {
       header: "Contracts",
     }),
