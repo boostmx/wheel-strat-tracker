@@ -14,6 +14,7 @@ import { Trade } from "@/types";
 import { useTradeTable } from "@/hooks/useTradeTables";
 import { CloseTradeModal } from "@/components/close-trade-modal";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { mutate } from "swr";
 
 export function OpenTradesTable({
@@ -28,6 +29,15 @@ export function OpenTradesTable({
     strikePrice: number;
     contracts: number;
   } | null>(null);
+
+  // State for row click modal
+  const [selectedOpenTrade, setSelectedOpenTrade] = useState<Trade | null>(null);
+  const [isOpenTradeModalOpen, setIsOpenTradeModalOpen] = useState(false);
+
+  const handleRowClick = (trade: Trade) => {
+    setSelectedOpenTrade(trade);
+    setIsOpenTradeModalOpen(true);
+  };
 
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -74,13 +84,17 @@ export function OpenTradesTable({
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-t">
+            <tr
+              key={row.id}
+              className="border-t cursor-pointer hover:bg-blue-50"
+              onClick={() => handleRowClick(row.original)}
+            >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="px-4 py-2">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
-              <td className="px-4 py-2">
+              <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -112,6 +126,27 @@ export function OpenTradesTable({
             mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`);
           }}
         />
+      )}
+
+      {selectedOpenTrade && (
+        <Dialog open={isOpenTradeModalOpen} onOpenChange={setIsOpenTradeModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedOpenTrade.ticker} — Trade Details
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 text-sm text-gray-700">
+              <p><strong>Type:</strong> {selectedOpenTrade.type}</p>
+              <p><strong>Strike Price:</strong> ${selectedOpenTrade.strikePrice}</p>
+              <p><strong>Contracts:</strong> {selectedOpenTrade.contracts}</p>
+              <p><strong>Opened:</strong> {selectedOpenTrade.createdAt ? new Date(selectedOpenTrade.createdAt).toLocaleDateString() : "-"}</p>
+              <p><strong>Entry Price:</strong> ${selectedOpenTrade.entryPrice?.toFixed(2) ?? "-"}</p>
+              <p><strong>Contract Price:</strong> ${selectedOpenTrade.contractPrice.toFixed(2)}</p>
+              <p><strong>Expiration Date:</strong> {new Date(selectedOpenTrade.expirationDate).toLocaleDateString()}</p>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

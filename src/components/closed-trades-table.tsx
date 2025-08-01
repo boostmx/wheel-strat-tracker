@@ -12,11 +12,19 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import * as Tooltip from "@radix-ui/react-tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function ClosedTradesTable({ trades }: { trades: Trade[] }) {
   const { columns, data } = useTradeTable(trades, { isClosed: true });
 
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleRowClick = (trade: Trade) => {
+    setSelectedTrade(trade);
+    setIsModalOpen(true);
+  };
 
   const table = useReactTable({
     data,
@@ -60,9 +68,10 @@ export function ClosedTradesTable({ trades }: { trades: Trade[] }) {
           {table.getRowModel().rows.map((row, i) => (
             <tr
               key={row.id}
-              className={
-                i % 2 === 0 ? "bg-white border-t" : "bg-gray-50 border-t"
-              }
+              onClick={() => handleRowClick(row.original)}
+              className={`border-t cursor-pointer hover:bg-blue-50 ${
+                i % 2 === 0 ? "bg-white" : "bg-gray-50"
+              }`}
             >
               {row.getVisibleCells().map((cell) => {
                 const isPL = cell.column.id === "percentPL";
@@ -117,6 +126,26 @@ export function ClosedTradesTable({ trades }: { trades: Trade[] }) {
           ))}
         </tbody>
       </table>
+      {selectedTrade && (
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedTrade.ticker} — Trade Details</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 text-sm text-gray-700">
+              <p><strong>Type:</strong> {selectedTrade.type}</p>
+              <p><strong>Strike Price:</strong> ${selectedTrade.strikePrice}</p>
+              <p><strong>Contracts:</strong> {selectedTrade.contracts}</p>
+              <p><strong>Opened:</strong> {selectedTrade.createdAt ? new Date(selectedTrade.createdAt).toLocaleDateString() : "-"}</p>
+              <p><strong>Closed:</strong> {selectedTrade.closedAt ? new Date(selectedTrade.closedAt).toLocaleDateString() : "-"}</p>
+              <p><strong>Entry Price:</strong> ${selectedTrade.entryPrice?.toFixed(2) ?? "-"}</p>
+              <p><strong>Closing Price:</strong> ${selectedTrade.closingPrice?.toFixed(2) ?? "-"}</p>
+              <p><strong>Premium Captured:</strong> ${selectedTrade.premiumCaptured?.toFixed(2) ?? "-"}</p>
+              <p><strong>% P/L:</strong> {selectedTrade.percentPL?.toFixed(2) ?? "-"}%</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
