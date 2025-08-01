@@ -58,6 +58,7 @@ model Trade {
   portfolio       Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   portfolioId     String
   createdAt       DateTime    @default(now())
+  notes           String?
 }
 
 enum TradeType {

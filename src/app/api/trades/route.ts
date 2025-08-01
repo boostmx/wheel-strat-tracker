@@ -63,8 +63,10 @@ export async function POST(req: Request) {
     );
   }
 }
+
 /**
  * GET Route to fetch trades based on status and portfolioId
+ * This fetches all trades for a specific portfolio and status.
  * @param req
  * @returns
  */

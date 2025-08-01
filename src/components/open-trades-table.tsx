@@ -1,4 +1,3 @@
-// components/open-trades-table.tsx
 "use client";
 
 import { useState } from "react";
@@ -94,7 +93,7 @@ export function OpenTradesTable({
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
-              <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+              <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                 <Button
                   variant="outline"
                   size="sm"
@@ -129,25 +128,175 @@ export function OpenTradesTable({
       )}
 
       {selectedOpenTrade && (
-        <Dialog open={isOpenTradeModalOpen} onOpenChange={setIsOpenTradeModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {selectedOpenTrade.ticker} — Trade Details
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2 text-sm text-gray-700">
-              <p><strong>Type:</strong> {selectedOpenTrade.type}</p>
-              <p><strong>Strike Price:</strong> ${selectedOpenTrade.strikePrice}</p>
-              <p><strong>Contracts:</strong> {selectedOpenTrade.contracts}</p>
-              <p><strong>Opened:</strong> {selectedOpenTrade.createdAt ? new Date(selectedOpenTrade.createdAt).toLocaleDateString() : "-"}</p>
-              <p><strong>Entry Price:</strong> ${selectedOpenTrade.entryPrice?.toFixed(2) ?? "-"}</p>
-              <p><strong>Contract Price:</strong> ${selectedOpenTrade.contractPrice.toFixed(2)}</p>
-              <p><strong>Expiration Date:</strong> {new Date(selectedOpenTrade.expirationDate).toLocaleDateString()}</p>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <TradeEditModal
+          trade={selectedOpenTrade}
+          open={isOpenTradeModalOpen}
+          onOpenChange={setIsOpenTradeModalOpen}
+          onSave={() => {
+            mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
+            mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`);
+          }}
+        />
       )}
     </div>
+  );
+}
+
+// --- TradeEditModal component ---
+import { toast } from "sonner";
+
+function TradeEditModal({
+  trade,
+  open,
+  onOpenChange,
+  onSave,
+}: {
+  trade: Trade;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    contracts: trade.contracts,
+    strikePrice: trade.strikePrice,
+    contractPrice: trade.contractPrice,
+    entryPrice: trade.entryPrice ?? "",
+    expirationDate: trade.expirationDate.split("T")[0], // yyyy-mm-dd
+    createdAt: trade.createdAt,
+    notes: trade.notes ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Detect changes
+  const isFormChanged =
+    formData.entryPrice !== (trade.entryPrice ?? "") ||
+    formData.expirationDate !== trade.expirationDate.split("T")[0] ||
+    formData.notes !== (trade.notes ?? "") ||
+    formData.createdAt !== trade.createdAt;
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "contracts" || name === "strikePrice" || name === "contractPrice"
+        ? Number(value)
+        : value,
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/trades/${trade.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Only send editable fields plus notes
+          entryPrice: formData.entryPrice === "" ? null : Number(formData.entryPrice),
+          expirationDate: formData.expirationDate,
+          notes: formData.notes,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update trade");
+      toast.success("Trade updated!");
+      onSave();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error("Error saving changes.");
+      console.error("Trade update error:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {trade.ticker} — Trade Details
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6 text-sm text-gray-700">
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              handleSave();
+            }}
+            className="flex flex-col gap-6"
+          >
+            <section className="flex flex-col gap-2">
+              <h3 className="font-semibold text-gray-900 mb-2 text-base">Basic Info</h3>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Type</label>
+                <div className="text-sm font-semibold">{trade.type}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Contracts</label>
+                <div className="text-sm">{formData.contracts}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Strike Price</label>
+                <div className="text-sm">${formData.strikePrice.toFixed(2)}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Contract Price</label>
+                <div className="text-sm">${formData.contractPrice.toFixed(2)}</div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Opened</label>
+                <div className="text-sm">
+                  {formData.createdAt
+                    ? new Date(formData.createdAt).toLocaleDateString()
+                    : "-"}
+                </div>
+              </div>
+            </section>
+            <section className="flex flex-col gap-2">
+              <label className="block text-xs font-medium mb-1">Entry Price</label>
+              <input
+                type="number"
+                name="entryPrice"
+                className="w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                value={formData.entryPrice}
+                step="0.01"
+                onChange={handleInputChange}
+              />
+            </section>
+            <section className="flex flex-col gap-2">
+              <label className="block text-xs font-medium mb-1">Expiration</label>
+              <input
+                type="date"
+                name="expirationDate"
+                className="w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                value={formData.expirationDate}
+                onChange={handleInputChange}
+                required
+              />
+            </section>
+            <section className="flex flex-col gap-2">
+              <h3 className="font-semibold text-gray-900 mb-1 text-base">Notes</h3>
+              <textarea
+                className="w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                rows={3}
+                placeholder="Add notes about this trade..."
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+              />
+            </section>
+            <div className="border-t pt-4 flex justify-end gap-2">
+              <Button
+                variant="default"
+                type="submit"
+                disabled={saving || !isFormChanged}
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

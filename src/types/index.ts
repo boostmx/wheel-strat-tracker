@@ -13,6 +13,7 @@ export interface Trade {
   createdAt: string | null
   premiumCaptured?: number | null;
   percentPL?: number | null;
+  notes?: string | null;
 }
 
 export interface Portfolio {
