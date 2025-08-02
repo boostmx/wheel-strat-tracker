@@ -12,6 +12,7 @@ import { Trade } from "@/types";
 import { useTradeTable } from "@/hooks/useTradeTables";
 import { CloseTradeModal } from "@/components/close-trade-modal";
 import { TradeEditModal } from "@/components/trade-edit-modal";
+import { AddToTradeModal } from "@/components/add-to-trade-modal";
 import { Button } from "@/components/ui/button";
 import { mutate } from "swr";
 
@@ -33,9 +34,16 @@ export function OpenTradesTable({
   const [selectedOpenTrade, setSelectedOpenTrade] = useState<Trade | null>(null);
   const [isOpenTradeModalOpen, setIsOpenTradeModalOpen] = useState(false);
 
+  const [addToTradeModalOpen, setAddToTradeModalOpen] = useState(false);
+
   const handleRowClick = (trade: Trade) => {
     setSelectedOpenTrade(trade);
     setIsOpenTradeModalOpen(true);
+  };
+
+  const handleAddToPosition = (trade: Trade) => {
+    setSelectedOpenTrade(trade);
+    setAddToTradeModalOpen(true);
   };
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -94,19 +102,28 @@ export function OpenTradesTable({
                 </td>
               ))}
               <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setSelectedTrade({
-                      id: row.original.id,
-                      strikePrice: row.original.strikePrice,
-                      contracts: row.original.contracts,
-                    })
-                  }
-                >
-                  Close
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setSelectedTrade({
+                        id: row.original.id,
+                        strikePrice: row.original.strikePrice,
+                        contracts: row.original.contracts,
+                      })
+                    }
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddToPosition(row.original)}
+                  >
+                    Add
+                  </Button>
+                </div>
               </td>
             </tr>
           ))}
@@ -135,6 +152,17 @@ export function OpenTradesTable({
           onSave={() => {
             mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
             mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`);
+          }}
+        />
+      )}
+
+      {selectedOpenTrade && (
+        <AddToTradeModal
+          tradeId={selectedOpenTrade.id}
+          open={addToTradeModalOpen}
+          onOpenChange={setAddToTradeModalOpen}
+          onSave={() => {
+            mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
           }}
         />
       )}

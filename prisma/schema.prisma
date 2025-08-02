@@ -16,18 +16,18 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  firstName String
-  lastName  String
+  id         String      @id @default(cuid())
+  firstName  String
+  lastName   String
   // Potential login via email later
-  email     String     @unique
-  bio       String?
-  avatarUrl String?
-  isAdmin   Boolean    @default(false)
-  username  String     @unique
-  password  String
+  email      String      @unique
+  bio        String?
+  avatarUrl  String?
+  isAdmin    Boolean     @default(false)
+  username   String      @unique
+  password   String
   portfolios Portfolio[]
-  createdAt DateTime   @default(now())
+  createdAt  DateTime    @default(now())
 }
 
 model Portfolio {
@@ -42,7 +42,7 @@ model Portfolio {
 }
 
 model Trade {
-  id              String     @id @default(cuid())
+  id              String            @id @default(cuid())
   ticker          String
   strikePrice     Float
   expirationDate  DateTime
@@ -50,15 +50,26 @@ model Trade {
   contracts       Int
   contractPrice   Float
   entryPrice      Float?
-  status          TradeStatus @default(open)
+  status          TradeStatus       @default(open)
   closedAt        DateTime?
   closingPrice    Float?
   premiumCaptured Float?
   percentPL       Float?
-  portfolio       Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  portfolio       Portfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   portfolioId     String
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime          @default(now())
   notes           String?
+  TradeAdjustment TradeAdjustment[]
+}
+
+model TradeAdjustment {
+  id        String   @id @default(cuid())
+  trade     Trade    @relation(fields: [tradeId], references: [id])
+  tradeId   String
+  addedAt   DateTime @default(now())
+  contracts Int
+  price     Float
+  notes     String?
 }
 
 enum TradeType {
