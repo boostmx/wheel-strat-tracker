@@ -2,14 +2,22 @@
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CalendarIcon } from "lucide-react";
 import { Trade } from "@/types";
-
 
 export function TradeEditModal({
   trade,
@@ -81,13 +89,18 @@ export function TradeEditModal({
     formData.notes !== (latestTrade.notes ?? "") ||
     formData.createdAt !== latestTrade.createdAt;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev!,
-      [name]: name === "contracts" || name === "strikePrice" || name === "contractPrice"
-        ? Number(value)
-        : value,
+      [name]:
+        name === "contracts" ||
+        name === "strikePrice" ||
+        name === "contractPrice"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -114,8 +127,7 @@ export function TradeEditModal({
     }
   };
 
-  const formatType = (type: string) =>
-    type.replace(/([a-z])([A-Z])/g, "$1 $2");
+  const formatType = (type: string) => type.replace(/([a-z])([A-Z])/g, "$1 $2");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -132,33 +144,54 @@ export function TradeEditModal({
             className="flex flex-col gap-6"
           >
             <section className="flex flex-col gap-2">
-              <h3 className="font-semibold text-gray-900 mb-2 text-base">Basic Info</h3>
+              <h3 className="font-semibold text-gray-900 mb-2 text-base">
+                Basic Info
+              </h3>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-muted-foreground">Type</label>
-                <div className="text-sm font-medium">{formatType(latestTrade.type)}</div>
+                <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                  Type
+                </label>
+                <div className="text-sm font-medium">
+                  {formatType(latestTrade.type)}
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-muted-foreground">Contracts</label>
+                <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                  Contracts
+                </label>
                 <div className="text-sm">{formData.contracts}</div>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-muted-foreground">Strike Price</label>
-                <div className="text-sm">${formData.strikePrice.toFixed(2)}</div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-muted-foreground">Contract Price</label>
-                <div className="text-sm">${formData.contractPrice.toFixed(2)}</div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-muted-foreground">Entry Price</label>
+                <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                  Strike Price
+                </label>
                 <div className="text-sm">
-                  {formData.entryPrice !== null && formData.entryPrice !== undefined
+                  ${formData.strikePrice.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                  Contract Price
+                </label>
+                <div className="text-sm">
+                  ${formData.contractPrice.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                  Entry Price
+                </label>
+                <div className="text-sm">
+                  {formData.entryPrice !== null &&
+                  formData.entryPrice !== undefined
                     ? `$${formData.entryPrice.toFixed(2)}`
                     : "-"}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1 text-muted-foreground">Opened</label>
+                <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                  Opened
+                </label>
                 <div className="text-sm">
                   {formData.createdAt
                     ? new Date(formData.createdAt).toLocaleDateString()
@@ -167,20 +200,24 @@ export function TradeEditModal({
               </div>
             </section>
             <section className="flex flex-col gap-2">
-              <label className="block text-sm font-semibold mb-1 text-muted-foreground">Expiration</label>
+              <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                Expiration
+              </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant={"outline"}
                     className={cn(
                       "w-[240px] justify-start text-left font-normal",
-                      !formData.expirationDate && "text-muted-foreground"
+                      !formData.expirationDate && "text-muted-foreground",
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.expirationDate
-                      ? format(new Date(formData.expirationDate), "PPP")
-                      : <span>Pick a date</span>}
+                    {formData.expirationDate ? (
+                      format(new Date(formData.expirationDate), "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -201,7 +238,9 @@ export function TradeEditModal({
             </section>
 
             <section className="flex flex-col gap-2">
-              <label className="block text-sm font-semibold mb-1 text-muted-foreground">Notes</label>
+              <label className="block text-sm font-semibold mb-1 text-muted-foreground">
+                Notes
+              </label>
               <textarea
                 className="w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 rows={3}

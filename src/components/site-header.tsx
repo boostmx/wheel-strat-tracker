@@ -14,8 +14,15 @@ export function SiteHeader() {
       {/* Logo and Business Name */}
       <div className="flex items-center gap-2">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="HL Financial Strategies" width={32} height={32} />
-          <span className="text-lg font-semibold text-gray-800">HL Financial Strategies</span>
+          <Image
+            src="/logo.png"
+            alt="HL Financial Strategies"
+            width={32}
+            height={32}
+          />
+          <span className="text-lg font-semibold text-gray-800">
+            HL Financial Strategies
+          </span>
         </Link>
       </div>
 

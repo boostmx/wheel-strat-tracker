@@ -12,7 +12,12 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function ClosedTradesTable({ trades }: { trades: Trade[] }) {
   const { columns, data } = useTradeTable(trades, { isClosed: true });
@@ -133,15 +138,43 @@ export function ClosedTradesTable({ trades }: { trades: Trade[] }) {
               <DialogTitle>{selectedTrade.ticker} — Trade Details</DialogTitle>
             </DialogHeader>
             <div className="space-y-2 text-sm text-gray-700">
-              <p><strong>Type:</strong> {selectedTrade.type}</p>
-              <p><strong>Strike Price:</strong> ${selectedTrade.strikePrice}</p>
-              <p><strong>Contracts:</strong> {selectedTrade.contracts}</p>
-              <p><strong>Opened:</strong> {selectedTrade.createdAt ? new Date(selectedTrade.createdAt).toLocaleDateString() : "-"}</p>
-              <p><strong>Closed:</strong> {selectedTrade.closedAt ? new Date(selectedTrade.closedAt).toLocaleDateString() : "-"}</p>
-              <p><strong>Entry Price:</strong> ${selectedTrade.entryPrice?.toFixed(2) ?? "-"}</p>
-              <p><strong>Closing Price:</strong> ${selectedTrade.closingPrice?.toFixed(2) ?? "-"}</p>
-              <p><strong>Premium Captured:</strong> ${selectedTrade.premiumCaptured?.toFixed(2) ?? "-"}</p>
-              <p><strong>% P/L:</strong> {selectedTrade.percentPL?.toFixed(2) ?? "-"}%</p>
+              <p>
+                <strong>Type:</strong> {selectedTrade.type}
+              </p>
+              <p>
+                <strong>Strike Price:</strong> ${selectedTrade.strikePrice}
+              </p>
+              <p>
+                <strong>Contracts:</strong> {selectedTrade.contracts}
+              </p>
+              <p>
+                <strong>Opened:</strong>{" "}
+                {selectedTrade.createdAt
+                  ? new Date(selectedTrade.createdAt).toLocaleDateString()
+                  : "-"}
+              </p>
+              <p>
+                <strong>Closed:</strong>{" "}
+                {selectedTrade.closedAt
+                  ? new Date(selectedTrade.closedAt).toLocaleDateString()
+                  : "-"}
+              </p>
+              <p>
+                <strong>Entry Price:</strong> $
+                {selectedTrade.entryPrice?.toFixed(2) ?? "-"}
+              </p>
+              <p>
+                <strong>Closing Price:</strong> $
+                {selectedTrade.closingPrice?.toFixed(2) ?? "-"}
+              </p>
+              <p>
+                <strong>Premium Captured:</strong> $
+                {selectedTrade.premiumCaptured?.toFixed(2) ?? "-"}
+              </p>
+              <p>
+                <strong>% P/L:</strong>{" "}
+                {selectedTrade.percentPL?.toFixed(2) ?? "-"}%
+              </p>
             </div>
           </DialogContent>
         </Dialog>

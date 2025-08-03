@@ -37,7 +37,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-muted px-4">
-      <h1 className="text-2xl font-bold italic mb-6 text-primary">Wheel Strategy Tracker</h1>
+      <h1 className="text-2xl font-bold italic mb-6 text-primary">
+        Wheel Strategy Tracker
+      </h1>
       <Card className="w-full max-w-md p-4 shadow-md">
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

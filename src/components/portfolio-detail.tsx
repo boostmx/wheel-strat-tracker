@@ -23,7 +23,9 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
     "closed",
   );
 
-  const { data: metrics } = useSWR(["portfolioMetrics", portfolio.id], () => getPortfolioMetrics(portfolio.id));
+  const { data: metrics } = useSWR(["portfolioMetrics", portfolio.id], () =>
+    getPortfolioMetrics(portfolio.id),
+  );
 
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
@@ -39,7 +41,9 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
       <div className="grid grid-cols-2 gap-4">
         <Card className="bg-white shadow-sm rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Starting Capital</p>
+            <p className="text-base font-medium text-gray-600">
+              Starting Capital
+            </p>
             <p className="text-3xl font-bold text-gray-900">
               ${portfolio.startingCapital.toLocaleString()}
             </p>
@@ -47,7 +51,9 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         </Card>
         <Card className="bg-white shadow-sm rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Current Capital</p>
+            <p className="text-base font-medium text-gray-600">
+              Current Capital
+            </p>
             <p
               className={`text-3xl font-bold ${
                 metrics?.capitalUsed != null &&

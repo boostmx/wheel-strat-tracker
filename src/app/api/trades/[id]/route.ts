@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
  */
 export async function GET(
   _req: Request,
-  props: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> },
 ) {
   const { id } = await props.params;
 
@@ -26,14 +26,13 @@ export async function GET(
   }
 }
 
-
 /***
  * PATCH request to update a trade's expiration date and notes.
- * 
+ *
  */
 export async function PATCH(
   req: Request,
-  props: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> },
 ) {
   const { id } = await props.params;
   const body = await req.json();
@@ -41,7 +40,10 @@ export async function PATCH(
   const { expirationDate, notes } = body;
 
   if (!expirationDate) {
-    return NextResponse.json({ error: "Missing expirationDate" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing expirationDate" },
+      { status: 400 },
+    );
   }
 
   try {

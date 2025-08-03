@@ -10,10 +10,11 @@ export interface Trade {
   contractPrice: number;
   closingPrice?: number;
   closedAt?: string | null;
-  createdAt: string | null
+  createdAt: string | null;
   premiumCaptured?: number | null;
   percentPL?: number | null;
   notes?: string | null;
+  tradeAdjustments?: TradeAdjustment[];
 }
 
 export interface Portfolio {
@@ -31,4 +32,13 @@ export interface Metrics {
   maxDrawdown: number | null;
   sharpeRatio: number | null;
   capitalUsed?: number;
+}
+
+export interface TradeAdjustment {
+  id: string;
+  tradeId: string;
+  contracts: number;
+  price: number;
+  notes?: string | null;
+  addedAt: string | null;
 }

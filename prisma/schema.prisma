@@ -42,24 +42,24 @@ model Portfolio {
 }
 
 model Trade {
-  id              String            @id @default(cuid())
-  ticker          String
-  strikePrice     Float
-  expirationDate  DateTime
-  type            TradeType
-  contracts       Int
-  contractPrice   Float
-  entryPrice      Float?
-  status          TradeStatus       @default(open)
-  closedAt        DateTime?
-  closingPrice    Float?
-  premiumCaptured Float?
-  percentPL       Float?
-  portfolio       Portfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-  portfolioId     String
-  createdAt       DateTime          @default(now())
-  notes           String?
-  TradeAdjustment TradeAdjustment[]
+  id                String            @id @default(cuid())
+  ticker            String
+  strikePrice       Float
+  expirationDate    DateTime
+  type              TradeType
+  contracts         Int
+  contractPrice     Float
+  entryPrice        Float?
+  status            TradeStatus       @default(open)
+  closedAt          DateTime?
+  closingPrice      Float?
+  premiumCaptured   Float?
+  percentPL         Float?
+  portfolio         Portfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  portfolioId       String
+  createdAt         DateTime          @default(now())
+  notes             String?
+  tradeAdjustments  TradeAdjustment[]
 }
 
 model TradeAdjustment {

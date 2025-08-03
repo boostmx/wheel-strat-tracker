@@ -3,7 +3,12 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { Trade } from "@/types";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
-const columnHelper = createColumnHelper<Trade>();
+const columnHelper = createColumnHelper<
+  Trade & {
+    avgPrice?: number;
+    totalContracts?: number;
+  }
+>();
 
 export const useTradeTable = (
   data: Trade[],
@@ -44,12 +49,17 @@ export const useTradeTable = (
           year: "numeric",
         }),
     }),
-    columnHelper.accessor<"contracts", number>("contracts", {
+    columnHelper.accessor<"totalContracts", number>("totalContracts", {
       header: "Contracts",
     }),
-    columnHelper.accessor<"contractPrice", number>("contractPrice", {
-      header: "Premium",
-      cell: (info) => `$${info.getValue().toFixed(2)}`,
+    columnHelper.accessor<"avgPrice", number>("avgPrice", {
+      header: "Avg Price",
+      cell: (info) => {
+        const value = info.getValue();
+        return value !== undefined && value !== null
+          ? `$${value.toFixed(2)}`
+          : "-";
+      },
     }),
   ];
 

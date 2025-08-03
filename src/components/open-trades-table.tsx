@@ -1,6 +1,5 @@
-"use client";
-
-import { useState } from "react";
+import { Trade } from "@/types";
+import { useState, useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -8,14 +7,16 @@ import {
   flexRender,
   SortingState,
 } from "@tanstack/react-table";
-import { Trade } from "@/types";
+import {
+  calculateAdjustedContracts,
+  calculateAverageContractPrice,
+} from "@/lib/trade-metrics";
 import { useTradeTable } from "@/hooks/useTradeTables";
 import { CloseTradeModal } from "@/components/close-trade-modal";
 import { TradeEditModal } from "@/components/trade-edit-modal";
 import { AddToTradeModal } from "@/components/add-to-trade-modal";
 import { Button } from "@/components/ui/button";
 import { mutate } from "swr";
-
 
 export function OpenTradesTable({
   trades,
@@ -30,10 +31,10 @@ export function OpenTradesTable({
     contracts: number;
   } | null>(null);
 
-  // State for row click modal
-  const [selectedOpenTrade, setSelectedOpenTrade] = useState<Trade | null>(null);
+  const [selectedOpenTrade, setSelectedOpenTrade] = useState<Trade | null>(
+    null,
+  );
   const [isOpenTradeModalOpen, setIsOpenTradeModalOpen] = useState(false);
-
   const [addToTradeModalOpen, setAddToTradeModalOpen] = useState(false);
 
   const handleRowClick = (trade: Trade) => {
@@ -48,7 +49,15 @@ export function OpenTradesTable({
 
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const { columns, data } = useTradeTable(trades);
+  const enrichedTrades = useMemo(() => {
+    return trades.map((trade) => {
+      const totalContracts = calculateAdjustedContracts(trade);
+      const avgPrice = calculateAverageContractPrice(trade);
+      return { ...trade, totalContracts, avgPrice };
+    });
+  }, [trades]);
+
+  const { columns, data } = useTradeTable(enrichedTrades);
 
   const table = useReactTable({
     data,

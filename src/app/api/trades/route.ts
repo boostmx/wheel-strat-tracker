@@ -90,6 +90,9 @@ export async function GET(req: Request) {
         status,
         portfolioId,
       },
+      include: {
+        tradeAdjustments: true,
+      },
       orderBy:
         status === "closed" ? { closedAt: "desc" } : { createdAt: "asc" },
     });

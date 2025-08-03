@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(
   req: Request,
-  props: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> },
 ) {
   const { id: tradeId } = await props.params;
   const body = await req.json();
@@ -13,7 +13,7 @@ export async function POST(
   if (!contracts || !price || isNaN(contracts) || isNaN(price)) {
     return NextResponse.json(
       { error: "Contracts and price are required and must be numbers." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
