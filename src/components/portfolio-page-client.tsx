@@ -1,21 +1,7 @@
-import { headers } from "next/headers";
+"use client";
+import { Portfolio } from "@/types";
 import { PortfolioDetail } from "./portfolio-detail";
-import { notFound } from "next/navigation";
-import { getBaseUrl } from "@/lib/getBaseUrl";
 
-export async function PortfolioPageClient({ id }: { id: string }) {
-  const baseUrl = await getBaseUrl(); // Use the utility function for the base URL
-  const headersList = await headers();
-  const cookie = headersList.get("cookie") || "";
-  const res = await fetch(`${baseUrl}/api/portfolios/${id}`, {
-    cache: "no-store",
-    headers: {
-      Cookie: cookie,
-    },
-  });
-
-  if (!res.ok) return notFound();
-  const portfolio = await res.json();
-
+export default function PortfolioPageClient({ portfolio }: { portfolio: Portfolio }) {
   return <PortfolioDetail portfolio={portfolio} />;
 }

@@ -63,9 +63,9 @@ export default function DashboardContent() {
     fetchAllMetrics();
   }, [portfolios]);
 
-  async function handleDelete(id: string) {
+  async function handleDelete(portfolioId: string) {
     try {
-      const res = await fetch(`/api/portfolios/${id}`, {
+      const res = await fetch(`/api/portfolios/${portfolioId}`, {
         method: "DELETE",
       });
 

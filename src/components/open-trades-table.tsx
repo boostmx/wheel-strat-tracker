@@ -32,7 +32,6 @@ export function OpenTradesTable({
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { columns, data } = useTradeTable(trades);
-
   const table = useReactTable({
     data,
     columns,
@@ -84,13 +83,14 @@ export function OpenTradesTable({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
+                  onClick={() => {
+                    //console.log("row.original", row.original);
                     setSelectedTrade({
                       id: row.original.id,
                       strikePrice: row.original.strikePrice,
                       contracts: row.original.contracts,
                     })
-                  }
+                  }}
                 >
                   Close
                 </Button>
@@ -99,10 +99,10 @@ export function OpenTradesTable({
           ))}
         </tbody>
       </table>
-
+          
       {selectedTrade && (
         <CloseTradeModal
-          tradeId={selectedTrade.id}
+          id={selectedTrade.id}
           strikePrice={selectedTrade.strikePrice}
           contracts={selectedTrade.contracts}
           isOpen={!!selectedTrade}

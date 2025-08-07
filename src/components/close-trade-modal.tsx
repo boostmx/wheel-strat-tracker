@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 
 interface CloseTradeModalProps {
-  tradeId: string;
+  id: string;
   isOpen: boolean;
   onClose: () => void;
   strikePrice: number;
@@ -28,7 +28,7 @@ interface CloseTradeModalProps {
 }
 
 export function CloseTradeModal({
-  tradeId,
+  id,
   isOpen,
   onClose,
   strikePrice,
@@ -62,7 +62,8 @@ export function CloseTradeModal({
       return;
     }
 
-    const res = await fetch(`/api/trades/${tradeId}/close`, {
+    console.log("Closing trade id:", id);
+    const res = await fetch(`/api/trades/${id}/close`, {
       method: "POST",
       body: JSON.stringify({
         contractsToClose: numContracts,
@@ -89,7 +90,7 @@ export function CloseTradeModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Display current trade info at top */}
+        {/* Trade summary */}
         <div className="bg-muted rounded-md px-4 py-3 text-sm mb-4 space-y-1">
           {ticker && (
             <p>
@@ -102,8 +103,7 @@ export function CloseTradeModal({
             </p>
           )}
           <p>
-            <span className="font-medium">Strike:</span> $
-            {strikePrice.toFixed(2)}
+            <span className="font-medium">Strike:</span> ${strikePrice.toFixed(2)}
           </p>
           <p>
             <span className="font-medium">Contracts:</span> {contracts}
@@ -121,8 +121,11 @@ export function CloseTradeModal({
             <Checkbox
               checked={fullClose}
               onCheckedChange={(v) => {
-                setFullClose(!!v);
-                setContractsToClose(contracts);
+                const isChecked = !!v;
+                setFullClose(isChecked);
+                if (isChecked) {
+                  setContractsToClose(contracts);
+                }
               }}
             />
             <span>Close full position</span>
@@ -169,3 +172,5 @@ export function CloseTradeModal({
     </Dialog>
   );
 }
+
+export default CloseTradeModal;
