@@ -14,6 +14,7 @@ import { Trade } from "@/types";
 import { useTradeTable } from "@/hooks/useTradeTables";
 import { CloseTradeModal } from "@/components/close-trade-modal";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { mutate } from "swr";
 
 export function OpenTradesTable({
@@ -80,20 +81,27 @@ export function OpenTradesTable({
                 </td>
               ))}
               <td className="px-4 py-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    //console.log("row.original", row.original);
-                    setSelectedTrade({
-                      id: row.original.id,
-                      strikePrice: row.original.strikePrice,
-                      contracts: row.original.contracts,
-                    })
-                  }}
-                >
-                  Close
-                </Button>
+                <td className="px-4 py-2 space-x-2">
+  <Link
+    href={`/portfolio/${portfolioId}/trade/${row.original.id}`}
+    className="text-blue-600 underline text-sm"
+  >
+    View
+  </Link>
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() =>
+      setSelectedTrade({
+        id: row.original.id,
+        strikePrice: row.original.strikePrice,
+        contracts: row.original.contracts,
+      })
+    }
+  >
+    Close
+  </Button>
+</td>
               </td>
             </tr>
           ))}
