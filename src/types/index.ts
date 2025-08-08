@@ -28,10 +28,11 @@ export interface Portfolio {
 }
 
 export interface Metrics {
-  winRate: number | null;
-  totalReturn: number | null;
-  annualizedReturn: number | null;
-  maxDrawdown: number | null;
-  sharpeRatio: number | null;
+  startingCapital: number;
   capitalUsed?: number;
+  winRate: number | null;
+  totalProfit: number | null;
+  avgPLPercent: number | null;
+  percentCapitalDeployed: number | null;
+  avgDaysInTrade: number | null;
 }
