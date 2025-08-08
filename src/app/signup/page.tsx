@@ -1,47 +1,47 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 export default function SignUpPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     username: "",
     password: "",
-  })
-  const [loading, setLoading] = useState(false)
+  });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
-    })
+    });
 
-    setLoading(false)
+    setLoading(false);
 
     if (res.ok) {
-      toast.success("Account created! You can now log in.")
-      router.push("/")
+      toast.success("Account created! You can now log in.");
+      router.push("/");
     } else {
-      const data = await res.json()
-      toast.error(data.error || "Something went wrong")
+      const data = await res.json();
+      toast.error(data.error || "Something went wrong");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-muted py-12 px-4">
@@ -51,24 +51,76 @@ export default function SignUpPage() {
           <form onSubmit={handleSubmit}>
             <div className="space-y-6 bg-white p-6 rounded-lg shadow-md border">
               <div className="space-y-2">
-                <Label htmlFor="firstName" className="block text-sm font-medium text-gray-700">First Name</Label>
-                <Input name="firstName" value={form.firstName} onChange={handleChange} required />
+                <Label
+                  htmlFor="firstName"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  First Name
+                </Label>
+                <Input
+                  name="firstName"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName" className="block text-sm font-medium text-gray-700">Last Name</Label>
-                <Input name="lastName" value={form.lastName} onChange={handleChange} required />
+                <Label
+                  htmlFor="lastName"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Last Name
+                </Label>
+                <Input
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</Label>
-                <Input name="email" type="email" value={form.email} onChange={handleChange} required />
+                <Label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Email
+                </Label>
+                <Input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</Label>
-                <Input name="username" value={form.username} onChange={handleChange} required />
+                <Label
+                  htmlFor="username"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Username
+                </Label>
+                <Input
+                  name="username"
+                  value={form.username}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</Label>
-                <Input name="password" type="password" value={form.password} onChange={handleChange} required />
+                <Label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Password
+                </Label>
+                <Input
+                  name="password"
+                  type="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating account..." : "Sign Up"}
@@ -78,5 +130,5 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

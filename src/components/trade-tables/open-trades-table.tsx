@@ -1,4 +1,3 @@
-// components/open-trades-table.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,15 +5,19 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  flexRender,
   SortingState,
+  flexRender,
 } from "@tanstack/react-table";
-
+import { makeOpenColumns } from "./columns-open";
 import { Trade } from "@/types";
-import { useTradeTable } from "@/hooks/useTradeTables";
 import { CloseTradeModal } from "@/components/close-trade-modal";
-import { Button } from "@/components/ui/button";
 import { mutate } from "swr";
+
+type SelectedForClose = {
+  id: string;
+  strikePrice: number;
+  contracts: number;
+};
 
 export function OpenTradesTable({
   trades,
@@ -23,28 +26,25 @@ export function OpenTradesTable({
   trades: Trade[];
   portfolioId: string;
 }) {
-  const [selectedTrade, setSelectedTrade] = useState<{
-    id: string;
-    strikePrice: number;
-    contracts: number;
-  } | null>(null);
-
   const [sorting, setSorting] = useState<SortingState>([]);
-
-  const { columns, data } = useTradeTable(trades);
+  const [selectedTrade, setSelectedTrade] = useState<SelectedForClose | null>(
+    null,
+  );
 
   const table = useReactTable({
-    data,
-    columns,
+    data: trades, // keep Trade[] pure
+    columns: makeOpenColumns(portfolioId, (t) =>
+      setSelectedTrade({
+        id: t.id,
+        strikePrice: t.strikePrice,
+        contracts: t.contracts,
+      }),
+    ),
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
-
-  if (!trades || trades.length === 0) {
-    return <p>No open trades yet.</p>;
-  }
 
   return (
     <div className="w-full overflow-x-auto">
@@ -62,13 +62,8 @@ export function OpenTradesTable({
                     header.column.columnDef.header,
                     header.getContext(),
                   )}
-                  {{
-                    asc: " ↑",
-                    desc: " ↓",
-                  }[header.column.getIsSorted() as string] ?? null}
                 </th>
               ))}
-              <th className="px-4 py-2 font-semibold">Action</th>
             </tr>
           ))}
         </thead>
@@ -80,21 +75,6 @@ export function OpenTradesTable({
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
-              <td className="px-4 py-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setSelectedTrade({
-                      id: row.original.id,
-                      strikePrice: row.original.strikePrice,
-                      contracts: row.original.contracts,
-                    })
-                  }
-                >
-                  Close
-                </Button>
-              </td>
             </tr>
           ))}
         </tbody>
@@ -102,7 +82,7 @@ export function OpenTradesTable({
 
       {selectedTrade && (
         <CloseTradeModal
-          tradeId={selectedTrade.id}
+          id={selectedTrade.id}
           strikePrice={selectedTrade.strikePrice}
           contracts={selectedTrade.contracts}
           isOpen={!!selectedTrade}

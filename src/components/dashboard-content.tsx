@@ -33,7 +33,9 @@ export default function DashboardContent() {
     isLoading,
   } = useSWR<Portfolio[]>(session?.user?.id ? "/api/portfolios" : null);
 
-  const [metricsMap, setMetricsMap] = useState<Record<string, Metrics | null>>({});
+  const [metricsMap, setMetricsMap] = useState<Record<string, Metrics | null>>(
+    {},
+  );
 
   useEffect(() => {
     async function fetchAllMetrics() {
@@ -54,7 +56,7 @@ export default function DashboardContent() {
           } catch {
             newMetricsMap[p.id] = null;
           }
-        })
+        }),
       );
 
       setMetricsMap(newMetricsMap);
@@ -63,9 +65,9 @@ export default function DashboardContent() {
     fetchAllMetrics();
   }, [portfolios]);
 
-  async function handleDelete(id: string) {
+  async function handleDelete(portfolioId: string) {
     try {
-      const res = await fetch(`/api/portfolios/${id}`, {
+      const res = await fetch(`/api/portfolios/${portfolioId}`, {
         method: "DELETE",
       });
 
@@ -146,13 +148,17 @@ export default function DashboardContent() {
                     </h2>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
                       <div className="rounded-lg bg-gray-100 p-4 text-sm">
-                        <p className="text-gray-500 font-medium">Starting Capital</p>
+                        <p className="text-gray-500 font-medium">
+                          Starting Capital
+                        </p>
                         <p className="text-lg font-semibold text-gray-900">
                           ${p.startingCapital.toLocaleString()}
                         </p>
                       </div>
                       <div className="rounded-lg bg-green-50 p-4 text-sm">
-                        <p className="text-gray-500 font-medium">Current Capital</p>
+                        <p className="text-gray-500 font-medium">
+                          Current Capital
+                        </p>
                         <p className="text-lg font-semibold text-green-700">
                           ${p.currentCapital.toLocaleString()}
                         </p>

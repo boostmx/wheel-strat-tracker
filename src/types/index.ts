@@ -1,6 +1,7 @@
 // types/index.ts
 export interface Trade {
   id: string;
+  portfolioId: string;
   ticker: string;
   strikePrice: number;
   entryPrice?: number;
@@ -12,6 +13,10 @@ export interface Trade {
   closedAt?: string | null;
   premiumCaptured?: number | null;
   percentPL?: number | null;
+  notes?: string | null;
+  status: "open" | "closed";
+  totalContracts?: number;
+  createdAt: string;
 }
 
 export interface Portfolio {
