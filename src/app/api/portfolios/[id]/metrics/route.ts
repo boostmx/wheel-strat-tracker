@@ -19,73 +19,71 @@ export async function GET(
   }
 
   const closedTrades = await prisma.trade.findMany({
-    where: {
-      portfolioId,
-      status: "closed",
-    },
+    where: { portfolioId, status: "closed" },
   });
 
   const openTrades = await prisma.trade.findMany({
-    where: {
-      portfolioId,
-      status: "open",
-    },
+    where: { portfolioId, status: "open" },
   });
 
   const capitalUsed = openTrades.reduce((sum: number, trade: Trade) => {
     return sum + trade.contracts * trade.strikePrice * 100;
   }, 0);
 
+  // Calculate % of capital deployed
+  const percentCapitalDeployed =
+    portfolio.startingCapital > 0
+      ? (capitalUsed / portfolio.startingCapital) * 100
+      : 0;
+
+  // average days in trade
+  const avgDaysInTrade =
+    closedTrades.reduce((sum, trade) => {
+      if (!trade.closedAt) return sum;
+      const opened = trade.createdAt.getTime();
+      const closed = trade.closedAt.getTime();
+      const days = (closed - opened) / (1000 * 60 * 60 * 24);
+      return sum + days;
+    }, 0) / closedTrades.length;
+
   if (!closedTrades.length) {
     return NextResponse.json({
       startingCapital: portfolio.startingCapital,
       capitalUsed,
-      totalReturn: 0,
-      annualizedReturn: 0,
-      maxDrawdown: 0,
-      sharpeRatio: 0,
+      percentCapitalDeployed,
+      avgDaysInTrade,
       winRate: 0,
+      totalProfit: 0,
+      avgPLPercent: 0,
     });
   }
 
-  const totalPremium = closedTrades.reduce((sum, trade) => {
+  // total profit in $
+  const totalProfit = closedTrades.reduce((sum, trade) => {
     return sum + (trade.premiumCaptured ?? 0);
   }, 0);
 
-  const totalUsedCapital = closedTrades.reduce((sum, trade) => {
-    return sum + trade.contracts * trade.strikePrice * 100;
-  }, 0);
-
-  const totalReturn = totalPremium / totalUsedCapital || 0;
-
-  const now = new Date();
-  const earliest = closedTrades.reduce((min, trade) => {
-    return trade.closedAt && trade.closedAt < min ? trade.closedAt : min;
-  }, closedTrades[0].closedAt ?? now);
-
-  const daysHeld =
-    (now.getTime() - (earliest?.getTime() ?? now.getTime())) /
-    (1000 * 60 * 60 * 24);
-
-  const annualizedReturn =
-    daysHeld > 0 ? Math.pow(1 + totalReturn, 365 / daysHeld) - 1 : 0;
-
+  // win rate
   const winCount = closedTrades.filter(
     (t) => (t.premiumCaptured ?? 0) > 0,
   ).length;
   const winRate = winCount / closedTrades.length;
 
-  const sharpeRatio = totalReturn / 0.15;
-
-  const maxDrawdown = 0;
+  // average P/L % per trade
+  const avgPLPercent =
+    closedTrades.reduce((sum, trade) => {
+      const usedCapital = trade.contracts * trade.strikePrice * 100;
+      const plPercent = usedCapital
+        ? ((trade.premiumCaptured ?? 0) / usedCapital) * 100
+        : 0;
+      return sum + plPercent;
+    }, 0) / closedTrades.length;
 
   return NextResponse.json({
     startingCapital: portfolio.startingCapital,
     capitalUsed,
-    totalReturn,
-    annualizedReturn,
-    maxDrawdown,
-    sharpeRatio,
     winRate,
+    totalProfit,
+    avgPLPercent,
   });
 }

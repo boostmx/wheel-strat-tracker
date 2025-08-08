@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     type,
     contracts,
     contractPrice,
+    entryPrice,
   } = body;
 
   if (
@@ -32,7 +33,8 @@ export async function POST(req: Request) {
     !expirationDate ||
     !type ||
     !contracts ||
-    !contractPrice
+    !contractPrice ||
+    !entryPrice
   ) {
     return NextResponse.json(
       { error: "Missing required trade data" },
@@ -50,6 +52,7 @@ export async function POST(req: Request) {
         type,
         contracts,
         contractPrice,
+        entryPrice,
         status: "open",
       },
     });

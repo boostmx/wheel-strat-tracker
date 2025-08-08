@@ -71,6 +71,28 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricsCard
+          label="% Capital Used"
+          value={
+            metrics?.percentCapitalDeployed != null
+              ? `${metrics.percentCapitalDeployed.toFixed(2)}%`
+              : "Loading..."
+          }
+          className={
+            metrics?.percentCapitalDeployed != null &&
+            metrics.percentCapitalDeployed >= 85
+              ? "text-red-600"
+              : "text-green-600"
+          }
+        />
+        <MetricsCard
+          label="Avg. Days Held"
+          value={
+            metrics?.avgDaysInTrade != null
+              ? `${metrics.avgDaysInTrade.toFixed(2)} days`
+              : "-"
+          }
+        />
+        <MetricsCard
           label="Win Rate"
           value={
             metrics?.winRate != null
@@ -84,63 +106,29 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           }
         />
         <MetricsCard
-          label="Ann. Return"
+          label="Total Profit"
           value={
-            metrics?.annualizedReturn != null
-              ? `${(metrics.annualizedReturn * 100).toFixed(2)}%`
+            metrics?.totalProfit != null
+              ? `$${metrics.totalProfit.toLocaleString()}`
               : "Loading..."
           }
           className={
-            metrics?.annualizedReturn != null
-              ? metrics.annualizedReturn > 0.1
-                ? "text-green-500"
-                : "text-yellow-500"
-              : ""
+            metrics?.totalProfit != null && metrics.totalProfit >= 0
+              ? "text-green-600"
+              : "text-red-600"
           }
         />
         <MetricsCard
-          label="Max Drawdown"
+          label="Avg P/L %"
           value={
-            metrics?.maxDrawdown != null
-              ? `${(metrics.maxDrawdown * 100).toFixed(2)}%`
+            metrics?.avgPLPercent != null
+              ? `${metrics.avgPLPercent.toFixed(2)}%`
               : "Loading..."
           }
           className={
-            metrics?.maxDrawdown != null
-              ? metrics.maxDrawdown < -0.2
-                ? "text-red-500"
-                : "text-yellow-500"
-              : ""
-          }
-        />
-        <MetricsCard
-          label="Sharpe Ratio"
-          value={
-            metrics?.sharpeRatio != null
-              ? metrics.sharpeRatio.toFixed(2)
-              : "Loading..."
-          }
-          className={
-            metrics?.sharpeRatio != null
-              ? metrics.sharpeRatio >= 1
-                ? "text-green-500"
-                : "text-yellow-500"
-              : ""
-          }
-        />
-        <MetricsCard
-          label="Total Return"
-          value={
-            metrics?.totalReturn != null
-              ? `${(metrics.totalReturn * 100).toFixed(2)}%`
-              : "Loading..."
-          }
-          className={
-            metrics?.totalReturn != null
-              ? metrics.totalReturn > 0
-                ? "text-green-500"
-                : "text-red-500"
-              : ""
+            metrics?.avgPLPercent != null && metrics.avgPLPercent >= 0
+              ? "text-green-600"
+              : "text-red-600"
           }
         />
       </div>
