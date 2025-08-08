@@ -103,7 +103,8 @@ export function CloseTradeModal({
             </p>
           )}
           <p>
-            <span className="font-medium">Strike:</span> ${strikePrice.toFixed(2)}
+            <span className="font-medium">Strike:</span> $
+            {strikePrice.toFixed(2)}
           </p>
           <p>
             <span className="font-medium">Contracts:</span> {contracts}

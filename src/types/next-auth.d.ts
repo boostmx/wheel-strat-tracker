@@ -23,6 +23,6 @@ declare module "next-auth" {
     email?: string;
     bio?: string;
     avatarUrl?: string;
-    isAdmin?: boolean; 
+    isAdmin?: boolean;
   }
 }

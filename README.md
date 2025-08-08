@@ -71,6 +71,7 @@ pnpm ts-node prisma/seed.production.ts
 ```
 
 This script will:
+
 - Clear existing trades and portfolios
 - Create a new admin user based on env vars
 
@@ -88,14 +89,14 @@ Then visit [http://localhost:3000](http://localhost:3000)
 
 ## Environment Variables
 
-| Variable               | Description                                |
-|------------------------|--------------------------------------------|
-| `DATABASE_URL`         | PostgreSQL connection string               |
-| `NEXTAUTH_SECRET`      | Session encryption secret                  |
-| `NEXTAUTH_URL`         | Required in production                     |
-| `ADMIN_EMAIL`          | Used during seeding                        |
-| `ADMIN_PASSWORD`       | Used during seeding                        |
-| `ADMIN_USERNAME`       | Optional, defaults to `admin`              |
+| Variable          | Description                   |
+| ----------------- | ----------------------------- |
+| `DATABASE_URL`    | PostgreSQL connection string  |
+| `NEXTAUTH_SECRET` | Session encryption secret     |
+| `NEXTAUTH_URL`    | Required in production        |
+| `ADMIN_EMAIL`     | Used during seeding           |
+| `ADMIN_PASSWORD`  | Used during seeding           |
+| `ADMIN_USERNAME`  | Optional, defaults to `admin` |
 
 ---
 

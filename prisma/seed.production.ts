@@ -28,7 +28,7 @@ async function main() {
       password: hashedPassword,
       firstName,
       lastName,
-      isAdmin: true
+      isAdmin: true,
     },
   });
 

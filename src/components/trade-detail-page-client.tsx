@@ -35,8 +35,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
     fetchTrade();
   }, [tradeId]);
 
-  const formatType = (type: string) =>
-    type.replace(/([a-z])([A-Z])/g, "$1 $2");
+  const formatType = (type: string) => type.replace(/([a-z])([A-Z])/g, "$1 $2");
 
   const statusBadge = (status: "open" | "closed") => {
     const color =
@@ -66,8 +65,8 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-10 space-y-6">
-      <div className="flex justify-end">
+    <div className="max-w-3xl mx-auto py-10 space-y-6 relative">
+      <div className="flex justify-end mb-4">
         <Button variant="outline" asChild className="text-sm">
           <Link href={`/portfolio/${portfolioId}`}>← Back to Portfolio</Link>
         </Button>
@@ -89,44 +88,92 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                 {formatType(trade.type)}
               </p>
               <p>
-                <span className="font-medium text-muted-foreground">Strike:</span>{" "}
+                <span className="font-medium text-muted-foreground">
+                  Strike:
+                </span>{" "}
                 ${trade.strikePrice.toFixed(2)}
               </p>
               <p>
-                <span className="font-medium text-muted-foreground">Contracts:</span>{" "}
+                <span className="font-medium text-muted-foreground">
+                  Contracts:
+                </span>{" "}
                 {trade.contracts}
               </p>
               <p>
-                <span className="font-medium text-muted-foreground">Avg Price:</span>{" "}
+                <span className="font-medium text-muted-foreground">
+                  Avg Price:
+                </span>{" "}
                 ${trade.contractPrice.toFixed(2)}
               </p>
             </div>
 
             <div className="space-y-1">
               <p>
-                <span className="font-medium text-muted-foreground">Opened:</span>{" "}
+                <span className="font-medium text-muted-foreground">
+                  Opened:
+                </span>{" "}
                 {new Date(trade.createdAt).toLocaleDateString()}
               </p>
               <p>
-                <span className="font-medium text-muted-foreground">Expiration:</span>{" "}
+                <span className="font-medium text-muted-foreground">
+                  Expiration:
+                </span>{" "}
                 {new Date(trade.expirationDate).toLocaleDateString()}
               </p>
+
+              {trade.status === "open" && (
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Days Until Expiration:
+                  </span>{" "}
+                  {Math.max(
+                    0,
+                    Math.ceil(
+                      (new Date(trade.expirationDate).getTime() -
+                        new Date().getTime()) /
+                        (1000 * 60 * 60 * 24),
+                    ),
+                  )}
+                </p>
+              )}
+
               {trade.status === "closed" && (
                 <>
                   <p>
-                    <span className="font-medium text-muted-foreground">Closed:</span>{" "}
+                    <span className="font-medium text-muted-foreground">
+                      Closed:
+                    </span>{" "}
                     {trade.closedAt
                       ? new Date(trade.closedAt).toLocaleDateString()
                       : "-"}
                   </p>
                   <p>
-                    <span className="font-medium text-muted-foreground">% P/L:</span>{" "}
+                    <span className="font-medium text-muted-foreground">
+                      Days Held:
+                    </span>{" "}
+                    {trade.closedAt
+                      ? Math.max(
+                          0,
+                          Math.ceil(
+                            (new Date(trade.closedAt).getTime() -
+                              new Date(trade.createdAt).getTime()) /
+                              (1000 * 60 * 60 * 24),
+                          ),
+                        )
+                      : "-"}
+                  </p>
+                  <p>
+                    <span className="font-medium text-muted-foreground">
+                      % P/L:
+                    </span>{" "}
                     {trade.percentPL != null
                       ? `${trade.percentPL.toFixed(2)}%`
                       : "-"}
                   </p>
                   <p>
-                    <span className="font-medium text-muted-foreground">Captured:</span>{" "}
+                    <span className="font-medium text-muted-foreground">
+                      Premium Captured:
+                    </span>{" "}
                     ${trade.premiumCaptured?.toFixed(2) ?? "-"}
                   </p>
                 </>

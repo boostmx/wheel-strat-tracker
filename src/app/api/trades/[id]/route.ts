@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   _req: Request,
-  props: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> },
 ) {
   const { id } = await props.params;
   const session = await getServerSession(authOptions);

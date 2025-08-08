@@ -1,6 +1,7 @@
 // types/index.ts
 export interface Trade {
   id: string;
+  portfolioId: string;
   ticker: string;
   strikePrice: number;
   entryPrice?: number;

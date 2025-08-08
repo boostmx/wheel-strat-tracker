@@ -1,21 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+//import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddTradeModal } from "@/components/add-trade-modal";
-import { OpenTradesTable } from "@/components/open-trades-table";
-import { ClosedTradesTable } from "@/components/closed-trades-table";
+import { OpenTradesTable } from "@/components/trade-tables/open-trades-table";
+import { ClosedTradesTable } from "@/components/trade-tables/closed-trades-table";
 import { Portfolio } from "@/types";
 import { useTrades } from "@/hooks/useTrades";
 import { MetricsCard } from "@/components/metrics-card";
 import { getPortfolioMetrics } from "@/lib/getPortfolioMetrics";
 
-
-
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
-  const router = useRouter();
+  //const router = useRouter();
   const { trades: openTrades, isLoading: loadingOpen } = useTrades(
     portfolio.id,
     "open",
@@ -35,9 +32,6 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         <h1 className="text-3xl font-bold text-gray-900">
           {portfolio.name || "Unnamed Portfolio"}
         </h1>
-        <Button variant="default" onClick={() => router.back()}>
-          Back
-        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
