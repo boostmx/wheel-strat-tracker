@@ -49,6 +49,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
 
   const [contracts, setContracts] = useState(1);
   const [contractPrice, setContractPrice] = useState({ formatted: "", raw: 0 });
+  const [entryPrice, setEntryPrice] = useState({ formatted: "", raw: 0 });
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -66,6 +67,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
           type,
           contracts: Number(contracts),
           contractPrice: contractPrice.raw,
+          entryPrice: entryPrice.raw,
         }),
         headers: {
           "Content-Type": "application/json",
@@ -90,6 +92,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
       setExpirationDate(undefined);
       setContracts(1);
       setContractPrice({ formatted: "", raw: 0 });
+      setEntryPrice({ formatted: "", raw: 0 });
       mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
       mutate(["portfolioMetrics", portfolioId]);
     } catch (err) {
@@ -123,11 +126,19 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
 
           <div className="space-y-1.5">
             <Label htmlFor="strikePrice">Strike Price</Label>
-
             <CurrencyInput
               value={strikePrice}
               onChange={setStrikePrice}
               placeholder="e.g. $170"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="entryPrice">Stock Entry Price</Label>
+            <CurrencyInput
+              value={entryPrice}
+              onChange={setEntryPrice}
+              placeholder="e.g. $184.34"
             />
           </div>
 

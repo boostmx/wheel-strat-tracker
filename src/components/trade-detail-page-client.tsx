@@ -95,6 +95,12 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
               </p>
               <p>
                 <span className="font-medium text-muted-foreground">
+                  Stock Entry Price:
+                </span>{" "}
+                {trade.entryPrice?.toFixed(2) ?? "-"}
+              </p>
+              <p>
+                <span className="font-medium text-muted-foreground">
                   Contracts:
                 </span>{" "}
                 {trade.contracts}
