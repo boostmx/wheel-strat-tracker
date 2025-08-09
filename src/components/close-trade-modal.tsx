@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -14,70 +15,99 @@ import { toast } from "sonner";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
+import { mutate } from "swr";
+import { metricsKey, openTradesKey, closedTradesKey } from "@/lib/swrKeys";
 
 interface CloseTradeModalProps {
   id: string;
+  portfolioId: string;           // <-- NEW: needed for SWR keys
   isOpen: boolean;
   onClose: () => void;
   strikePrice: number;
   contracts: number;
-  refresh: () => void;
   ticker?: string;
   expirationDate?: string;
   type?: string;
+  refresh?: () => void;          // optional legacy fallback
 }
 
 export function CloseTradeModal({
   id,
+  portfolioId,
   isOpen,
   onClose,
   strikePrice,
   contracts,
-  refresh,
   ticker,
   expirationDate,
   type,
+  refresh,
 }: CloseTradeModalProps) {
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+
   const [fullClose, setFullClose] = useState(true);
   const [contractsToClose, setContractsToClose] = useState(contracts);
-  const [closingPrice, setClosingPrice] = useState({
-    formatted: "",
-    raw: 0,
-  });
+  const [closingPrice, setClosingPrice] = useState({ formatted: "", raw: 0 });
 
   useEffect(() => {
     if (isOpen) {
       setFullClose(true);
       setContractsToClose(contracts);
       setClosingPrice({ formatted: "", raw: 0 });
+      setSubmitting(false);
     }
   }, [isOpen, contracts]);
 
   const handleSubmit = async () => {
     const numContracts = Number(contractsToClose);
-    const price = closingPrice.raw;
+    const price = Number(closingPrice.raw);
 
     if (!price || numContracts <= 0 || numContracts > contracts) {
       toast.error("Invalid closing price or contract count");
       return;
     }
 
-    console.log("Closing trade id:", id);
-    const res = await fetch(`/api/trades/${id}/close`, {
-      method: "POST",
-      body: JSON.stringify({
-        contractsToClose: numContracts,
-        closingPrice: price,
-        fullClose,
-      }),
-    });
+    try {
+      setSubmitting(true);
 
-    if (res.ok) {
-      toast.success("Position closed");
-      refresh();
+      const res = await fetch(`/api/trades/${id}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractsToClose: numContracts,
+          closingPrice: price,
+          fullClose,
+        }),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Error closing trade");
+      }
+
+      // Revalidate all dependent data
+      await Promise.allSettled([
+        mutate(metricsKey(portfolioId)),
+        mutate(openTradesKey(portfolioId)),
+        mutate(closedTradesKey(portfolioId)),
+      ]);
+
+      // If any cards are server-rendered, force a refresh as well
+      router.refresh();
+
+      toast.success("Position closed successfully!");
       onClose();
-    } else {
-      toast.error("Error closing trade");
+
+      // Optional: legacy refresh callback (safe no-op if not provided)
+      refresh?.();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message 
+        : typeof err === "string" 
+        ? err : "Error closing trade";
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -85,9 +115,7 @@ export function CloseTradeModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            Close Position
-          </DialogTitle>
+          <DialogTitle className="text-xl font-semibold">Close Position</DialogTitle>
         </DialogHeader>
 
         {/* Trade summary */}
@@ -103,8 +131,7 @@ export function CloseTradeModal({
             </p>
           )}
           <p>
-            <span className="font-medium">Strike:</span> $
-            {strikePrice.toFixed(2)}
+            <span className="font-medium">Strike:</span> ${strikePrice.toFixed(2)}
           </p>
           <p>
             <span className="font-medium">Contracts:</span> {contracts}
@@ -124,9 +151,7 @@ export function CloseTradeModal({
               onCheckedChange={(v) => {
                 const isChecked = !!v;
                 setFullClose(isChecked);
-                if (isChecked) {
-                  setContractsToClose(contracts);
-                }
+                if (isChecked) setContractsToClose(contracts);
               }}
             />
             <span>Close full position</span>
@@ -142,16 +167,12 @@ export function CloseTradeModal({
                 min={1}
                 max={contracts}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                value={
-                  contractsToClose === 0 ? "" : contractsToClose.toString()
-                }
+                value={contractsToClose === 0 ? "" : String(contractsToClose)}
                 onChange={(e) => {
                   const val = e.target.value;
                   if (/^(0|[1-9][0-9]*)?$/.test(val)) {
                     const num = val === "" ? 0 : Number(val);
-                    if (num <= contracts) {
-                      setContractsToClose(num);
-                    }
+                    if (num <= contracts) setContractsToClose(num);
                   }
                 }}
                 required
@@ -165,8 +186,8 @@ export function CloseTradeModal({
             placeholder="Closing price per contract"
           />
 
-          <Button onClick={handleSubmit} className="w-full">
-            Submit
+          <Button onClick={handleSubmit} className="w-full" disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit"}
           </Button>
         </div>
       </DialogContent>
