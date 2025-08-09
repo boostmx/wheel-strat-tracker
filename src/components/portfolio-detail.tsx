@@ -88,7 +88,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           label="Avg. Days Held"
           value={
             metrics?.avgDaysInTrade != null
-              ? `${metrics.avgDaysInTrade.toFixed(2)} days`
+              ? `${metrics.avgDaysInTrade.toFixed(0)}`
               : "-"
           }
         />
