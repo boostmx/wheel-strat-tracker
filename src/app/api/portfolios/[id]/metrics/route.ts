@@ -2,6 +2,22 @@ import { prisma } from "@/lib/prisma";
 import { Trade } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
+
+// Reusable "no-store" JSON responder
+function jsonNoStore(data: unknown, status = 200) {
+  return new NextResponse(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
+}
+
 export async function GET(
   _req: Request,
   props: { params: Promise<{ id: string }> },
@@ -15,39 +31,40 @@ export async function GET(
   });
 
   if (!portfolio) {
-    return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+    return jsonNoStore({ error: "Portfolio not found" }, 404);
   }
 
-  const closedTrades = await prisma.trade.findMany({
-    where: { portfolioId, status: "closed" },
-  });
+  const [closedTrades, openTrades] = await Promise.all([
+    prisma.trade.findMany({ where: { portfolioId, status: "closed" } }),
+    prisma.trade.findMany({ where: { portfolioId, status: "open" } }),
+  ]);
 
-  const openTrades = await prisma.trade.findMany({
-    where: { portfolioId, status: "open" },
-  });
-
-  const capitalUsed = openTrades.reduce((sum: number, trade: Trade) => {
-    return sum + trade.contracts * trade.strikePrice * 100;
+  // Capital used (only CSP ties up cash; CC uses covered shares)
+  const capitalUsed = openTrades.reduce((sum: number, t: Trade) => {
+    const typeStr = String(t.type ?? "").toLowerCase();
+    const isCSP =
+      (typeStr.includes("cash") && typeStr.includes("put")) || typeStr === "put";
+    return isCSP ? sum + t.contracts * t.strikePrice * 100 : sum;
   }, 0);
 
-  // Calculate % of capital deployed
   const percentCapitalDeployed =
     portfolio.startingCapital > 0
       ? (capitalUsed / portfolio.startingCapital) * 100
       : 0;
 
-  // average days in trade
+  // Average days in trade (closed only)
   const avgDaysInTrade =
-    closedTrades.reduce((sum, trade) => {
-      if (!trade.closedAt) return sum;
-      const opened = trade.createdAt.getTime();
-      const closed = trade.closedAt.getTime();
-      const days = (closed - opened) / (1000 * 60 * 60 * 24);
-      return sum + days;
-    }, 0) / closedTrades.length;
+    closedTrades.length > 0
+      ? closedTrades.reduce((sum, t) => {
+          if (!t.closedAt) return sum;
+          const opened = t.createdAt.getTime();
+          const closed = t.closedAt.getTime();
+          return sum + (closed - opened) / (1000 * 60 * 60 * 24);
+        }, 0) / closedTrades.length
+      : 0;
 
-  if (!closedTrades.length) {
-    return NextResponse.json({
+  if (closedTrades.length === 0) {
+    return jsonNoStore({
       startingCapital: portfolio.startingCapital,
       capitalUsed,
       percentCapitalDeployed,
@@ -58,30 +75,31 @@ export async function GET(
     });
   }
 
-  // total profit in $
-  const totalProfit = closedTrades.reduce((sum, trade) => {
-    return sum + (trade.premiumCaptured ?? 0);
-  }, 0);
+  // TOTAL realized P&L: just sum premiumCaptured
+  const totalProfit = closedTrades.reduce(
+    (sum, t) => sum + (t.premiumCaptured ?? 0),
+    0,
+  );
 
-  // win rate
-  const winCount = closedTrades.filter(
-    (t) => (t.premiumCaptured ?? 0) > 0,
-  ).length;
-  const winRate = winCount / closedTrades.length;
+  // WIN RATE: premiumCaptured > 0 counts as a win
+  const wins = closedTrades.filter((t) => (t.premiumCaptured ?? 0) > 0).length;
+  const winRate = wins / closedTrades.length;
 
-  // average P/L % per trade
+  // AVG % P/L: use stored percentPL (typically set on full close)
+  const percents = closedTrades
+    .map((t) => t.percentPL)
+    .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+
   const avgPLPercent =
-    closedTrades.reduce((sum, trade) => {
-      const usedCapital = trade.contracts * trade.strikePrice * 100;
-      const plPercent = usedCapital
-        ? ((trade.premiumCaptured ?? 0) / usedCapital) * 100
-        : 0;
-      return sum + plPercent;
-    }, 0) / closedTrades.length;
+    percents.length > 0
+      ? percents.reduce((a, b) => a + b, 0) / percents.length
+      : 0;
 
-  return NextResponse.json({
+  return jsonNoStore({
     startingCapital: portfolio.startingCapital,
     capitalUsed,
+    percentCapitalDeployed,
+    avgDaysInTrade,
     winRate,
     totalProfit,
     avgPLPercent,

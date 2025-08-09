@@ -94,6 +94,7 @@ export function OpenTradesTable({
       {selectedTrade && (
         <CloseTradeModal
           id={selectedTrade.id}
+          portfolioId={portfolioId}
           strikePrice={selectedTrade.strikePrice}
           contracts={selectedTrade.contracts}
           isOpen={!!selectedTrade}
