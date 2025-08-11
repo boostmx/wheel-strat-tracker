@@ -43,7 +43,8 @@ export async function GET(
   const capitalUsed = openTrades.reduce((sum: number, t: Trade) => {
     const typeStr = String(t.type ?? "").toLowerCase();
     const isCSP =
-      (typeStr.includes("cash") && typeStr.includes("put")) || typeStr === "put";
+      (typeStr.includes("cash") && typeStr.includes("put")) ||
+      typeStr === "put";
     return isCSP ? sum + t.contracts * t.strikePrice * 100 : sum;
   }, 0);
 

@@ -11,6 +11,16 @@ import { useTrades } from "@/hooks/useTrades";
 import { MetricsCard } from "@/components/metrics-card";
 import { getPortfolioMetrics } from "@/lib/getPortfolioMetrics";
 
+//Currency formatting utility for Total Profit display
+function formatCompactCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   //const router = useRouter();
   const { trades: openTrades, isLoading: loadingOpen } = useTrades(
@@ -41,7 +51,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               Starting Capital
             </p>
             <p className="text-3xl font-bold text-gray-900">
-              ${portfolio.startingCapital.toLocaleString()}
+              {formatCompactCurrency(portfolio.startingCapital)}
             </p>
           </CardContent>
         </Card>
@@ -58,11 +68,10 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                   : "text-green-600"
               }`}
             >
-              $
               {metrics?.capitalUsed != null
-                ? (
-                    portfolio.startingCapital - metrics.capitalUsed
-                  ).toLocaleString()
+                ? formatCompactCurrency(
+                    portfolio.startingCapital - metrics.capitalUsed,
+                  )
                 : "Loading..."}
             </p>
           </CardContent>
@@ -88,7 +97,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           label="Avg. Days Held"
           value={
             metrics?.avgDaysInTrade != null
-              ? `${metrics.avgDaysInTrade.toFixed(0)}`
+              ? `${metrics.avgDaysInTrade.toFixed(0).toLocaleString()}`
               : "-"
           }
         />
@@ -109,7 +118,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           label="Total Profit"
           value={
             metrics?.totalProfit != null
-              ? `$${metrics.totalProfit.toLocaleString()}`
+              ? formatCompactCurrency(metrics.totalProfit)
               : "Loading..."
           }
           className={
