@@ -344,22 +344,22 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   <DialogHeader>
                     <DialogTitle>Close Position</DialogTitle>
                   </DialogHeader>
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-3 items-end">
                     <div className="sm:col-span-1">
                       <label className="text-sm block mb-1">
-                        Contracts to Close
+                        Contracts
                       </label>
                       <Input
-                        type="number"
-                        min={1}
+                        type="text"
+                        inputMode="numeric"
                         value={closingContracts}
-                        onChange={(e) => setClosingContracts(e.target.value)}
+                        onChange={(e) => setClosingContracts(e.target.value.replace(/\D/g, ""))}
                         placeholder={`e.g., ${trade.contracts}`}
                       />
                     </div>
                     <div className="sm:col-span-1">
                       <label className="text-sm block mb-1">
-                        Closing Price / Contract
+                        Closing Price
                       </label>
                       <CurrencyInput
                         value={closingContractPrice}
@@ -395,10 +395,10 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                         Contracts to Add
                       </label>
                       <Input
-                        type="number"
-                        min={1}
+                        type="text"
+                        inputMode="numeric"
                         value={addedContracts}
-                        onChange={(e) => setAddedContracts(e.target.value)}
+                        onChange={(e) => setAddedContracts(e.target.value.replace(/\D/g, ""))}
                         placeholder="e.g., 2"
                       />
                     </div>
