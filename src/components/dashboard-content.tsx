@@ -20,8 +20,38 @@ import {
 import { useEffect, useState } from "react";
 import type { Portfolio } from "@/types";
 
-interface Metrics {
-  winRate: number | null;
+// --- Snapshot types (returned by /api/portfolios/snapshot/bulk) ---
+export type Snapshot = {
+  openCount: number;
+  capitalInUse: number;
+  cashAvailable: number;
+  biggest?: {
+    ticker: string;
+    strikePrice: number;
+    contracts: number;
+    collateral: number;
+    expirationDate: string;
+  } | null;
+  topTickers: { ticker: string; collateral: number; pct: number }[];
+  nextExpiration?: { date: string; contracts: number } | null;
+  expiringSoonCount: number;
+  openAvgDays: number | null;
+  realizedMTD: number;
+  realizedYTD: number;
+} | null;
+
+// Currency formatting utility (compact)
+function formatCompactCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatPercent(value: number, digits = 0) {
+  return `${value.toFixed(digits)}%`;
 }
 
 export default function DashboardContent() {
@@ -33,36 +63,25 @@ export default function DashboardContent() {
     isLoading,
   } = useSWR<Portfolio[]>(session?.user?.id ? "/api/portfolios" : null);
 
-  const [metricsMap, setMetricsMap] = useState<Record<string, Metrics | null>>(
-    {},
-  );
+  const [snapshots, setSnapshots] = useState<Record<string, Snapshot>>({});
 
   useEffect(() => {
-    async function fetchAllMetrics() {
+    async function fetchSnapshots() {
       if (!portfolios || portfolios.length === 0) return;
-
-      const newMetricsMap: Record<string, Metrics | null> = {};
-
-      await Promise.all(
-        portfolios.map(async (p) => {
-          try {
-            const res = await fetch(`/api/portfolios/${p.id}/metrics`);
-            if (res.ok) {
-              const data = await res.json();
-              newMetricsMap[p.id] = data;
-            } else {
-              newMetricsMap[p.id] = null;
-            }
-          } catch {
-            newMetricsMap[p.id] = null;
-          }
-        }),
-      );
-
-      setMetricsMap(newMetricsMap);
+      const ids = portfolios.map((p) => p.id);
+      try {
+        const res = await fetch("/api/portfolios/snapshot/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        });
+        const data: Record<string, Snapshot> = res.ok ? await res.json() : {};
+        setSnapshots(data);
+      } catch (e) {
+        console.error("Failed to fetch snapshots", e);
+      }
     }
-
-    fetchAllMetrics();
+    fetchSnapshots();
   }, [portfolios]);
 
   async function handleDelete(portfolioId: string) {
@@ -104,7 +123,12 @@ export default function DashboardContent() {
       ) : (
         <ul className="space-y-4">
           {portfolios.map((p) => {
-            const metrics = metricsMap[p.id];
+            const snap = snapshots[p.id];
+            const top = snap?.topTickers ?? [];
+            const topLine = top
+              .slice(0, 3)
+              .map((t) => `${t.ticker} ${formatPercent(t.pct, 0)}`)
+              .join(" · ");
 
             return (
               <Card
@@ -146,29 +170,90 @@ export default function DashboardContent() {
                     <h2 className="text-xl font-semibold text-green-600">
                       {p.name || "Unnamed Portfolio"}
                     </h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
-                      <div className="rounded-lg bg-gray-100 p-4 text-sm">
-                        <p className="text-gray-500 font-medium">
-                          Starting Capital
-                        </p>
-                        <p className="text-lg font-semibold text-gray-900">
-                          ${p.startingCapital.toLocaleString()}
+
+                    {/* Row 1: Open Trades, Capital In Use, Cash Available */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                      <div className="rounded-lg bg-white border p-4 text-sm">
+                        <p className="text-gray-500 font-medium">Open Trades</p>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {snap ? snap.openCount : "-"}
                         </p>
                       </div>
+
+                      <div className="rounded-lg bg-amber-50 p-4 text-sm">
+                        <p className="text-gray-600 font-medium">Capital In Use</p>
+                        <p className="text-2xl font-semibold text-amber-700">
+                          {snap ? formatCompactCurrency(snap.capitalInUse) : "-"}
+                        </p>
+                      </div>
+
                       <div className="rounded-lg bg-green-50 p-4 text-sm">
-                        <p className="text-gray-500 font-medium">
-                          Current Capital
-                        </p>
-                        <p className="text-lg font-semibold text-green-700">
-                          ${p.currentCapital.toLocaleString()}
+                        <p className="text-gray-600 font-medium">Cash Available</p>
+                        <p className={`text-2xl font-semibold ${
+                          snap && snap.cashAvailable < 0 ? "text-red-700" : "text-green-700"
+                        }`}>
+                          {snap ? formatCompactCurrency(snap.cashAvailable) : "-"}
                         </p>
                       </div>
+                    </div>
+
+                    {/* Row 2: Biggest Position, Next Expiration, Expiring Soon */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                      <div className="rounded-lg bg-slate-50 p-4 text-sm">
+                        <p className="text-gray-600 font-medium">Biggest Position</p>
+                        {snap?.biggest ? (
+                          <p className="text-base font-semibold text-slate-800">
+                            {snap.biggest.ticker} · ${snap.biggest.strikePrice.toFixed(2)} · {snap.biggest.contracts} ctrs
+                            <span className="block text-xs text-slate-600 mt-1">
+                              Collateral: {formatCompactCurrency(snap.biggest.collateral)} · Exp {new Date(snap.biggest.expirationDate).toLocaleDateString()}
+                            </span>
+                          </p>
+                        ) : (
+                          <p className="text-base text-slate-500">—</p>
+                        )}
+                      </div>
+
                       <div className="rounded-lg bg-blue-50 p-4 text-sm">
-                        <p className="text-gray-500 font-medium">Win Rate</p>
-                        <p className="text-lg font-semibold text-blue-700">
-                          {metrics?.winRate != null
-                            ? `${(metrics.winRate * 100).toFixed(1)}%`
-                            : "Loading..."}
+                        <p className="text-gray-600 font-medium">Next Expiration</p>
+                        {snap?.nextExpiration ? (
+                          <p className="text-base font-semibold text-blue-800">
+                            {new Date(snap.nextExpiration.date).toLocaleDateString()} · {snap.nextExpiration.contracts} contracts
+                          </p>
+                        ) : (
+                          <p className="text-base text-blue-700">—</p>
+                        )}
+                      </div>
+
+                      <div className="rounded-lg bg-rose-50 p-4 text-sm">
+                        <p className="text-gray-600 font-medium">Expiring in 7 Days</p>
+                        <p className="text-2xl font-semibold text-rose-700">
+                          {snap ? snap.expiringSoonCount : "-"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Top Exposures, Open Avg Days, MTD/YTD Realized */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                      <div className="rounded-lg bg-white border p-4 text-sm">
+                        <p className="text-gray-500 font-medium">Top Exposures</p>
+                        <p className="text-base font-semibold text-gray-900 truncate">
+                          {topLine || "—"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-white border p-4 text-sm">
+                        <p className="text-gray-500 font-medium">Open Avg Days</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {snap?.openAvgDays != null ? snap.openAvgDays : "—"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-white border p-4 text-sm">
+                        <p className="text-gray-500 font-medium">Realized P&L</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          MTD {snap ? formatCompactCurrency(snap.realizedMTD) : "—"}
+                          <span className="mx-2 text-gray-400">•</span>
+                          YTD {snap ? formatCompactCurrency(snap.realizedYTD) : "—"}
                         </p>
                       </div>
                     </div>

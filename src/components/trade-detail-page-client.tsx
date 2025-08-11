@@ -346,14 +346,14 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   </DialogHeader>
                   <div className="grid gap-4 sm:grid-cols-3 items-end">
                     <div className="sm:col-span-1">
-                      <label className="text-sm block mb-1">
-                        Contracts
-                      </label>
+                      <label className="text-sm block mb-1">Contracts</label>
                       <Input
                         type="text"
                         inputMode="numeric"
                         value={closingContracts}
-                        onChange={(e) => setClosingContracts(e.target.value.replace(/\D/g, ""))}
+                        onChange={(e) =>
+                          setClosingContracts(e.target.value.replace(/\D/g, ""))
+                        }
                         placeholder={`e.g., ${trade.contracts}`}
                       />
                     </div>
@@ -398,7 +398,9 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                         type="text"
                         inputMode="numeric"
                         value={addedContracts}
-                        onChange={(e) => setAddedContracts(e.target.value.replace(/\D/g, ""))}
+                        onChange={(e) =>
+                          setAddedContracts(e.target.value.replace(/\D/g, ""))
+                        }
                         placeholder="e.g., 2"
                       />
                     </div>

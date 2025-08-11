@@ -63,14 +63,20 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
             <p
               className={`text-3xl font-bold ${
                 metrics?.capitalUsed != null &&
-                portfolio.startingCapital - metrics.capitalUsed < 0
+                metrics?.totalProfit != null &&
+                portfolio.startingCapital +
+                  metrics.totalProfit -
+                  metrics.capitalUsed <
+                  0
                   ? "text-red-600"
                   : "text-green-600"
               }`}
             >
-              {metrics?.capitalUsed != null
+              {metrics?.capitalUsed != null && metrics?.totalProfit != null
                 ? formatCompactCurrency(
-                    portfolio.startingCapital - metrics.capitalUsed,
+                    portfolio.startingCapital +
+                      metrics.totalProfit -
+                      metrics.capitalUsed,
                   )
                 : "Loading..."}
             </p>
