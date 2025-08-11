@@ -1,18 +1,34 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 
-export async function POST(
+type CloseTradePayload = {
+  closingContracts?: number;
+  contractsToClose?: number;
+  contracts?: number;
+  closingContractPrice?: number;
+  closingPrice?: number;
+  price?: number;
+  feesPerContract?: number;
+  flatFees?: number;
+  fullClose?: boolean;
+};
+
+export async function PATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
   const params = await props.params;
   const id = await params.id;
 
-  const body = await req.json().catch(() => ({}));
-  const contractsToClose = Number(body.contractsToClose);
-  const closingPrice = Number(body.closingPrice);
-  const fullClose = Boolean(body.fullClose);
-  // Optional fees support (defaults 0)
+  const body: CloseTradePayload = await req.json().catch(() => ({} as CloseTradePayload));
+
+  // Support both new and legacy payload shapes
+  const contractsToClose = Number(
+    body.closingContracts ?? body.contractsToClose ?? body.contracts,
+  );
+  const closingPrice = Number(
+    body.closingContractPrice ?? body.closingPrice ?? body.price,
+  );
   const feesPerContract = Number(body.feesPerContract ?? 0);
   const flatFees = Number(body.flatFees ?? 0);
 
@@ -33,7 +49,9 @@ export async function POST(
     return new Response("Trade.contractPrice missing/invalid", { status: 400 });
   }
   if (!trade.contracts || trade.contracts < contractsToClose) {
-    return new Response("contractsToClose exceeds open contracts", { status: 400 });
+    return new Response("contractsToClose exceeds open contracts", {
+      status: 400,
+    });
   }
 
   // OPTION P&L ONLY — do NOT use strike or stock entry price
@@ -46,7 +64,9 @@ export async function POST(
     sellPrice > 0 ? ((sellPrice - closingPrice) / sellPrice) * 100 : 0;
 
   const remaining = trade.contracts - contractsToClose;
-  const isFull = fullClose || remaining <= 0;
+  const fullCloseFlag = body.fullClose;
+  const isFull =
+    typeof fullCloseFlag === "boolean" ? fullCloseFlag : remaining <= 0;
 
   if (isFull) {
     // FULL CLOSE: accumulate P&L and mark closed
@@ -57,10 +77,10 @@ export async function POST(
       data: {
         status: "closed",
         closedAt: new Date(),
-        closingPrice,                     // last close price
+        closingPrice, // last close price
         contracts: 0,
         premiumCaptured: newPremiumCaptured,
-        percentPL,                        // last-leg % (optional; could also compute weighted)
+        percentPL, // last-leg % (optional; could also compute weighted)
       },
     });
 
@@ -86,12 +106,12 @@ export async function POST(
         expirationDate: trade.expirationDate,
         type: trade.type,
         contracts: contractsToClose,
-        contractPrice: sellPrice,       // credit at open (avg)
-        entryPrice: trade.entryPrice,   // keep if you display it, but not used in P&L
+        contractPrice: sellPrice, // credit at open (avg)
+        entryPrice: trade.entryPrice, // keep if you display it, but not used in P&L
         portfolioId: trade.portfolioId,
         status: "closed",
         closingPrice,
-        premiumCaptured: realizedNow,   // realized for this partial close
+        premiumCaptured: realizedNow, // realized for this partial close
         percentPL,
         closedAt: new Date(),
       },
@@ -102,4 +122,12 @@ export async function POST(
       headers: { "Content-Type": "application/json" },
     });
   }
+}
+
+// Backward compatibility: allow POST to behave like PATCH
+export async function POST(
+  req: NextRequest,
+  props: { params: Promise<{ id: string }> },
+) {
+  return PATCH(req, props);
 }

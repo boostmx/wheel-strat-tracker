@@ -20,7 +20,7 @@ import { metricsKey, openTradesKey, closedTradesKey } from "@/lib/swrKeys";
 
 interface CloseTradeModalProps {
   id: string;
-  portfolioId: string;           // <-- NEW: needed for SWR keys
+  portfolioId: string;
   isOpen: boolean;
   onClose: () => void;
   strikePrice: number;
@@ -28,7 +28,7 @@ interface CloseTradeModalProps {
   ticker?: string;
   expirationDate?: string;
   type?: string;
-  refresh?: () => void;          // optional legacy fallback
+  refresh?: () => void; // optional legacy fallback
 }
 
 export function CloseTradeModal({
@@ -72,11 +72,11 @@ export function CloseTradeModal({
       setSubmitting(true);
 
       const res = await fetch(`/api/trades/${id}/close`, {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contractsToClose: numContracts,
-          closingPrice: price,
+          closingContracts: numContracts,
+          closingContractPrice: price,
           fullClose,
         }),
       });
@@ -102,9 +102,12 @@ export function CloseTradeModal({
       // Optional: legacy refresh callback (safe no-op if not provided)
       refresh?.();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message 
-        : typeof err === "string" 
-        ? err : "Error closing trade";
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : "Error closing trade";
       toast.error(errorMessage);
     } finally {
       setSubmitting(false);
@@ -115,7 +118,9 @@ export function CloseTradeModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Close Position</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            Close Position
+          </DialogTitle>
         </DialogHeader>
 
         {/* Trade summary */}
@@ -131,7 +136,8 @@ export function CloseTradeModal({
             </p>
           )}
           <p>
-            <span className="font-medium">Strike:</span> ${strikePrice.toFixed(2)}
+            <span className="font-medium">Strike:</span> $
+            {strikePrice.toFixed(2)}
           </p>
           <p>
             <span className="font-medium">Contracts:</span> {contracts}
@@ -186,7 +192,11 @@ export function CloseTradeModal({
             placeholder="Closing price per contract"
           />
 
-          <Button onClick={handleSubmit} className="w-full" disabled={submitting}>
+          <Button
+            onClick={handleSubmit}
+            className="w-full"
+            disabled={submitting}
+          >
             {submitting ? "Submitting..." : "Submit"}
           </Button>
         </div>

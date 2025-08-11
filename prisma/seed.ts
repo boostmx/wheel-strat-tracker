@@ -3,13 +3,13 @@ import bcrypt from "bcrypt";
 
 async function main() {
   // 🧼 Clean up existing data
-  await prisma.trade.deleteMany({});
-  await prisma.portfolio.deleteMany({});
-  await prisma.user.deleteMany({});
+  //await prisma.trade.deleteMany({});
+  //await prisma.portfolio.deleteMany({});
+  //await prisma.user.deleteMany({});
 
   const testUserId = "test-user-id";
-  const testUsername = "hung";
-  const testPassword = "hung"; // plaintext for testing
+  const testUsername = "admin";
+  const testPassword = "admin"; // plaintext for testing
   const passwordHash = await bcrypt.hash(testPassword, 10);
 
   // ✅ Upsert test user
@@ -20,8 +20,8 @@ async function main() {
       id: testUserId,
       username: testUsername,
       password: passwordHash,
-      firstName: "Hung",
-      lastName: "Nguyen",
+      firstName: "Admin",
+      lastName: "Administrator",
       email: "hung@example.com",
       bio: "Builder of the Wheel Strat Tracker",
       avatarUrl: "https://example.com/avatar-hung.png",
@@ -31,35 +31,35 @@ async function main() {
 
   console.log(`👤 Seeded user: ${user.username}`);
 
-  await prisma.user.createMany({
-    data: [
-      // password: test123
-      {
-        id: "user-2",
-        username: "wheelie",
-        password: await bcrypt.hash("test123", 10),
-        firstName: "Will",
-        lastName: "Lee",
-        email: "wheelie@example.com",
-        avatarUrl: "https://example.com/avatar-wheelie.png",
-        isAdmin: false,
-      },
-      // password: securepass
-      {
-        id: "user-3",
-        username: "stratlord",
-        password: await bcrypt.hash("securepass", 10),
-        firstName: "Strat",
-        lastName: "Lord",
-        email: "stratlord@example.com",
-        avatarUrl: "https://example.com/avatar-stratlord.png",
-        isAdmin: false,
-      },
-    ],
-    skipDuplicates: true,
-  });
+  // await prisma.user.createMany({
+  //   data: [
+  //     // password: test123
+  //     {
+  //       id: "user-2",
+  //       username: "wheelie",
+  //       password: await bcrypt.hash("test123", 10),
+  //       firstName: "Will",
+  //       lastName: "Lee",
+  //       email: "wheelie@example.com",
+  //       avatarUrl: "https://example.com/avatar-wheelie.png",
+  //       isAdmin: false,
+  //     },
+  //     // password: securepass
+  //     {
+  //       id: "user-3",
+  //       username: "stratlord",
+  //       password: await bcrypt.hash("securepass", 10),
+  //       firstName: "Strat",
+  //       lastName: "Lord",
+  //       email: "stratlord@example.com",
+  //       avatarUrl: "https://example.com/avatar-stratlord.png",
+  //       isAdmin: false,
+  //     },
+  //   ],
+  //   skipDuplicates: true,
+  // });
 
-  console.log("👥 Additional test users seeded");
+  // console.log("👥 Additional test users seeded");
 
   // ✅ Check if portfolio already exists
   const existingPortfolio = await prisma.portfolio.findFirst({
