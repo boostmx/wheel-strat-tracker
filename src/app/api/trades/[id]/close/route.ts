@@ -1,6 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 
+type CloseTradePayload = {
+  closingContracts?: number;
+  contractsToClose?: number;
+  contracts?: number;
+  closingContractPrice?: number;
+  closingPrice?: number;
+  price?: number;
+  feesPerContract?: number;
+  flatFees?: number;
+  fullClose?: boolean;
+};
+
 export async function PATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
@@ -8,7 +20,7 @@ export async function PATCH(
   const params = await props.params;
   const id = await params.id;
 
-  const body = await req.json().catch(() => ({}) as any);
+  const body: CloseTradePayload = await req.json().catch(() => ({} as CloseTradePayload));
 
   // Support both new and legacy payload shapes
   const contractsToClose = Number(
