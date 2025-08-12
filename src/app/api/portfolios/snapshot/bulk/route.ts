@@ -7,10 +7,11 @@ export const dynamic = "force-dynamic";
 type Snapshot = {
   portfolioId: string;
   startingCapital: number;
-  totalProfitAll: number; // realized P/L all time
+  currentCapital: number;    // NEW: starting + totalProfitAll
+  totalProfitAll: number;    // realized P/L all time
   openCount: number;
-  capitalInUse: number;   // CSP collateral
-  cashAvailable: number;  // starting + realized - collateral
+  capitalInUse: number;      // CSP collateral
+  cashAvailable: number;     // currentCapital - capitalInUse
   biggest: {
     ticker: string;
     strikePrice: number;
@@ -47,8 +48,8 @@ function daysBetween(a: Date | string, b: Date) {
   return Math.max(0, (db - da) / (1000 * 60 * 60 * 24));
 }
 
-// Prefer premiumCaptured when present; otherwise (open credit − close debit) × 100 × contracts.
-// Treat closingPrice null as 0 (expired/held to zero debit).
+// Prefer premiumCaptured; else (open credit − close debit) × 100 × contracts.
+// Treat closingPrice null as 0.
 const tradePL = (t: {
   contracts: number;
   contractPrice: number;
@@ -77,7 +78,6 @@ export async function POST(req: Request) {
 
   const outEntries = await Promise.all(
     ids.map(async (portfolioId) => {
-      // Pull only what we need
       const [portfolio, openTrades, closedAll, closedMTD, closedYTD] = await Promise.all([
         prisma.portfolio.findUnique({
           where: { id: portfolioId },
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
       if (!portfolio) return [portfolioId, null] as const;
 
       // Open counts + collateral (CSP only)
-      const cspOpen = openTrades.filter((t) => t.type === "CashSecuredPut");
+      const cspOpen = openTrades.filter((t) => t.type === "CashSecuredPut"); // adjust label if needed
       const capitalInUse = cspOpen.reduce((s, t) => s + COLL(t.strikePrice, t.contracts), 0);
 
       // Biggest position by collateral
@@ -183,12 +183,15 @@ export async function POST(req: Request) {
       const realizedMTD = sumPL(closedMTD);
       const realizedYTD = sumPL(closedYTD);
 
-      // Cash available (derived here so card render is cheap)
-      const cashAvailable = Number(portfolio.startingCapital) + totalProfitAll - capitalInUse;
+      // Current & available capital
+      const starting = Number(portfolio.startingCapital);
+      const currentCapital = starting + totalProfitAll;                // NEW
+      const cashAvailable = currentCapital - capitalInUse;             // uses realized already
 
       const snap: Snapshot = {
         portfolioId,
-        startingCapital: Number(portfolio.startingCapital),
+        startingCapital: starting,
+        currentCapital,            // NEW
         totalProfitAll,
         openCount: openTrades.length,
         capitalInUse,
