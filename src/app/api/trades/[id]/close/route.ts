@@ -20,7 +20,9 @@ export async function PATCH(
   const params = await props.params;
   const id = await params.id;
 
-  const body: CloseTradePayload = await req.json().catch(() => ({} as CloseTradePayload));
+  const body: CloseTradePayload = await req
+    .json()
+    .catch(() => ({}) as CloseTradePayload);
 
   // Support both new and legacy payload shapes
   const contractsToClose = Number(
