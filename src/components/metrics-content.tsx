@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Portfolio } from "@/types";
-
+import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 type Snapshot = {
   portfolioId: string;
   startingCapital: number;
@@ -167,8 +167,8 @@ export default function MetricsContent() {
             <p className="text-base font-medium text-blue-700">Next Expiration</p>
             <p className="text-xl font-semibold text-blue-800">
               {agg.nextExpiration
-                ? `${new Date(agg.nextExpiration.date).toLocaleDateString()} · ${agg.nextExpiration.contracts} contracts`
-                : "—"}
+                  ? `${formatDateOnlyUTC(agg.nextExpiration.date)} · ${agg.nextExpiration.contracts} contracts`
+                  : "—"}
             </p>
           </CardContent>
         </Card>

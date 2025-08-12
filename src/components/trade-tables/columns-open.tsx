@@ -2,6 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Trade } from "@/types";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 
 // Formats enum-ish strings like "CashSecuredPut" -> "Cash Secured Put"
 const formatType = (s: string) => s.replace(/([a-z])([A-Z])/g, "$1 $2");
@@ -40,9 +41,14 @@ export const makeOpenColumns = (
     accessorKey: "expirationDate",
     header: "Expiration",
     cell: ({ getValue }) => {
-      const v = getValue() as string | number | Date;
-      const d = new Date(v);
-      return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+      const v = getValue();
+      if (!v) return "—";
+      try {
+        // Works for both "YYYY-MM-DD" strings and ISO timestamps
+        return formatDateOnlyUTC(v as string | Date);
+      } catch {
+        return "—";
+      }
     },
   },
   {

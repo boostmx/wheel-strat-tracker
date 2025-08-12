@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useEffect, useState } from "react";
 import type { Portfolio } from "@/types";
+import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 
 // --- Snapshot types (returned by /api/portfolios/snapshot/bulk) ---
 export type Snapshot = {
@@ -217,7 +218,7 @@ export default function DashboardContent() {
                         <p className="text-gray-600 font-medium">Next Expiration</p>
                         {snap?.nextExpiration ? (
                           <p className="text-base font-semibold text-blue-800">
-                            {new Date(snap.nextExpiration.date).toLocaleDateString()} · {snap.nextExpiration.contracts} contracts
+                            {snap.nextExpiration ? `${formatDateOnlyUTC(snap.nextExpiration.date)} · ${snap.nextExpiration.contracts} contracts` : "—"}
                           </p>
                         ) : (
                           <p className="text-base text-blue-700">—</p>
