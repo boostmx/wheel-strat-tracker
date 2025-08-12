@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { formatDateOnlyUTC, ensureUtcMidnight } from "@/lib/formatDateOnly";
 
 type Props = {
   portfolioId: string;
@@ -254,13 +255,13 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                 <span className="font-medium text-muted-foreground">
                   Opened:
                 </span>{" "}
-                {new Date(trade.createdAt).toLocaleDateString()}
+                {formatDateOnlyUTC(trade.createdAt)}
               </p>
               <p>
                 <span className="font-medium text-muted-foreground">
                   Expiration:
                 </span>{" "}
-                {new Date(trade.expirationDate).toLocaleDateString()}
+                {formatDateOnlyUTC(trade.expirationDate)}
               </p>
 
               {trade.status === "open" && (
@@ -268,14 +269,12 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   <span className="font-medium text-muted-foreground">
                     Days Until Expiration:
                   </span>{" "}
-                  {Math.max(
-                    0,
-                    Math.ceil(
-                      (new Date(trade.expirationDate).getTime() -
-                        new Date().getTime()) /
-                        (1000 * 60 * 60 * 24),
-                    ),
-                  )}
+                  {(() => {
+                    const msPerDay = 86_400_000;
+                    const exp = ensureUtcMidnight(trade.expirationDate).getTime();
+                    const today = ensureUtcMidnight(new Date()).getTime();
+                    return Math.max(0, Math.ceil((exp - today) / msPerDay));
+                  })()}
                 </p>
               )}
 
@@ -285,23 +284,19 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                     <span className="font-medium text-muted-foreground">
                       Closed:
                     </span>{" "}
-                    {trade.closedAt
-                      ? new Date(trade.closedAt).toLocaleDateString()
-                      : "-"}
+                    {trade.closedAt ? formatDateOnlyUTC(trade.closedAt) : "-"}
                   </p>
                   <p>
                     <span className="font-medium text-muted-foreground">
                       Days Held:
                     </span>{" "}
                     {trade.closedAt
-                      ? Math.max(
-                          0,
-                          Math.ceil(
-                            (new Date(trade.closedAt).getTime() -
-                              new Date(trade.createdAt).getTime()) /
-                              (1000 * 60 * 60 * 24),
-                          ),
-                        )
+                      ? (() => {
+                          const msPerDay = 86_400_000;
+                          const closed = ensureUtcMidnight(trade.closedAt).getTime();
+                          const opened = ensureUtcMidnight(trade.createdAt).getTime();
+                          return Math.max(0, Math.ceil((closed - opened) / msPerDay));
+                        })()
                       : "-"}
                   </p>
                   <p>
