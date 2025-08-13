@@ -35,4 +35,7 @@ export interface Metrics {
   avgPLPercent: number | null;
   percentCapitalDeployed: number | null;
   avgDaysInTrade: number | null;
+  potentialPremium?: number | null;
+  realizedMTD?: number | null;
+  realizedYTD?: number | null;
 }

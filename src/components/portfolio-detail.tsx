@@ -36,6 +36,57 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
     getPortfolioMetrics(portfolio.id),
   );
 
+  // Prepare metric items for display
+  // Note: This assumes metrics object has the necessary fields
+  // Order them by the 'order' property
+  const metricItems = [
+    {
+      key: "avgDays",
+      order: 4,
+      label: "Avg. Days Held",
+      value:
+        metrics?.avgDaysInTrade != null
+          ? `${metrics.avgDaysInTrade.toFixed(0).toLocaleString()}`
+          : "-",
+    },
+    {
+      key: "winRate",
+      order: 3,
+      label: "Win Rate",
+      value:
+        metrics?.winRate != null
+          ? `${(metrics.winRate * 100).toFixed(2)}%`
+          : "Loading...",
+      className:
+        metrics?.winRate != null && metrics.winRate > 0.5
+          ? "text-green-600"
+          : "text-red-600",
+    },
+    {
+      key: "openPremium",
+      order: 1,
+      label: "Open Premium",
+      value:
+        metrics?.potentialPremium != null
+          ? formatCompactCurrency(metrics.potentialPremium)
+          : "Loading...",
+      className: "text-teal-600",
+    },
+    {
+      key: "avgPL",
+      order: 2,
+      label: "Avg P/L %",
+      value:
+        metrics?.avgPLPercent != null
+          ? `${metrics.avgPLPercent.toFixed(2)}%`
+          : "Loading...",
+      className:
+        metrics?.avgPLPercent != null && metrics.avgPLPercent >= 0
+          ? "text-green-600"
+          : "text-red-600",
+    },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
       <div className="flex justify-between items-center">
@@ -47,105 +98,66 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
       <div className="grid grid-cols-2 gap-4">
         <Card className="bg-white shadow-sm rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">
-              Starting Capital
-            </p>
-            <p className="text-3xl font-bold text-gray-900">
-              {formatCompactCurrency(portfolio.startingCapital)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white shadow-sm rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">
-              Current Capital
-            </p>
+            <p className="text-base font-medium text-gray-600">Current Capital</p>
             <p
               className={`text-3xl font-bold ${
-                metrics?.capitalUsed != null &&
-                metrics?.totalProfit != null &&
-                portfolio.startingCapital +
-                  metrics.totalProfit -
-                  metrics.capitalUsed <
-                  0
+                metrics?.capitalUsed != null && metrics?.totalProfit != null &&
+                portfolio.startingCapital + metrics.totalProfit - metrics.capitalUsed < 0
                   ? "text-red-600"
                   : "text-green-600"
               }`}
             >
               {metrics?.capitalUsed != null && metrics?.totalProfit != null
                 ? formatCompactCurrency(
-                    portfolio.startingCapital +
-                      metrics.totalProfit -
-                      metrics.capitalUsed,
+                    portfolio.startingCapital + metrics.totalProfit - metrics.capitalUsed,
                   )
                 : "Loading..."}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Starting: {formatCompactCurrency(portfolio.startingCapital)}
+            </p>
+            <p
+              className={`text-sm font-medium ${
+                metrics?.percentCapitalDeployed != null && metrics.percentCapitalDeployed >= 85
+                  ? "text-red-600"
+                  : "text-green-600"
+              }`}
+            >
+              {metrics?.percentCapitalDeployed != null
+                ? `% Used: ${metrics.percentCapitalDeployed.toFixed(2)}%`
+                : ""}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white shadow-sm rounded-lg">
+          <CardContent className="p-6">
+            <p className="text-base font-medium text-gray-600">P&L Overview</p>
+            <p className={`text-3xl font-bold ${
+              metrics?.totalProfit != null && metrics.totalProfit >= 0 ? "text-green-600" : "text-red-600"
+            }`}>
+              {metrics?.totalProfit != null ? formatCompactCurrency(metrics.totalProfit) : "Loading..."}
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              MTD: {metrics?.realizedMTD != null ? formatCompactCurrency(metrics.realizedMTD) : "—"}
+            </p>
+            <p className="text-sm text-gray-600">
+              YTD: {metrics?.realizedYTD != null ? formatCompactCurrency(metrics.realizedYTD) : "—"}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <MetricsCard
-          label="% Capital Used"
-          value={
-            metrics?.percentCapitalDeployed != null
-              ? `${metrics.percentCapitalDeployed.toFixed(2)}%`
-              : "Loading..."
-          }
-          className={
-            metrics?.percentCapitalDeployed != null &&
-            metrics.percentCapitalDeployed >= 85
-              ? "text-red-600"
-              : "text-green-600"
-          }
-        />
-        <MetricsCard
-          label="Avg. Days Held"
-          value={
-            metrics?.avgDaysInTrade != null
-              ? `${metrics.avgDaysInTrade.toFixed(0).toLocaleString()}`
-              : "-"
-          }
-        />
-        <MetricsCard
-          label="Win Rate"
-          value={
-            metrics?.winRate != null
-              ? `${(metrics.winRate * 100).toFixed(2)}%`
-              : "Loading..."
-          }
-          className={
-            metrics?.winRate != null && metrics.winRate > 0.5
-              ? "text-green-600"
-              : "text-red-600"
-          }
-        />
-        <MetricsCard
-          label="Total Profit"
-          value={
-            metrics?.totalProfit != null
-              ? formatCompactCurrency(metrics.totalProfit)
-              : "Loading..."
-          }
-          className={
-            metrics?.totalProfit != null && metrics.totalProfit >= 0
-              ? "text-green-600"
-              : "text-red-600"
-          }
-        />
-        <MetricsCard
-          label="Avg P/L %"
-          value={
-            metrics?.avgPLPercent != null
-              ? `${metrics.avgPLPercent.toFixed(2)}%`
-              : "Loading..."
-          }
-          className={
-            metrics?.avgPLPercent != null && metrics.avgPLPercent >= 0
-              ? "text-green-600"
-              : "text-red-600"
-          }
-        />
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+        {metricItems
+          .sort((a, b) => a.order - b.order)
+          .map((m) => (
+            <MetricsCard
+              key={m.key}
+              label={m.label}
+              value={m.value}
+              className={m.className}
+            />
+          ))}
       </div>
 
       <div className="flex justify-between items-center">
