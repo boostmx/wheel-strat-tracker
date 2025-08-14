@@ -20,9 +20,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         shouldRetryOnError: false,
       }}
     >
-      {showHeader && <SiteHeader />}
-      {children}
-      <SiteFooter />
+      <div className="min-h-[100dvh] flex flex-col">
+        {showHeader && <SiteHeader />}
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+      </div>
     </SWRConfig>
   );
 }
