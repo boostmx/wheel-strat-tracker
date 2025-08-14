@@ -1,9 +1,7 @@
-// app/layout.tsx
 import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
-import { Toaster } from "sonner";
+import { AppProviders } from "@/components/app-providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wheel Strategy Tracker",
+  title: "Trade Tracker",
   description: "Created by HL Financial Strategies",
   icons: {
     icon: "/favicon.ico",
@@ -32,15 +30,12 @@ export default async function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <div className="bg-muted min-h-screen text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-          <AppShell>{children}</AppShell>
-        </div>
-        <Toaster richColors position="top-center" />
-        </ThemeProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <AppProviders>
+          <div className="bg-muted min-h-screen text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+            <AppShell>{children}</AppShell>
+          </div>
+        </AppProviders>
       </body>
     </html>
   );
