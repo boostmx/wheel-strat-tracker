@@ -11,7 +11,7 @@ export function SiteHeader() {
   if (status === "loading") return null;
 
   return (
-    <header className="w-full border-b px-6 py-4 flex items-center justify-between bg-white shadow-sm">
+    <header className="w-full border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between bg-white dark:bg-gray-900/60 shadow-sm">
       {/* Left: Logo and Nav */}
       <div className="flex items-center gap-6">
         {/* Logo + Business Name */}
@@ -22,7 +22,7 @@ export function SiteHeader() {
             width={32}
             height={32}
           />
-          <span className="text-lg font-semibold text-gray-800">
+          <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">
             HL Financial Strategies
           </span>
         </Link>
@@ -32,13 +32,13 @@ export function SiteHeader() {
           <nav className="flex items-center gap-4">
             <Link
               href="/dashboard"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition"
             >
               Portfolios
             </Link>
             <Link
               href="/metrics"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition"
             >
               Metrics
             </Link>
@@ -50,7 +50,7 @@ export function SiteHeader() {
       {/* Right: Session Controls */}
       <div className="flex items-center gap-3">
         {session?.user?.username && (
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 dark:text-gray-300">
             Hi, <strong>{session.user.firstName}</strong>
           </span>
         )}
@@ -58,7 +58,7 @@ export function SiteHeader() {
         {session && (
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded border"
+            className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 rounded border"
           >
             Sign out
           </button>

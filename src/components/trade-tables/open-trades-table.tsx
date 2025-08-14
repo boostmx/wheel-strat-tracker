@@ -48,14 +48,14 @@ export function OpenTradesTable({
 
   return (
     <div className="w-full overflow-x-auto">
-      <table className="min-w-full text-sm text-left text-gray-700">
-        <thead className="bg-gray-100">
+      <table className="min-w-full text-sm text-left text-gray-700 dark:text-gray-100">
+        <thead className="bg-gray-100 dark:bg-gray-800">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="px-4 py-2 font-semibold cursor-pointer select-none"
+                  className="px-4 py-2 font-semibold cursor-pointer select-none dark:text-gray-200"
                   onClick={header.column.getToggleSortingHandler()}
                 >
                   {flexRender(
@@ -72,14 +72,17 @@ export function OpenTradesTable({
             <tr>
               <td
                 colSpan={table.getAllColumns().length}
-                className="px-4 py-4 text-center text-gray-500"
+                className="px-4 py-4 text-center text-gray-500 dark:text-gray-400"
               >
                 No trades currently open.
               </td>
             </tr>
           ) : (
             table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-t">
+              <tr
+                key={row.id}
+                className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
+              >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-4 py-2">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

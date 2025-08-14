@@ -119,34 +119,34 @@ export default function MetricsContent() {
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
-      <h1 className="text-3xl font-bold text-gray-900">Account Snapshot</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Account Snapshot</h1>
 
       {/* Row 1: Current, Used, Available */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-white shadow-sm rounded-lg">
+        <Card className="bg-white dark:bg-gray-800 shadow-sm rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Current Capital (Account)</p>
-            <p className="text-3xl font-bold text-gray-900">{formatLongCurrency(agg.accountCurrentCapital)}</p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Current Capital (Account)</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{formatLongCurrency(agg.accountCurrentCapital)}</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {`Starting ${formatLongCurrency(agg.accountStarting)} · Realized ${formatCompactCurrency(agg.accountProfit)}`}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-amber-50 rounded-lg">
+        <Card className="bg-amber-50 dark:bg-amber-900 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-amber-700">Capital In Use</p>
-            <p className="text-3xl font-bold text-amber-700">{formatLongCurrency(agg.accountCapitalUsed)}</p>
+            <p className="text-base font-medium text-amber-700 dark:text-amber-100">Capital In Use</p>
+            <p className="text-3xl font-bold text-amber-700 dark:text-amber-100">{formatLongCurrency(agg.accountCapitalUsed)}</p>
             <p className={`mt-1 text-sm font-semibold ${pctColor(agg.accountPercentUsed)}`}>
               {`% Used: ${agg.accountPercentUsed.toFixed(1)}%`}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-green-50 rounded-lg">
+        <Card className="bg-green-50 dark:bg-green-900 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-green-700">Cash Available</p>
-            <p className={`text-3xl font-bold ${agg.accountCashAvailable < 0 ? "text-red-700" : "text-green-700"}`}>
+            <p className="text-base font-medium text-green-700 dark:text-green-100">Cash Available</p>
+            <p className={`text-3xl font-bold ${agg.accountCashAvailable < 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-100"}`}>
               {formatLongCurrency(agg.accountCashAvailable)}
             </p>
           </CardContent>
@@ -155,17 +155,17 @@ export default function MetricsContent() {
 
       {/* Row 2: Ops view */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-white border rounded-lg">
+        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Open Trades</p>
-            <p className="text-3xl font-bold text-gray-900">{agg.totalOpenTrades}</p>
+            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Open Trades</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{agg.totalOpenTrades}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50 rounded-lg">
+        <Card className="bg-blue-50 dark:bg-blue-900 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-blue-700">Next Expiration</p>
-            <p className="text-xl font-semibold text-blue-800">
+            <p className="text-base font-medium text-blue-700 dark:text-blue-100">Next Expiration</p>
+            <p className="text-xl font-semibold text-blue-800 dark:text-blue-200">
               {agg.nextExpiration
                   ? `${formatDateOnlyUTC(agg.nextExpiration.date)} · ${agg.nextExpiration.contracts} contracts`
                   : "—"}
@@ -173,32 +173,32 @@ export default function MetricsContent() {
           </CardContent>
         </Card>
 
-        <Card className="bg-rose-50 rounded-lg">
+        <Card className="bg-rose-50 dark:bg-rose-900 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-rose-700">Expiring in 7 Days</p>
-            <p className="text-3xl font-bold text-rose-700">{agg.totalExpiringSoon}</p>
+            <p className="text-base font-medium text-rose-700 dark:text-rose-100">Expiring in 7 Days</p>
+            <p className="text-3xl font-bold text-rose-700 dark:text-rose-100">{agg.totalExpiringSoon}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Row 3: P&L + exposures */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-white border rounded-lg">
+        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Realized P&L (MTD)</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCompactCurrency(agg.totalRealizedMTD)}</p>
+            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Realized P&L (MTD)</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(agg.totalRealizedMTD)}</p>
           </CardContent>
         </Card>
-        <Card className="bg-white border rounded-lg">
+        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Realized P&L (YTD)</p>
-            <p className="text-2xl font-bold text-gray-900">{formatCompactCurrency(agg.totalRealizedYTD)}</p>
+            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Realized P&L (YTD)</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(agg.totalRealizedYTD)}</p>
           </CardContent>
         </Card>
-        <Card className="bg-white border rounded-lg">
+        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Top Exposures</p>
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Top Exposures</p>
+            <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
               {agg.topExposures.length
                 ? agg.topExposures.map(t => `${t.ticker} ${t.pct.toFixed(0)}%`).join(" · ")
                 : "—"}
@@ -209,12 +209,12 @@ export default function MetricsContent() {
 
       {/* Per-portfolio chips */}
       <div className="mt-2">
-        <p className="text-sm text-gray-500 mb-2">By portfolio</p>
-        <div className="flex flex-wrap gap-2">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">By portfolio</p>
+        <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-800 p-2 rounded">
           {agg.perPortfolio.map((pp) => (
             <span
               key={pp.id}
-              className={`text-xs px-2 py-1 rounded border bg-white ${pctColor(pp.pctUsed)}`}
+              className={`text-xs px-2 py-1 rounded border bg-white dark:bg-gray-800 ${pctColor(pp.pctUsed)} dark:text-gray-100`}
               title={`% Used ${pp.pctUsed.toFixed(1)} · Open ${pp.open} · Exp ≤7d ${pp.soon}`}
             >
               {`${pp.id.slice(0, 4)}… · ${pp.pctUsed.toFixed(0)}% used · ${pp.open} open · ${pp.soon} ≤7d`}

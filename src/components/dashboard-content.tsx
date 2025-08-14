@@ -107,7 +107,7 @@ export default function DashboardContent() {
   return (
     <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Your Portfolios</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Your Portfolios</h1>
         <CreatePortfolioModal />
       </div>
 
@@ -116,8 +116,8 @@ export default function DashboardContent() {
       ) : error ? (
         <p className="text-red-500">Failed to load portfolios.</p>
       ) : portfolios.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 p-6 text-center shadow-sm bg-white">
-          <p className="text-gray-600 mb-4 text-sm">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-6 text-center shadow-sm bg-white dark:bg-gray-900">
+          <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
             You have not created any portfolios yet. Create one to get started!
           </p>
         </div>
@@ -174,24 +174,24 @@ export default function DashboardContent() {
 
                     {/* Row 1: Open Trades, Capital In Use, Cash Available */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                      <div className="rounded-lg bg-white border p-4 text-sm">
-                        <p className="text-gray-500 font-medium">Open Trades</p>
-                        <p className="text-2xl font-semibold text-gray-900">
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">Open Trades</p>
+                        <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                           {snap ? snap.openCount : "-"}
                         </p>
                       </div>
 
-                      <div className="rounded-lg bg-amber-50 p-4 text-sm">
-                        <p className="text-gray-600 font-medium">Capital In Use</p>
-                        <p className="text-2xl font-semibold text-amber-700">
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">Capital In Use</p>
+                        <p className="text-2xl font-semibold text-amber-700 dark:text-amber-300">
                           {snap ? formatCompactCurrency(snap.capitalInUse) : "-"}
                         </p>
                       </div>
 
-                      <div className="rounded-lg bg-green-50 p-4 text-sm">
-                        <p className="text-gray-600 font-medium">Cash Available</p>
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">Cash Available</p>
                         <p className={`text-2xl font-semibold ${
-                          snap && snap.cashAvailable < 0 ? "text-red-700" : "text-green-700"
+                          snap && snap.cashAvailable < 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-300"
                         }`}>
                           {snap ? formatCompactCurrency(snap.cashAvailable) : "-"}
                         </p>
@@ -200,34 +200,34 @@ export default function DashboardContent() {
 
                     {/* Row 2: Biggest Position, Next Expiration, Expiring Soon */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                      <div className="rounded-lg bg-slate-50 p-4 text-sm">
-                        <p className="text-gray-600 font-medium">Biggest Position</p>
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">Biggest Position</p>
                         {snap?.biggest ? (
-                          <p className="text-base font-semibold text-slate-800">
+                          <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
                             {snap.biggest.ticker} · ${snap.biggest.strikePrice.toFixed(2)} · {snap.biggest.contracts} ctrs
-                            <span className="block text-xs text-slate-600 mt-1">
-                              Collateral: {formatCompactCurrency(snap.biggest.collateral)} · Exp {new Date(snap.biggest.expirationDate).toLocaleDateString()}
+                            <span className="block text-xs text-slate-600 dark:text-slate-400 mt-1">
+                              Collateral: {formatCompactCurrency(snap.biggest.collateral)} · Exp {formatDateOnlyUTC(snap.biggest.expirationDate)}
                             </span>
                           </p>
                         ) : (
-                          <p className="text-base text-slate-500">—</p>
+                          <p className="text-base text-slate-500 dark:text-slate-400">—</p>
                         )}
                       </div>
 
-                      <div className="rounded-lg bg-blue-50 p-4 text-sm">
-                        <p className="text-gray-600 font-medium">Next Expiration</p>
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">Next Expiration</p>
                         {snap?.nextExpiration ? (
-                          <p className="text-base font-semibold text-blue-800">
+                          <p className="text-base font-semibold text-blue-800 dark:text-blue-300">
                             {snap.nextExpiration ? `${formatDateOnlyUTC(snap.nextExpiration.date)} · ${snap.nextExpiration.contracts} contracts` : "—"}
                           </p>
                         ) : (
-                          <p className="text-base text-blue-700">—</p>
+                          <p className="text-base text-blue-700 dark:text-blue-300">—</p>
                         )}
                       </div>
 
-                      <div className="rounded-lg bg-rose-50 p-4 text-sm">
-                        <p className="text-gray-600 font-medium">Expiring in 7 Days</p>
-                        <p className="text-2xl font-semibold text-rose-700">
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">Expiring in 7 Days</p>
+                        <p className="text-2xl font-semibold text-rose-700 dark:text-rose-300">
                           {snap ? snap.expiringSoonCount : "-"}
                         </p>
                       </div>
@@ -235,26 +235,26 @@ export default function DashboardContent() {
 
                     {/* Row 3: Top Exposures, Open Avg Days, MTD/YTD Realized */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                      <div className="rounded-lg bg-white border p-4 text-sm">
-                        <p className="text-gray-500 font-medium">Top Exposures</p>
-                        <p className="text-base font-semibold text-gray-900 truncate">
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">Top Exposures</p>
+                        <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {topLine || "—"}
                         </p>
                       </div>
 
-                      <div className="rounded-lg bg-white border p-4 text-sm">
-                        <p className="text-gray-500 font-medium">Open Avg Days</p>
-                        <p className="text-base font-semibold text-gray-900">
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">Open Avg Days</p>
+                        <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
                           {snap?.openAvgDays != null ? snap.openAvgDays : "—"}
                         </p>
                       </div>
 
-                      <div className="rounded-lg bg-white border p-4 text-sm">
-                        <p className="text-gray-500 font-medium">Realized P&L</p>
-                        <p className="text-base font-semibold text-gray-900">
-                          MTD {snap ? formatCompactCurrency(snap.realizedMTD) : "—"}
-                          <span className="mx-2 text-gray-400">•</span>
-                          YTD {snap ? formatCompactCurrency(snap.realizedYTD) : "—"}
+                      <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">Realized P&L</p>
+                        <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                          MTD {snap ? formatCompactCurrency(snap.realizedMTD) : <span className="dark:text-gray-500">—</span>}
+                          <span className="mx-2 text-gray-400 dark:text-gray-500">•</span>
+                          YTD {snap ? formatCompactCurrency(snap.realizedYTD) : <span className="dark:text-gray-500">—</span>}
                         </p>
                       </div>
                     </div>
