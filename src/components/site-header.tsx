@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   const { data: session, status } = useSession();
@@ -47,12 +48,13 @@ export function SiteHeader() {
       </div>
 
       {/* Right: Session Controls */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center gap-3">
         {session?.user?.username && (
           <span className="text-sm text-gray-600">
             Hi, <strong>{session.user.firstName}</strong>
           </span>
         )}
+        <ThemeToggle />
         {session && (
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}

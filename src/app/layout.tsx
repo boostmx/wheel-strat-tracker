@@ -1,5 +1,6 @@
 // app/layout.tsx
 import type { Metadata } from "next";
+import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import { Toaster } from "sonner";
@@ -34,10 +35,16 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="bg-muted min-h-screen">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
+          />
+        <div className="bg-muted min-h-screen text-gray-900 dark:bg-gray-950 dark:text-gray-100">
           <AppShell>{children}</AppShell>
         </div>
         <Toaster richColors position="top-center" />
+        </ThemeProvider>
       </body>
     </html>
   );
