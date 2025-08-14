@@ -1,10 +1,10 @@
 import ProtectedPage from "@/components/protected-page";
-import DashboardContent from "@/components/dashboard-content";
+import PortfoliosOverviewContent from "@/components/portfolios-overview-content";
 
 export default function DashboardPage() {
   return (
     <ProtectedPage>
-      <DashboardContent />
+      <PortfoliosOverviewContent />
     </ProtectedPage>
   );
 }

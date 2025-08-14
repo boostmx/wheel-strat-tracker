@@ -1,8 +1,7 @@
-// app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
-import { Toaster } from "sonner";
+import { AppProviders } from "@/components/app-providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wheel Strategy Tracker",
+  title: "Trade Tracker",
   description: "Created by HL Financial Strategies",
   icons: {
     icon: "/favicon.ico",
@@ -30,14 +29,13 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <div className="bg-muted min-h-screen">
-          <AppShell>{children}</AppShell>
-        </div>
-        <Toaster richColors position="top-center" />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <AppProviders>
+          <div className="bg-muted min-h-screen text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+            <AppShell>{children}</AppShell>
+          </div>
+        </AppProviders>
       </body>
     </html>
   );

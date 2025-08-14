@@ -90,17 +90,17 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   return (
     <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           {portfolio.name || "Unnamed Portfolio"}
         </h1>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Card className="bg-white shadow-sm rounded-lg">
+        <Card className="bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">Current Capital</p>
+            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Current Capital</p>
             <p
-              className={`text-3xl font-bold ${
+              className={`text-3xl font-bold dark:text-gray-300 ${
                 metrics?.capitalUsed != null && metrics?.totalProfit != null &&
                 portfolio.startingCapital + metrics.totalProfit - metrics.capitalUsed < 0
                   ? "text-red-600"
@@ -113,7 +113,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                   )
                 : "Loading..."}
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Starting: {formatCompactCurrency(portfolio.startingCapital)}
             </p>
             <p
@@ -129,18 +129,18 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-white shadow-sm rounded-lg">
+        <Card className="bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm rounded-lg">
           <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600">P&L Overview</p>
-            <p className={`text-3xl font-bold ${
+            <p className="text-base font-medium text-gray-600 dark:text-gray-400">P&L Overview</p>
+            <p className={`text-3xl font-bold dark:text-gray-300 ${
               metrics?.totalProfit != null && metrics.totalProfit >= 0 ? "text-green-600" : "text-red-600"
             }`}>
               {metrics?.totalProfit != null ? formatCompactCurrency(metrics.totalProfit) : "Loading..."}
             </p>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               MTD: {metrics?.realizedMTD != null ? formatCompactCurrency(metrics.realizedMTD) : "—"}
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               YTD: {metrics?.realizedYTD != null ? formatCompactCurrency(metrics.realizedYTD) : "—"}
             </p>
           </CardContent>
@@ -161,10 +161,10 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
       </div>
 
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Open Positions</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Open Positions</h2>
         <AddTradeModal portfolioId={portfolio.id} />
       </div>
-      <div className="w-full rounded-lg bg-white p-6 text-gray-700 text-sm shadow-sm">
+      <div className="w-full rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 text-sm shadow-sm">
         {loadingOpen ? (
           <p>Loading open trades...</p>
         ) : (
@@ -172,8 +172,8 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         )}
       </div>
 
-      <h2 className="text-xl font-semibold mt-10">Closed Positions</h2>
-      <div className="w-full rounded-lg bg-white p-6 text-gray-700 text-sm shadow-sm">
+      <h2 className="text-xl font-semibold mt-10 text-gray-900 dark:text-gray-100">Closed Positions</h2>
+      <div className="w-full rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 text-sm shadow-sm">
         {loadingClosed ? (
           <p>Loading closed trades...</p>
         ) : (
