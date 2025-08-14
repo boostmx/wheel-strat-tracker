@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
 import { SiteHeader } from "@/components/site-header";
 import { SWRConfig } from "swr";
+import { SiteFooter } from "@/components/site-footer";
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -21,6 +22,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     >
       {showHeader && <SiteHeader />}
       {children}
+      <SiteFooter />
     </SWRConfig>
   );
 }

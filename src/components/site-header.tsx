@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Menu, LogOut, ChevronRight } from "lucide-react";
+import { VersionBadge } from "./version-badge";
 
 export function SiteHeader() {
   const { data: session } = useSession();
@@ -147,6 +148,9 @@ export function SiteHeader() {
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </Button>
+              </div>            
+              <div className="flex justify-center text-center text-xs text-muted-foreground mt-4 italic">
+                <VersionBadge className="" />
               </div>
             </SheetContent>
           </Sheet>

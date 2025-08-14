@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { VersionBadge } from "@/components/version-badge";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -73,6 +74,7 @@ export default function LoginPage() {
           Sign up here
         </a>
       </p>
+      <VersionBadge className="mt-4" />
     </div>
   );
 }
