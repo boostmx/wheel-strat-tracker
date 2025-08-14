@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 import { execSync } from "node:child_process";
 // tsconfig.json must have: "resolveJsonModule": true, "esModuleInterop": true
 import pkg from "./package.json";
-import createMDX from "@next/mdx";
 
 function safe(cmd: string, fallback = "") {
   try {
@@ -26,20 +25,9 @@ const fullVersion =
     ? `${baseVersion}+${sha}`
     : `${baseVersion}-dev+${sha}`;
 
-// ✅ Wrap the Next config with MDX
-const withMDX = createMDX({
-  extension: /\.mdx?$/,
-});
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   env: { NEXT_PUBLIC_APP_VERSION: fullVersion },
-
-  // Helps Next use the Rust MDX compiler (faster, fewer edge issues)
-  experimental: { mdxRs: true },
-
-  // Not strictly required in App Router, but makes MDX discovery rock‑solid
-  pageExtensions: ["ts", "tsx", "md", "mdx"],
 };
 
-export default withMDX(nextConfig);
+export default nextConfig;
