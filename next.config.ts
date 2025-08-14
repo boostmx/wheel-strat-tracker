@@ -22,8 +22,8 @@ const sha =
 const baseVersion = (pkg as { version?: string }).version ?? "0.0.0";
 const fullVersion =
   process.env.NODE_ENV === "production"
-    ? `${baseVersion}+${sha}`
-    : `${baseVersion}-dev+${sha}`;
+    ? `${baseVersion}.${sha}`
+    : `${baseVersion}-dev.${sha}`;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
