@@ -1,10 +1,10 @@
 import ProtectedPage from "@/components/protected-page";
-import MetricsContent from "@/components/metrics-content";
+import AccountSummaryContent from "@/components/account-summary-content";
 
 export default function DashboardPage() {
   return (
     <ProtectedPage>
-      <MetricsContent />
+      <AccountSummaryContent />
     </ProtectedPage>
   );
 }

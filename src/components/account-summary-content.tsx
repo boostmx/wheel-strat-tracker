@@ -33,7 +33,7 @@ function pctColor(p: number) {
   return "text-green-700";
 }
 
-export default function MetricsContent() {
+export default function AccountSummaryContent() {
   const { data: portfolios = [], isLoading, error } = useSWR<Portfolio[]>("/api/portfolios");
   const [snapshots, setSnapshots] = useState<Record<string, Snapshot>>({});
 
@@ -119,7 +119,7 @@ export default function MetricsContent() {
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Account Snapshot</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Account Summary</h1>
 
       {/* Row 1: Current, Used, Available */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

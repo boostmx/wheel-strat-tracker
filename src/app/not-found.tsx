@@ -11,10 +11,10 @@ export default function NotFound() {
         The page you are looking for does not exist or may have been moved.
       </p>
       <Link
-        href="/dashboard"
+        href="/overview"
         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
       >
-        Back to Dashboard
+        Back to Main Page
       </Link>
     </div>
   );

@@ -22,12 +22,12 @@ export default function LoginPage() {
       username,
       password,
       redirect: false,
-      callbackUrl: "/dashboard",
+      callbackUrl: "/overview",
     });
 
     if (res?.ok) {
       toast.success("Signed in successfully");
-      router.push(res.url || "/dashboard");
+      router.push(res.url || "/overview");
     } else {
       toast.error("Invalid credentials");
     }
@@ -38,7 +38,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-muted px-4">
       <h1 className="text-2xl font-bold italic mb-6 text-primary">
-        Wheel Strategy Tracker
+        Trade Tracker
       </h1>
       <Card className="w-full max-w-md p-4 shadow-md">
         <CardContent>

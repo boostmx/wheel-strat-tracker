@@ -55,7 +55,7 @@ function formatPercent(value: number, digits = 0) {
   return `${value.toFixed(digits)}%`;
 }
 
-export default function DashboardContent() {
+export default function PortfoliosOverviewContent() {
   const { data: session } = useSession();
 
   const {
@@ -107,7 +107,7 @@ export default function DashboardContent() {
   return (
     <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Your Portfolios</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Portfolios Overview</h1>
         <CreatePortfolioModal />
       </div>
 
@@ -204,7 +204,7 @@ export default function DashboardContent() {
                         <p className="text-gray-600 dark:text-gray-400 font-medium">Biggest Position</p>
                         {snap?.biggest ? (
                           <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
-                            {snap.biggest.ticker} · ${snap.biggest.strikePrice.toFixed(2)} · {snap.biggest.contracts} ctrs
+                            {snap.biggest.ticker} · ${snap.biggest.strikePrice.toFixed(2)} · {snap.biggest.contracts} contracts
                             <span className="block text-xs text-slate-600 dark:text-slate-400 mt-1">
                               Collateral: {formatCompactCurrency(snap.biggest.collateral)} · Exp {formatDateOnlyUTC(snap.biggest.expirationDate)}
                             </span>
