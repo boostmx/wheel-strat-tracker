@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatDateOnlyUTC, ensureUtcMidnight } from "@/lib/formatDateOnly";
+import { motion } from "framer-motion";
 
 type Props = {
   portfolioId: string;
@@ -194,237 +195,279 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-10 space-y-6 relative">
-      <div className="flex justify-end mb-4">
+    <div className="max-w-3xl mx-auto py-10 space-y-6 relative bg-transparent">
+      {/* Back link row */}
+      <motion.div
+        className="flex justify-end mb-4"
+        initial={ false }
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24 }}
+        style={{ willChange: "opacity, transform" }}
+      >
         <Button variant="outline" asChild className="text-sm">
           <Link href={`/portfolio/${portfolioId}`}>← Back to Portfolio</Link>
         </Button>
-      </div>
+      </motion.div>
 
-      <Card>
-        <CardContent className="p-6 space-y-6 relative">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">
-              {trade.ticker} — {formatType(trade.type)}
-            </h1>
-            <div className="flex items-center gap-3">
-              {statusBadge(trade.status)}
-              {/* Edit Button Placeholder */}
-              {trade.status === "open" && (
-                <Button variant="outline" disabled>
-                  Edit
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="space-y-1">
-              <p>
-                <span className="font-medium text-muted-foreground">Type:</span>{" "}
-                {formatType(trade.type)}
-              </p>
-              <p>
-                <span className="font-medium text-muted-foreground">
-                  Strike:
-                </span>{" "}
-                {formatUSD(trade.strikePrice)}
-              </p>
-              <p>
-                <span className="font-medium text-muted-foreground">
-                  Stock Entry Price:
-                </span>{" "}
-                {trade.entryPrice != null ? formatUSD(trade.entryPrice) : "-"}
-              </p>
-              <p>
-                <span className="font-medium text-muted-foreground">
-                  Contracts:
-                </span>{" "}
-                {trade.contracts}
-              </p>
-              <p>
-                <span className="font-medium text-muted-foreground">
-                  Avg Price:
-                </span>{" "}
-                {formatUSD(trade.contractPrice)}
-              </p>
+      {/* Main card */}
+      <motion.div
+        className="transform-gpu"
+        initial={ false}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.24, delay: 0.04 }}
+        style={{ willChange: "opacity" }}
+      >
+        <Card className="bg-white dark:bg-gray-900 dark:border-gray-800">
+          <CardContent className="p-6 space-y-6 relative">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {trade.ticker} — {formatType(trade.type)}
+              </h1>
+              <div className="flex items-center gap-3">
+                {statusBadge(trade.status)}
+                {trade.status === "open" && (
+                  <Button variant="outline" disabled>
+                    Edit
+                  </Button>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <p>
-                <span className="font-medium text-muted-foreground">
-                  Opened:
-                </span>{" "}
-                {formatDateOnlyUTC(trade.createdAt)}
-              </p>
-              <p>
-                <span className="font-medium text-muted-foreground">
-                  Expiration:
-                </span>{" "}
-                {formatDateOnlyUTC(trade.expirationDate)}
-              </p>
-
-              {trade.status === "open" && (
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <motion.div
+                className="space-y-1"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: 0.06 }}
+                style={{ willChange: "opacity, transform" }}
+              >
                 <p>
                   <span className="font-medium text-muted-foreground">
-                    Days Until Expiration:
+                    Type:
                   </span>{" "}
-                  {(() => {
-                    const msPerDay = 86_400_000;
-                    const exp = ensureUtcMidnight(trade.expirationDate).getTime();
-                    const today = ensureUtcMidnight(new Date()).getTime();
-                    return Math.max(0, Math.ceil((exp - today) / msPerDay));
-                  })()}
+                  {formatType(trade.type)}
                 </p>
-              )}
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Strike:
+                  </span>{" "}
+                  {formatUSD(trade.strikePrice)}
+                </p>
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Stock Entry Price:
+                  </span>{" "}
+                  {trade.entryPrice != null ? formatUSD(trade.entryPrice) : "-"}
+                </p>
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Contracts:
+                  </span>{" "}
+                  {trade.contracts}
+                </p>
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Avg Price:
+                  </span>{" "}
+                  {formatUSD(trade.contractPrice)}
+                </p>
+              </motion.div>
 
-              {trade.status === "closed" && (
-                <>
+              <motion.div
+                className="space-y-1"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: 0.10 }}
+                style={{ willChange: "opacity, transform" }}
+              >
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Opened:
+                  </span>{" "}
+                  {formatDateOnlyUTC(trade.createdAt)}
+                </p>
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Expiration:
+                  </span>{" "}
+                  {formatDateOnlyUTC(trade.expirationDate)}
+                </p>
+
+                {trade.status === "open" && (
                   <p>
                     <span className="font-medium text-muted-foreground">
-                      Closed:
+                      Days Until Expiration:
                     </span>{" "}
-                    {trade.closedAt ? formatDateOnlyUTC(trade.closedAt) : "-"}
+                    {(() => {
+                      const msPerDay = 86_400_000;
+                      const exp = ensureUtcMidnight(
+                        trade.expirationDate,
+                      ).getTime();
+                      const today = ensureUtcMidnight(new Date()).getTime();
+                      return Math.max(0, Math.ceil((exp - today) / msPerDay));
+                    })()}
                   </p>
-                  <p>
-                    <span className="font-medium text-muted-foreground">
-                      Days Held:
-                    </span>{" "}
-                    {trade.closedAt
-                      ? (() => {
-                          const msPerDay = 86_400_000;
-                          const closed = ensureUtcMidnight(trade.closedAt).getTime();
-                          const opened = ensureUtcMidnight(trade.createdAt).getTime();
-                          return Math.max(0, Math.ceil((closed - opened) / msPerDay));
-                        })()
-                      : "-"}
-                  </p>
-                  <p>
-                    <span className="font-medium text-muted-foreground">
-                      % P/L:
-                    </span>{" "}
-                    {trade.percentPL != null
-                      ? `${trade.percentPL.toFixed(2)}%`
-                      : "-"}
-                  </p>
-                  <p>
-                    <span className="font-medium text-muted-foreground">
-                      Premium Captured:
-                    </span>{" "}
-                    {trade.premiumCaptured != null
-                      ? formatUSD(trade.premiumCaptured)
-                      : "-"}
-                  </p>
-                </>
-              )}
+                )}
+
+                {trade.status === "closed" && (
+                  <>
+                    <p>
+                      <span className="font-medium text-muted-foreground">
+                        Closed:
+                      </span>{" "}
+                      {trade.closedAt ? formatDateOnlyUTC(trade.closedAt) : "-"}
+                    </p>
+                    <p>
+                      <span className="font-medium text-muted-foreground">
+                        Days Held:
+                      </span>{" "}
+                      {trade.closedAt
+                        ? (() => {
+                            const msPerDay = 86_400_000;
+                            const closed = ensureUtcMidnight(
+                              trade.closedAt,
+                            ).getTime();
+                            const opened = ensureUtcMidnight(
+                              trade.createdAt,
+                            ).getTime();
+                            return Math.max(
+                              0,
+                              Math.ceil((closed - opened) / msPerDay),
+                            );
+                          })()
+                        : "-"}
+                    </p>
+                    <p>
+                      <span className="font-medium text-muted-foreground">
+                        % P/L:
+                      </span>{" "}
+                      {trade.percentPL != null
+                        ? `${trade.percentPL.toFixed(2)}%`
+                        : "-"}
+                    </p>
+                    <p>
+                      <span className="font-medium text-muted-foreground">
+                        Premium Captured:
+                      </span>{" "}
+                      {trade.premiumCaptured != null
+                        ? formatUSD(trade.premiumCaptured)
+                        : "-"}
+                    </p>
+                  </>
+                )}
+              </motion.div>
             </div>
-          </div>
 
-          <div>
-            <h3 className="font-semibold text-base text-gray-900">Notes</h3>
-            <p className="text-sm whitespace-pre-line text-muted-foreground">
-              {trade.notes || "No notes added."}
-            </p>
-          </div>
-
-          {/* Add to/Close Position buttons at bottom right of card */}
-          {trade.status === "open" && (
-            <div className="absolute right-6 bottom-6 flex items-end gap-2">
-              {/* Close Position Button/Modal (left) */}
-              <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">Close Position</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Close Position</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid gap-4 sm:grid-cols-3 items-end">
-                    <div className="sm:col-span-1">
-                      <label className="text-sm block mb-1">Contracts</label>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={closingContracts}
-                        onChange={(e) =>
-                          setClosingContracts(e.target.value.replace(/\D/g, ""))
-                        }
-                        placeholder={`e.g., ${trade.contracts}`}
-                      />
-                    </div>
-                    <div className="sm:col-span-1">
-                      <label className="text-sm block mb-1">
-                        Closing Price
-                      </label>
-                      <CurrencyInput
-                        value={closingContractPrice}
-                        onChange={setClosingContractPrice}
-                        placeholder="e.g., 0.20"
-                      />
-                    </div>
-                    <div className="sm:col-span-1 flex items-end">
-                      <Button
-                        onClick={submitCloseTrade}
-                        disabled={closing}
-                        className="w-full"
-                      >
-                        {closing ? "Closing…" : "Submit"}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              {/* Add to Position Button/Modal (right) */}
-              <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                <DialogTrigger asChild>
-                  <Button>Add to Position</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add to Position</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="sm:col-span-1">
-                      <label className="text-sm block mb-1">
-                        Contracts to Add
-                      </label>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={addedContracts}
-                        onChange={(e) =>
-                          setAddedContracts(e.target.value.replace(/\D/g, ""))
-                        }
-                        placeholder="e.g., 2"
-                      />
-                    </div>
-                    <div className="sm:col-span-1">
-                      <label className="text-sm block mb-1">
-                        Price per Contract
-                      </label>
-                      <CurrencyInput
-                        value={addedContractPrice}
-                        onChange={setAddedContractPrice}
-                        placeholder="e.g., 0.85"
-                      />
-                    </div>
-                    <div className="sm:col-span-1 flex items-end">
-                      <Button
-                        onClick={submitAddToTrade}
-                        disabled={submitting}
-                        className="w-full"
-                      >
-                        {submitting ? "Updating…" : "Submit"}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+            <div>
+              <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100">
+                Notes
+              </h3>
+              <p className="text-sm whitespace-pre-line text-muted-foreground">
+                {trade.notes || "No notes added."}
+              </p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {/* Add to/Close Position buttons at bottom right of card */}
+            {trade.status === "open" && (
+              <div className="absolute right-6 bottom-6 flex items-end gap-2">
+                {/* Close Position Button/Modal (left) */}
+                <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">Close Position</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Close Position</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 sm:grid-cols-3 items-end">
+                      <div className="sm:col-span-1">
+                        <label className="text-sm block mb-1">Contracts</label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={closingContracts}
+                          onChange={(e) =>
+                            setClosingContracts(
+                              e.target.value.replace(/\D/g, ""),
+                            )
+                          }
+                          placeholder={`e.g., ${trade.contracts}`}
+                        />
+                      </div>
+                      <div className="sm:col-span-1">
+                        <label className="text-sm block mb-1">
+                          Closing Price
+                        </label>
+                        <CurrencyInput
+                          value={closingContractPrice}
+                          onChange={setClosingContractPrice}
+                          placeholder="e.g., 0.20"
+                        />
+                      </div>
+                      <div className="sm:col-span-1 flex items-end">
+                        <Button
+                          onClick={submitCloseTrade}
+                          disabled={closing}
+                          className="w-full"
+                        >
+                          {closing ? "Closing…" : "Submit"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Add to Position Button/Modal (right) */}
+                <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                  <DialogTrigger asChild>
+                    <Button>Add to Position</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add to Position</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="sm:col-span-1">
+                        <label className="text-sm block mb-1">
+                          Contracts to Add
+                        </label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={addedContracts}
+                          onChange={(e) =>
+                            setAddedContracts(e.target.value.replace(/\D/g, ""))
+                          }
+                          placeholder="e.g., 2"
+                        />
+                      </div>
+                      <div className="sm:col-span-1">
+                        <label className="text-sm block mb-1">
+                          Price per Contract
+                        </label>
+                        <CurrencyInput
+                          value={addedContractPrice}
+                          onChange={setAddedContractPrice}
+                          placeholder="e.g., 0.85"
+                        />
+                      </div>
+                      <div className="sm:col-span-1 flex items-end">
+                        <Button
+                          onClick={submitAddToTrade}
+                          disabled={submitting}
+                          className="w-full"
+                        >
+                          {submitting ? "Updating…" : "Submit"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

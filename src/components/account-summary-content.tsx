@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Portfolio } from "@/types";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
+import { motion } from "framer-motion";
 type Snapshot = {
   portfolioId: string;
   startingCapital: number;
@@ -119,109 +120,157 @@ export default function AccountSummaryContent() {
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Account Summary</h1>
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28 }}
+        style={{ willChange: "opacity, transform" }}
+      >
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Account Summary</h1>
+      </motion.div>
 
       {/* Row 1: Current, Used, Available */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Current Capital (Account)</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{formatLongCurrency(agg.accountCurrentCapital)}</p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {`Starting ${formatLongCurrency(agg.accountStarting)} · Realized ${formatCompactCurrency(agg.accountProfit)}`}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch auto-rows-fr">
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, delay: 0.04 }}
+          whileHover={{ y: -2 }}
+          style={{ willChange: "opacity, transform" }}
+        >
+          <Card className="bg-white dark:bg-gray-800 shadow-sm rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-gray-600 dark:text-gray-400">Current Capital (Account)</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{formatLongCurrency(agg.accountCurrentCapital)}</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {`Starting ${formatLongCurrency(agg.accountStarting)} · Realized ${formatCompactCurrency(agg.accountProfit)}`}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="bg-amber-50 dark:bg-amber-900 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-amber-700 dark:text-amber-100">Capital In Use</p>
-            <p className="text-3xl font-bold text-amber-700 dark:text-amber-100">{formatLongCurrency(agg.accountCapitalUsed)}</p>
-            <p className={`mt-1 text-sm font-semibold ${pctColor(agg.accountPercentUsed)}`}>
-              {`% Used: ${agg.accountPercentUsed.toFixed(1)}%`}
-            </p>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, delay: 0.08 }}
+          whileHover={{ y: -2 }}
+          style={{ willChange: "opacity, transform" }}
+        >
+          <Card className="bg-amber-50 dark:bg-amber-900 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-amber-700 dark:text-amber-100">Capital In Use</p>
+              <p className="text-3xl font-bold text-amber-700 dark:text-amber-100">{formatLongCurrency(agg.accountCapitalUsed)}</p>
+              <p className={`mt-1 text-sm font-semibold ${pctColor(agg.accountPercentUsed)}`}>
+                {`% Used: ${agg.accountPercentUsed.toFixed(1)}%`}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="bg-green-50 dark:bg-green-900 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-green-700 dark:text-green-100">Cash Available</p>
-            <p className={`text-3xl font-bold ${agg.accountCashAvailable < 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-100"}`}>
-              {formatLongCurrency(agg.accountCashAvailable)}
-            </p>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24, delay: 0.12 }}
+          whileHover={{ y: -2 }}
+          style={{ willChange: "opacity, transform" }}
+        >
+          <Card className="bg-green-50 dark:bg-green-900 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-green-700 dark:text-green-100">Cash Available</p>
+              <p className={`text-3xl font-bold ${agg.accountCashAvailable < 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-100"}`}>
+                {formatLongCurrency(agg.accountCashAvailable)}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Row 2: Ops view */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Open Trades</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{agg.totalOpenTrades}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch auto-rows-fr">
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: 0.16 }} whileHover={{ y: -2 }} style={{ willChange: "opacity, transform" }}>
+          <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-gray-600 dark:text-gray-400">Open Trades</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{agg.totalOpenTrades}</p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="bg-blue-50 dark:bg-blue-900 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-blue-700 dark:text-blue-100">Next Expiration</p>
-            <p className="text-xl font-semibold text-blue-800 dark:text-blue-200">
-              {agg.nextExpiration
-                  ? `${formatDateOnlyUTC(agg.nextExpiration.date)} · ${agg.nextExpiration.contracts} contracts`
-                  : "—"}
-            </p>
-          </CardContent>
-        </Card>
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: 0.20 }} whileHover={{ y: -2 }} style={{ willChange: "opacity, transform" }}>
+          <Card className="bg-blue-50 dark:bg-blue-900 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-blue-700 dark:text-blue-100">Next Expiration</p>
+              <p className="text-xl font-semibold text-blue-800 dark:text-blue-200">
+                {agg.nextExpiration
+                    ? `${formatDateOnlyUTC(agg.nextExpiration.date)} · ${agg.nextExpiration.contracts} contracts`
+                    : "—"}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card className="bg-rose-50 dark:bg-rose-900 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-rose-700 dark:text-rose-100">Expiring in 7 Days</p>
-            <p className="text-3xl font-bold text-rose-700 dark:text-rose-100">{agg.totalExpiringSoon}</p>
-          </CardContent>
-        </Card>
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: 0.24 }} whileHover={{ y: -2 }} style={{ willChange: "opacity, transform" }}>
+          <Card className="bg-rose-50 dark:bg-rose-900 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-rose-700 dark:text-rose-100">Expiring in 7 Days</p>
+              <p className="text-3xl font-bold text-rose-700 dark:text-rose-100">{agg.totalExpiringSoon}</p>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Row 3: P&L + exposures */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Realized P&L (MTD)</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(agg.totalRealizedMTD)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Realized P&L (YTD)</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(agg.totalRealizedYTD)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg">
-          <CardContent className="p-6">
-            <p className="text-base font-medium text-gray-600 dark:text-gray-400">Top Exposures</p>
-            <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              {agg.topExposures.length
-                ? agg.topExposures.map(t => `${t.ticker} ${t.pct.toFixed(0)}%`).join(" · ")
-                : "—"}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch auto-rows-fr">
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: 0.28 }} whileHover={{ y: -2 }} style={{ willChange: "opacity, transform" }}>
+          <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-gray-600 dark:text-gray-400">Realized P&L (MTD)</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(agg.totalRealizedMTD)}</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: 0.32 }} whileHover={{ y: -2 }} style={{ willChange: "opacity, transform" }}>
+          <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-gray-600 dark:text-gray-400">Realized P&L (YTD)</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatCompactCurrency(agg.totalRealizedYTD)}</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: 0.36 }} whileHover={{ y: -2 }} style={{ willChange: "opacity, transform" }}>
+          <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg h-full">
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <p className="text-base font-medium text-gray-600 dark:text-gray-400">Top Exposures</p>
+              <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                {agg.topExposures.length
+                  ? agg.topExposures.map(t => `${t.ticker} ${t.pct.toFixed(0)}%`).join(" · ")
+                  : "—"}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Per-portfolio chips */}
-      <div className="mt-2">
+      <motion.div className="mt-2" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: 0.42 }} style={{ willChange: "opacity, transform" }}>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">By portfolio</p>
         <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-800 p-2 rounded">
-          {agg.perPortfolio.map((pp) => (
-            <span
+          {agg.perPortfolio.map((pp, i) => (
+            <motion.span
               key={pp.id}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.02 * i }}
               className={`text-xs px-2 py-1 rounded border bg-white dark:bg-gray-800 ${pctColor(pp.pctUsed)} dark:text-gray-100`}
               title={`% Used ${pp.pctUsed.toFixed(1)} · Open ${pp.open} · Exp ≤7d ${pp.soon}`}
             >
               {`${pp.id.slice(0, 4)}… · ${pp.pctUsed.toFixed(0)}% used · ${pp.open} open · ${pp.soon} ≤7d`}
-            </span>
+            </motion.span>
           ))}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
