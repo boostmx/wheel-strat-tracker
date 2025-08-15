@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TradeNotesSimple } from "@/components/trade-notes-simple";
 import {
   Dialog,
   DialogContent,
@@ -225,11 +226,13 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
               </h1>
               <div className="flex items-center gap-3">
                 {statusBadge(trade.status)}
+                {/* 
+                  // Keeping this block as a placeholder for future edit functionality
                 {trade.status === "open" && (
                   <Button variant="outline" disabled>
                     Edit
                   </Button>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -358,18 +361,15 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
               </motion.div>
             </div>
 
-            <div>
-              <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100">
-                Notes
-              </h3>
-              <p className="text-sm whitespace-pre-line text-muted-foreground">
-                {trade.notes || "No notes added."}
-              </p>
-            </div>
+            <TradeNotesSimple
+              tradeId={tradeId}
+              initialNotes={trade.notes ?? ""}
+              className="mt-2"
+            />
 
-            {/* Add to/Close Position buttons at bottom right of card */}
+            {/* Add to/Close Position buttons below notes */}
             {trade.status === "open" && (
-              <div className="absolute right-6 bottom-6 flex items-end gap-2">
+              <div className="flex justify-end gap-2 pt-2">
                 {/* Close Position Button/Modal (left) */}
                 <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
                   <DialogTrigger asChild>
