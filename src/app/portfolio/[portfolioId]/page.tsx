@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getBaseUrl } from "@/lib/getBaseUrl";
 import PortfolioPageClient from "@/components/portfolio-page-client"; // make this a regular component
+import ProtectedPage from "@/components/protected-page";
 
 export default async function Page(props: {
   params: Promise<{ portfolioId: string }>;
@@ -23,5 +24,10 @@ export default async function Page(props: {
 
   const portfolio = await res.json();
 
-  return <PortfolioPageClient portfolio={portfolio} />;
+  return (
+    <ProtectedPage>
+      <PortfolioPageClient portfolio={portfolio} />
+    </ProtectedPage>
+  );
+
 }
