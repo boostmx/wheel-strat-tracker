@@ -16,7 +16,7 @@ function safe(cmd: string, fallback = "") {
 
 const sha =
   process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 9) ||
-  process.env.GITHUB_SHA?.slice(0,9) ||
+  process.env.GITHUB_SHA?.slice(0, 9) ||
   safe("git rev-parse --short=9 HEAD", "local");
 
 const baseVersion = (pkg as { version?: string }).version ?? "0.0.0";

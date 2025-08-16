@@ -31,25 +31,33 @@ export function SiteFooter() {
               A lightweight dashboard for tracking wheel and options trades.
             </p>
             <p className="text-xs text-muted-foreground">
-              © {YEAR} HL Financial Strategies — For educational
-              purposes only. Not financial advice.
+              © {YEAR} HL Financial Strategies — For educational purposes only.
+              Not financial advice.
             </p>
             <p className="text-xs text-muted-foreground italic">
-                Version: <VersionBadge />
+              Version: <VersionBadge />
             </p>
           </div>
 
           {/* Navigation */}
           <div>
-            <h4 className="text-sm font-semibold mb-3 text-foreground">Navigate</h4>
+            <h4 className="text-sm font-semibold mb-3 text-foreground">
+              Navigate
+            </h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/overview" className="text-muted-foreground hover:text-foreground">
+                <Link
+                  href="/overview"
+                  className="text-muted-foreground hover:text-foreground"
+                >
                   Overview
                 </Link>
               </li>
               <li>
-                <Link href="/summary" className="text-muted-foreground hover:text-foreground">
+                <Link
+                  href="/summary"
+                  className="text-muted-foreground hover:text-foreground"
+                >
                   Account Summary
                 </Link>
               </li>
@@ -58,10 +66,15 @@ export function SiteFooter() {
 
           {/* Resources / Feedback */}
           <div>
-            <h4 className="text-sm font-semibold mb-3 text-foreground">Resources</h4>
+            <h4 className="text-sm font-semibold mb-3 text-foreground">
+              Resources
+            </h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/changelog" className="text-muted-foreground hover:text-foreground">
+                <Link
+                  href="/changelog"
+                  className="text-muted-foreground hover:text-foreground"
+                >
                   Changelog
                 </Link>
               </li>

@@ -114,7 +114,9 @@ export default function PortfoliosOverviewContent() {
         transition={{ duration: 0.28 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Portfolios Overview</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          Portfolios Overview
+        </h1>
         <CreatePortfolioModal />
       </motion.div>
 
@@ -162,8 +164,8 @@ export default function PortfoliosOverviewContent() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will permanently delete this portfolio and all its
-                          trades.
+                          This will permanently delete this portfolio and all
+                          its trades.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -187,25 +189,39 @@ export default function PortfoliosOverviewContent() {
                       {/* Row 1: Open Trades, Capital In Use, Cash Available */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">Open Trades</p>
+                          <p className="text-gray-500 dark:text-gray-400 font-medium">
+                            Open Trades
+                          </p>
                           <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                             {snap ? snap.openCount : "-"}
                           </p>
                         </div>
 
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">Capital In Use</p>
+                          <p className="text-gray-600 dark:text-gray-400 font-medium">
+                            Capital In Use
+                          </p>
                           <p className="text-2xl font-semibold text-amber-700 dark:text-amber-300">
-                            {snap ? formatCompactCurrency(snap.capitalInUse) : "-"}
+                            {snap
+                              ? formatCompactCurrency(snap.capitalInUse)
+                              : "-"}
                           </p>
                         </div>
 
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">Cash Available</p>
-                          <p className={`text-2xl font-semibold ${
-                            snap && snap.cashAvailable < 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-300"
-                          }`}>
-                            {snap ? formatCompactCurrency(snap.cashAvailable) : "-"}
+                          <p className="text-gray-600 dark:text-gray-400 font-medium">
+                            Cash Available
+                          </p>
+                          <p
+                            className={`text-2xl font-semibold ${
+                              snap && snap.cashAvailable < 0
+                                ? "text-red-700 dark:text-red-400"
+                                : "text-green-700 dark:text-green-300"
+                            }`}
+                          >
+                            {snap
+                              ? formatCompactCurrency(snap.cashAvailable)
+                              : "-"}
                           </p>
                         </div>
                       </div>
@@ -213,32 +229,49 @@ export default function PortfoliosOverviewContent() {
                       {/* Row 2: Biggest Position, Next Expiration, Expiring Soon */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">Biggest Position</p>
+                          <p className="text-gray-600 dark:text-gray-400 font-medium">
+                            Biggest Position
+                          </p>
                           {snap?.biggest ? (
                             <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
-                              {snap.biggest.ticker} · ${snap.biggest.strikePrice.toFixed(2)} · {snap.biggest.contracts} contracts
+                              {snap.biggest.ticker} · $
+                              {snap.biggest.strikePrice.toFixed(2)} ·{" "}
+                              {snap.biggest.contracts} contracts
                               <span className="block text-xs text-slate-600 dark:text-slate-400 mt-1">
-                                Collateral: {formatCompactCurrency(snap.biggest.collateral)} · Exp {formatDateOnlyUTC(snap.biggest.expirationDate)}
+                                Collateral:{" "}
+                                {formatCompactCurrency(snap.biggest.collateral)}{" "}
+                                · Exp{" "}
+                                {formatDateOnlyUTC(snap.biggest.expirationDate)}
                               </span>
                             </p>
                           ) : (
-                            <p className="text-base text-slate-500 dark:text-slate-400">—</p>
+                            <p className="text-base text-slate-500 dark:text-slate-400">
+                              —
+                            </p>
                           )}
                         </div>
 
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">Next Expiration</p>
+                          <p className="text-gray-600 dark:text-gray-400 font-medium">
+                            Next Expiration
+                          </p>
                           {snap?.nextExpiration ? (
                             <p className="text-base font-semibold text-blue-800 dark:text-blue-300">
-                              {snap.nextExpiration ? `${formatDateOnlyUTC(snap.nextExpiration.date)} · ${snap.nextExpiration.contracts} contracts` : "—"}
+                              {snap.nextExpiration
+                                ? `${formatDateOnlyUTC(snap.nextExpiration.date)} · ${snap.nextExpiration.contracts} contracts`
+                                : "—"}
                             </p>
                           ) : (
-                            <p className="text-base text-blue-700 dark:text-blue-300">—</p>
+                            <p className="text-base text-blue-700 dark:text-blue-300">
+                              —
+                            </p>
                           )}
                         </div>
 
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">Expiring in 7 Days</p>
+                          <p className="text-gray-600 dark:text-gray-400 font-medium">
+                            Expiring in 7 Days
+                          </p>
                           <p className="text-2xl font-semibold text-rose-700 dark:text-rose-300">
                             {snap ? snap.expiringSoonCount : "-"}
                           </p>
@@ -248,25 +281,43 @@ export default function PortfoliosOverviewContent() {
                       {/* Row 3: Top Exposures, Open Avg Days, MTD/YTD Realized */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">Top Exposures</p>
+                          <p className="text-gray-500 dark:text-gray-400 font-medium">
+                            Top Exposures
+                          </p>
                           <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
                             {topLine || "—"}
                           </p>
                         </div>
 
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">Open Avg Days</p>
+                          <p className="text-gray-500 dark:text-gray-400 font-medium">
+                            Open Avg Days
+                          </p>
                           <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
                             {snap?.openAvgDays != null ? snap.openAvgDays : "—"}
                           </p>
                         </div>
 
                         <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">Realized P&L</p>
+                          <p className="text-gray-500 dark:text-gray-400 font-medium">
+                            Realized P&L
+                          </p>
                           <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                            MTD {snap ? formatCompactCurrency(snap.realizedMTD) : <span className="dark:text-gray-500">—</span>}
-                            <span className="mx-2 text-gray-400 dark:text-gray-500">•</span>
-                            YTD {snap ? formatCompactCurrency(snap.realizedYTD) : <span className="dark:text-gray-500">—</span>}
+                            MTD{" "}
+                            {snap ? (
+                              formatCompactCurrency(snap.realizedMTD)
+                            ) : (
+                              <span className="dark:text-gray-500">—</span>
+                            )}
+                            <span className="mx-2 text-gray-400 dark:text-gray-500">
+                              •
+                            </span>
+                            YTD{" "}
+                            {snap ? (
+                              formatCompactCurrency(snap.realizedYTD)
+                            ) : (
+                              <span className="dark:text-gray-500">—</span>
+                            )}
                           </p>
                         </div>
                       </div>

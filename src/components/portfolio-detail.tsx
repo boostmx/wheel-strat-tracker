@@ -116,18 +116,26 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         >
           <Card className="bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm rounded-lg h-full">
             <CardContent className="p-6">
-              <p className="text-base font-medium text-gray-600 dark:text-gray-400">Current Capital</p>
+              <p className="text-base font-medium text-gray-600 dark:text-gray-400">
+                Current Capital
+              </p>
               <p
                 className={`text-3xl font-bold dark:text-gray-300 ${
-                  metrics?.capitalUsed != null && metrics?.totalProfit != null &&
-                  portfolio.startingCapital + metrics.totalProfit - metrics.capitalUsed < 0
+                  metrics?.capitalUsed != null &&
+                  metrics?.totalProfit != null &&
+                  portfolio.startingCapital +
+                    metrics.totalProfit -
+                    metrics.capitalUsed <
+                    0
                     ? "text-red-600"
                     : "text-green-600"
                 }`}
               >
                 {metrics?.capitalUsed != null && metrics?.totalProfit != null
                   ? formatCompactCurrency(
-                      portfolio.startingCapital + metrics.totalProfit - metrics.capitalUsed,
+                      portfolio.startingCapital +
+                        metrics.totalProfit -
+                        metrics.capitalUsed,
                     )
                   : "Loading..."}
               </p>
@@ -136,7 +144,8 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               </p>
               <p
                 className={`text-sm font-medium ${
-                  metrics?.percentCapitalDeployed != null && metrics.percentCapitalDeployed >= 85
+                  metrics?.percentCapitalDeployed != null &&
+                  metrics.percentCapitalDeployed >= 85
                     ? "text-red-600"
                     : "text-green-600"
                 }`}
@@ -152,23 +161,37 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, delay: 0.10 }}
+          transition={{ duration: 0.24, delay: 0.1 }}
           whileHover={{ y: -2 }}
           style={{ willChange: "opacity, transform" }}
         >
           <Card className="bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm rounded-lg h-full">
             <CardContent className="p-6">
-              <p className="text-base font-medium text-gray-600 dark:text-gray-400">P&L Overview</p>
-              <p className={`text-3xl font-bold dark:text-gray-300 ${
-                metrics?.totalProfit != null && metrics.totalProfit >= 0 ? "text-green-600" : "text-red-600"
-              }`}>
-                {metrics?.totalProfit != null ? formatCompactCurrency(metrics.totalProfit) : "Loading..."}
+              <p className="text-base font-medium text-gray-600 dark:text-gray-400">
+                P&L Overview
+              </p>
+              <p
+                className={`text-3xl font-bold dark:text-gray-300 ${
+                  metrics?.totalProfit != null && metrics.totalProfit >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {metrics?.totalProfit != null
+                  ? formatCompactCurrency(metrics.totalProfit)
+                  : "Loading..."}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                MTD: {metrics?.realizedMTD != null ? formatCompactCurrency(metrics.realizedMTD) : "—"}
+                MTD:{" "}
+                {metrics?.realizedMTD != null
+                  ? formatCompactCurrency(metrics.realizedMTD)
+                  : "—"}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                YTD: {metrics?.realizedYTD != null ? formatCompactCurrency(metrics.realizedYTD) : "—"}
+                YTD:{" "}
+                {metrics?.realizedYTD != null
+                  ? formatCompactCurrency(metrics.realizedYTD)
+                  : "—"}
               </p>
             </CardContent>
           </Card>
@@ -191,7 +214,11 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               whileHover={{ y: -2 }}
               style={{ willChange: "opacity, transform" }}
             >
-              <MetricsCard label={m.label} value={m.value} className={m.className} />
+              <MetricsCard
+                label={m.label}
+                value={m.value}
+                className={m.className}
+              />
             </motion.div>
           ))}
       </motion.div>
@@ -203,7 +230,9 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         transition={{ duration: 0.22, delay: 0.18 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Open Positions</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          Open Positions
+        </h2>
         <AddTradeModal portfolioId={portfolio.id} />
       </motion.div>
       <motion.div
@@ -233,7 +262,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         className="w-full rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 text-sm shadow-sm"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.30 }}
+        transition={{ duration: 0.22, delay: 0.3 }}
         style={{ willChange: "opacity, transform" }}
       >
         {loadingClosed ? (

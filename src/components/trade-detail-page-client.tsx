@@ -33,6 +33,15 @@ const formatUSD = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 
+const calcCapitalInUse = (t: Trade) => {
+  if (!t) return 0;
+  if (t.status !== "open") return 0;
+  const type = (t.type || "").toLowerCase();
+  // Capital in use only applies to cash-secured puts (strike * 100 * contracts)
+  const isCashSecuredPut = type.includes("put") && !type.includes("covered");
+  return isCashSecuredPut ? t.strikePrice * 100 * t.contracts : 0;
+};
+
 export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   const [trade, setTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,7 +209,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       {/* Back link row */}
       <motion.div
         className="flex justify-end mb-4"
-        initial={ false }
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.24 }}
         style={{ willChange: "opacity, transform" }}
@@ -213,7 +222,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       {/* Main card */}
       <motion.div
         className="transform-gpu"
-        initial={ false}
+        initial={false}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.24, delay: 0.04 }}
         style={{ willChange: "opacity" }}
@@ -280,9 +289,17 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                 className="space-y-1"
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.22, delay: 0.10 }}
+                transition={{ duration: 0.22, delay: 0.1 }}
                 style={{ willChange: "opacity, transform" }}
               >
+                <p>
+                  <span className="font-medium text-muted-foreground">
+                    Capital In Use:
+                  </span>{" "}
+                  {trade.status === "open"
+                    ? formatUSD(calcCapitalInUse(trade))
+                    : "-"}
+                </p>
                 <p>
                   <span className="font-medium text-muted-foreground">
                     Opened:
