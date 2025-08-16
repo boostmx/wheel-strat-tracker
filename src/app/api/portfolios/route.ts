@@ -45,7 +45,6 @@ export async function POST(req: Request): Promise<NextResponse> {
       name,
       userId: session.user.id,
       startingCapital,
-      currentCapital: startingCapital,
     },
   });
 

@@ -23,7 +23,7 @@ export interface Portfolio {
   id: string;
   name: string | null;
   startingCapital: number;
-  currentCapital: number;
+  additionalCapital: number;
   capitalUsed?: number;
 }
 

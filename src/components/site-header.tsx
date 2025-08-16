@@ -160,7 +160,9 @@ export function SiteHeader() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuItem
-                  onClick={() => signOut()}
+                  onClick={async () => {
+                    await signOut({ callbackUrl: "/login" });
+                  }}
                   className="flex items-center gap-2"
                 >
                   <LogOut className="w-4 h-4" />
@@ -215,7 +217,9 @@ export function SiteHeader() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => signOut()}
+                  onClick={async () => {
+                    await signOut({ callbackUrl: "/login" });
+                  }}
                   className="flex items-center gap-2"
                 >
                   <LogOut className="w-4 h-4" />

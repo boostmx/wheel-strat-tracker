@@ -100,9 +100,11 @@ export async function GET(
     return isCSP ? sum + t.contracts * t.strikePrice * 100 : sum;
   }, 0);
 
+  // After fetching the portfolio:
+  const startingCapital: number = Number(portfolio?.startingCapital ?? 0);
   const percentCapitalDeployed =
-    portfolio.startingCapital > 0
-      ? (capitalUsed / portfolio.startingCapital) * 100
+    startingCapital > 0
+      ? (capitalUsed / startingCapital) * 100
       : 0;
 
   // Potential premium (unrealized): sum of open credits × 100 × contracts

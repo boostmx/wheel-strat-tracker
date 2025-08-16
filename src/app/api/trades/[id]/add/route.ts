@@ -20,12 +20,18 @@ export async function PATCH(
   }
 
   const trade = await prisma.trade.findUnique({ where: { id } });
-  if (!trade)
+  if (!trade) {
     return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+  }
 
-  const totalContracts = trade.contracts + addedContracts;
+  // Convert Prisma Decimal fields to numbers for arithmetic
+  const existingContracts = Number(trade.contracts);
+  const existingContractPrice = Number(trade.contractPrice ?? 0);
+
+  const totalContracts = existingContracts + addedContracts;
   const totalPremium =
-    trade.contractPrice * trade.contracts + addedContractPrice * addedContracts;
+    existingContractPrice * existingContracts +
+    addedContractPrice * addedContracts;
 
   const newAvgPrice = totalPremium / totalContracts;
 
@@ -37,17 +43,8 @@ export async function PATCH(
     },
   });
 
-  // Auto-capital adjustment: only for CSPs (Cash Secured Put)
-  if (trade.type === "CashSecuredPut") {
-    await prisma.portfolio.update({
-      where: { id: trade.portfolioId },
-      data: {
-        currentCapital: {
-          decrement: addedContracts * 100 * addedContractPrice,
-        },
-      },
-    });
-  }
+  // NOTE: We no longer update portfolio cash here since `currentCapital` was removed.
+  // Cash is derived in metrics from startingCapital, additionalCapital, and open positions.
 
   return NextResponse.json(updated);
 }

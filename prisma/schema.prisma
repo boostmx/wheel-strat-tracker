@@ -31,14 +31,20 @@ model User {
 }
 
 model Portfolio {
-  id              String   @id @default(cuid())
-  name            String
-  user            User     @relation(fields: [userId], references: [id])
-  userId          String
-  trades          Trade[]
-  startingCapital Float
-  currentCapital  Float
-  createdAt       DateTime @default(now())
+  id                String   @id @default(cuid())
+  name              String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  trades            Trade[]
+  startingCapital   Decimal  @default(0)
+  additionalCapital Decimal  @default(0)
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime? @updatedAt   
+
+  @@index([userId])              
+  // Optional: enforce unique names per user
+  // @@unique([userId, name])
 }
 
 model Trade {
