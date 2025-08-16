@@ -33,6 +33,15 @@ const formatUSD = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 
+const calcCapitalInUse = (t: Trade) => {
+  if (!t) return 0;
+  if (t.status !== "open") return 0;
+  const type = (t.type || "").toLowerCase();
+  // Capital in use only applies to cash-secured puts (strike * 100 * contracts)
+  const isCashSecuredPut = type.includes("put") && !type.includes("covered");
+  return isCashSecuredPut ? t.strikePrice * 100 * t.contracts : 0;
+};
+
 export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   const [trade, setTrade] = useState<Trade | null>(null);
   const [loading, setLoading] = useState(true);
@@ -283,6 +292,10 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                 transition={{ duration: 0.22, delay: 0.10 }}
                 style={{ willChange: "opacity, transform" }}
               >
+                <p>
+                  <span className="font-medium text-muted-foreground">Capital In Use:</span>{" "}
+                  {trade.status === "open" ? formatUSD(calcCapitalInUse(trade)) : "-"}
+                </p>
                 <p>
                   <span className="font-medium text-muted-foreground">
                     Opened:

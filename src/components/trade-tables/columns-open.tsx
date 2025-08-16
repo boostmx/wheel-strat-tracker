@@ -1,16 +1,11 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Trade } from "@/types";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 
 // Formats enum-ish strings like "CashSecuredPut" -> "Cash Secured Put"
 const formatType = (s: string) => s.replace(/([a-z])([A-Z])/g, "$1 $2");
 
-export const makeOpenColumns = (
-  portfolioId: string,
-  onCloseClick?: (trade: Trade) => void,
-): ColumnDef<Trade>[] => [
+export const makeOpenColumns = (): ColumnDef<Trade>[] => [
   {
     accessorKey: "ticker",
     header: "Ticker",
@@ -59,25 +54,5 @@ export const makeOpenColumns = (
       return isFinite(n) ? `$${n.toFixed(2)}` : "—";
     },
     meta: { align: "right" },
-  },
-  {
-    id: "actions",
-    header: "Action",
-    cell: ({ row }) => (
-      <div className="space-x-2 flex items-center">
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/portfolio/${portfolioId}/trade/${row.original.id}`}>
-            View
-          </Link>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onCloseClick?.(row.original)}
-        >
-          Close
-        </Button>
-      </div>
-    ),
   },
 ];
