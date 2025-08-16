@@ -39,7 +39,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
 
   // Normalize numeric fields (Decimal/string -> number)
   const starting = Number(portfolio.startingCapital ?? 0);
-  const addl = Number((portfolio as any).additionalCapital ?? 0);
+  const addl = Number(portfolio.additionalCapital ?? 0);
 
   // Prepare metric items for display
   // Note: This assumes metrics object has the necessary fields
