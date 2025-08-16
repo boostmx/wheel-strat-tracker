@@ -37,6 +37,10 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
     getPortfolioMetrics(portfolio.id),
   );
 
+  // Normalize numeric fields (Decimal/string -> number)
+  const starting = Number(portfolio.startingCapital ?? 0);
+  const addl = Number(portfolio.additionalCapital ?? 0);
+
   // Prepare metric items for display
   // Note: This assumes metrics object has the necessary fields
   // Order them by the 'order' property
@@ -123,24 +127,25 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                 className={`text-3xl font-bold dark:text-gray-300 ${
                   metrics?.capitalUsed != null &&
                   metrics?.totalProfit != null &&
-                  portfolio.startingCapital +
-                    metrics.totalProfit -
-                    metrics.capitalUsed <
-                    0
+                  starting + addl + Number(metrics.totalProfit) - Number(metrics.capitalUsed) < 0
                     ? "text-red-600"
                     : "text-green-600"
                 }`}
               >
                 {metrics?.capitalUsed != null && metrics?.totalProfit != null
                   ? formatCompactCurrency(
-                      portfolio.startingCapital +
-                        metrics.totalProfit -
-                        metrics.capitalUsed,
+                      starting +
+                        addl +
+                        Number(metrics.totalProfit) -
+                        Number(metrics.capitalUsed),
                     )
                   : "Loading..."}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Starting: {formatCompactCurrency(portfolio.startingCapital)}
+                Starting: {formatCompactCurrency(starting)}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Additional: {formatCompactCurrency(addl)}
               </p>
               <p
                 className={`text-sm font-medium ${
