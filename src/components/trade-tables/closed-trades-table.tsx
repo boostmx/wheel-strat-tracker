@@ -12,7 +12,6 @@ import { makeClosedColumns } from "./columns-closed";
 import { Trade } from "@/types";
 import { useRouter } from "next/navigation";
 
-
 export function ClosedTradesTable({
   trades,
   portfolioId,
@@ -68,7 +67,11 @@ export function ClosedTradesTable({
               <tr
                 key={row.id}
                 className="border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
-                onClick={() => router.push(`/portfolio/${portfolioId}/trade/${row.original.id}`)}
+                onClick={() =>
+                  router.push(
+                    `/portfolio/${portfolioId}/trade/${row.original.id}`,
+                  )
+                }
               >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-4 py-2">

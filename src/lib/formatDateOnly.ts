@@ -21,7 +21,9 @@ export function dayStringToUtcMidnight(s: string): Date {
 /** Idempotently ensure a value is a Date at UTC midnight (safe for Date or 'YYYY-MM-DD'). */
 export function ensureUtcMidnight(input: Date | string): Date {
   if (typeof input === "string") {
-    return isDateOnlyString(input) ? dayStringToUtcMidnight(input) : toUtcMidnight(new Date(input));
+    return isDateOnlyString(input)
+      ? dayStringToUtcMidnight(input)
+      : toUtcMidnight(new Date(input));
   }
   return toUtcMidnight(input);
 }
@@ -35,7 +37,9 @@ export function toDateOnlyStringUTC(input: Date | string): string {
 /** Add N days in UTC (date arithmetic unaffected by local time zone). */
 export function addDaysUtc(input: Date | string, days: number): Date {
   const d = ensureUtcMidnight(input);
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + days));
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + days),
+  );
 }
 
 // ------------------------- Formatting (UI) -------------------------

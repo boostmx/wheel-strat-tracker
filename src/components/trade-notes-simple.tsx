@@ -16,7 +16,12 @@ type Props = {
   onSaved?: (notes: string) => void; // optional hook if parent wants to refresh
 };
 
-export function TradeNotesSimple({ tradeId, initialNotes, className, onSaved }: Props) {
+export function TradeNotesSimple({
+  tradeId,
+  initialNotes,
+  className,
+  onSaved,
+}: Props) {
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState(initialNotes ?? "");
   const [draft, setDraft] = useState(initialNotes ?? "");
@@ -61,7 +66,8 @@ export function TradeNotesSimple({ tradeId, initialNotes, className, onSaved }: 
     }
     const start = el.selectionStart ?? draft.length;
     const end = el.selectionEnd ?? draft.length;
-    const next = (draft ?? "").slice(0, start) + stamp + (draft ?? "").slice(end);
+    const next =
+      (draft ?? "").slice(0, start) + stamp + (draft ?? "").slice(end);
     setDraft(next);
     // Restore caret just after inserted text
     requestAnimationFrame(() => {
@@ -80,7 +86,14 @@ export function TradeNotesSimple({ tradeId, initialNotes, className, onSaved }: 
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => { setEditing(false); setDraft(notes); }}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditing(false);
+                setDraft(notes);
+              }}
+            >
               Cancel
             </Button>
             <Button size="sm" onClick={save} disabled={busy}>
@@ -94,9 +107,11 @@ export function TradeNotesSimple({ tradeId, initialNotes, className, onSaved }: 
       {!editing && (
         <div className="p-3">
           {notes?.trim() ? (
-            <div className="prose text-sm leading-5 text-gray-600 dark:text-gray-400 max-w-none 
+            <div
+              className="prose text-sm leading-5 text-gray-600 dark:text-gray-400 max-w-none 
                             prose-strong:text-gray-700 dark:prose-strong:text-gray-300 
-                            prose-p:my-1 prose-li:my-0 prose-ul:my-2 prose-ol:my-2">
+                            prose-p:my-1 prose-li:my-0 prose-ul:my-2 prose-ol:my-2"
+            >
               <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                 {notes}
               </ReactMarkdown>

@@ -6,15 +6,37 @@ export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
 // --- Realized P&L helpers (UTC-safe) ---
-const startOfMonthUTC = () => { const d = new Date(); d.setUTCDate(1); d.setUTCHours(0,0,0,0); return d; };
-const startOfYearUTC = () => { const d = new Date(); d.setUTCMonth(0,1); d.setUTCDate(1); d.setUTCHours(0,0,0,0); return d; };
-const tradePL = (t: { contracts: number; contractPrice: number; closingPrice: number | null; premiumCaptured: number | null; }) => {
+const startOfMonthUTC = () => {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+};
+const startOfYearUTC = () => {
+  const d = new Date();
+  d.setUTCMonth(0, 1);
+  d.setUTCDate(1);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+};
+const tradePL = (t: {
+  contracts: number;
+  contractPrice: number;
+  closingPrice: number | null;
+  premiumCaptured: number | null;
+}) => {
   if (t.premiumCaptured != null) return Number(t.premiumCaptured);
   const close = t.closingPrice ?? 0;
   return (Number(t.contractPrice) - Number(close)) * 100 * Number(t.contracts);
 };
-const sumPL = (rows: Array<{ contracts: number; contractPrice: number; closingPrice: number | null; premiumCaptured: number | null; }>) =>
-  rows.reduce((s, t) => s + tradePL(t), 0);
+const sumPL = (
+  rows: Array<{
+    contracts: number;
+    contractPrice: number;
+    closingPrice: number | null;
+    premiumCaptured: number | null;
+  }>,
+) => rows.reduce((s, t) => s + tradePL(t), 0);
 
 // Reusable "no-store" JSON responder
 function jsonNoStore(data: unknown, status = 200) {
@@ -62,8 +84,12 @@ export async function GET(
     closedAt: t.closedAt ? new Date(t.closedAt) : null,
   }));
 
-  const realizedMTD = sumPL(closedRows.filter((t) => t.closedAt && t.closedAt >= monthStart));
-  const realizedYTD = sumPL(closedRows.filter((t) => t.closedAt && t.closedAt >= yearStart));
+  const realizedMTD = sumPL(
+    closedRows.filter((t) => t.closedAt && t.closedAt >= monthStart),
+  );
+  const realizedYTD = sumPL(
+    closedRows.filter((t) => t.closedAt && t.closedAt >= yearStart),
+  );
 
   // Capital used (only CSP ties up cash; CC uses covered shares)
   const capitalUsed = openTrades.reduce((sum: number, t: Trade) => {

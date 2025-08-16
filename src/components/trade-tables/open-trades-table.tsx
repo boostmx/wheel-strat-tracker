@@ -33,12 +33,15 @@ const formatUSD = (n: number) =>
   }).format(n);
 
 const isCashSecuredPut = (type?: string) =>
-  !!type && type.toLowerCase().includes("put") && !type.toLowerCase().includes("covered");
+  !!type &&
+  type.toLowerCase().includes("put") &&
+  !type.toLowerCase().includes("covered");
 
 const calcCapitalInUse = (t: Trade) =>
   isCashSecuredPut(t.type) ? t.strikePrice * 100 * t.contracts : 0;
 
-const calcOpenPremium = (t: Trade) => (t.contractPrice ?? 0) * 100 * t.contracts;
+const calcOpenPremium = (t: Trade) =>
+  (t.contractPrice ?? 0) * 100 * t.contracts;
 
 const calcBreakeven = (t: Trade) => {
   const premiumPerShare = t.contractPrice ?? 0;
@@ -65,7 +68,8 @@ const buildTooltipContent = (t: Trade) => (
     </div>
     {typeof t.entryPrice === "number" && isFinite(t.entryPrice) && (
       <div>
-        Entry Price: <span className="font-medium">{formatUSD(t.entryPrice)}</span>
+        Entry Price:{" "}
+        <span className="font-medium">{formatUSD(t.entryPrice)}</span>
       </div>
     )}
     {typeof calcBreakeven(t) === "number" && (
@@ -75,7 +79,12 @@ const buildTooltipContent = (t: Trade) => (
       </div>
     )}
     {t.createdAt && (
-      <div>Opened on: <span className="font-medium">{formatDateOnlyUTC(new Date(t.createdAt))}</span></div>
+      <div>
+        Opened on:{" "}
+        <span className="font-medium">
+          {formatDateOnlyUTC(new Date(t.createdAt))}
+        </span>
+      </div>
     )}
   </div>
 );
@@ -99,7 +108,13 @@ const infoColumn: ColumnDef<Trade> = {
           <Info className="h-4 w-4" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top" align="start" sideOffset={10} collisionPadding={8} className="max-w-xs">
+      <TooltipContent
+        side="top"
+        align="start"
+        sideOffset={10}
+        collisionPadding={8}
+        className="max-w-xs"
+      >
         {buildTooltipContent(row.original)}
       </TooltipContent>
     </Tooltip>
@@ -149,7 +164,10 @@ export function OpenTradesTable({
                     className="px-4 py-2 font-semibold cursor-pointer select-none dark:text-gray-200"
                     onClick={header.column.getToggleSortingHandler()}
                   >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
                   </th>
                 ))}
               </tr>
@@ -171,16 +189,25 @@ export function OpenTradesTable({
                 <tr
                   key={row.id}
                   className="group border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
-                  onClick={() => router.push(`/portfolio/${portfolioId}/trade/${row.original.id}`)}
+                  onClick={() =>
+                    router.push(
+                      `/portfolio/${portfolioId}/trade/${row.original.id}`,
+                    )
+                  }
                 >
                   {row.getVisibleCells().map((cell, idx) => {
                     const isLast = idx === row.getVisibleCells().length - 1;
                     return (
                       <td
                         key={cell.id}
-                        className={isLast ? "relative px-4 py-2 pr-10" : "px-4 py-2"}
+                        className={
+                          isLast ? "relative px-4 py-2 pr-10" : "px-4 py-2"
+                        }
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
                         {isLast && (
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Tooltip>
@@ -202,7 +229,11 @@ export function OpenTradesTable({
                                   <XCircle className="h-5 w-5" />
                                 </button>
                               </TooltipTrigger>
-                              <TooltipContent side="left" align="center" sideOffset={8}>
+                              <TooltipContent
+                                side="left"
+                                align="center"
+                                sideOffset={8}
+                              >
                                 Close position
                               </TooltipContent>
                             </Tooltip>

@@ -106,7 +106,7 @@ export async function PATCH(
         ticker: trade.ticker,
         strikePrice: trade.strikePrice,
         expirationDate: trade.expirationDate,
-        createdAt: trade.createdAt, 
+        createdAt: trade.createdAt,
         type: trade.type,
         contracts: contractsToClose,
         contractPrice: sellPrice, // credit at open (avg)

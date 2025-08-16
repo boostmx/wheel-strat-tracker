@@ -32,7 +32,7 @@ export async function GET(
 // This is a PATCH request
 export async function PATCH(
   req: Request,
-  props: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> },
 ) {
   const { id } = await props.params;
   const session = await getServerSession(authOptions);
@@ -51,7 +51,8 @@ export async function PATCH(
   const body = (await req.json().catch(() => ({}))) as PatchBody;
 
   // Only allow known fields to be updated
-  const { notes, strikePrice, contracts, contractPrice, expirationDate, type } = body;
+  const { notes, strikePrice, contracts, contractPrice, expirationDate, type } =
+    body;
 
   const updates: Prisma.TradeUpdateInput = {};
   if (typeof notes === "string") updates.notes = notes;
@@ -64,12 +65,18 @@ export async function PATCH(
       updates.expirationDate = d;
     }
   }
-  if (typeof type === "string" && (Object.values(TradeType) as string[]).includes(type)) {
+  if (
+    typeof type === "string" &&
+    (Object.values(TradeType) as string[]).includes(type)
+  ) {
     updates.type = type as TradeType;
   }
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No valid fields to update" },
+      { status: 400 },
+    );
   }
 
   const updated = await prisma.trade.update({

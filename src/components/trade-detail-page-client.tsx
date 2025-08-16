@@ -209,7 +209,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       {/* Back link row */}
       <motion.div
         className="flex justify-end mb-4"
-        initial={ false }
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.24 }}
         style={{ willChange: "opacity, transform" }}
@@ -222,7 +222,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       {/* Main card */}
       <motion.div
         className="transform-gpu"
-        initial={ false}
+        initial={false}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.24, delay: 0.04 }}
         style={{ willChange: "opacity" }}
@@ -289,12 +289,16 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                 className="space-y-1"
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.22, delay: 0.10 }}
+                transition={{ duration: 0.22, delay: 0.1 }}
                 style={{ willChange: "opacity, transform" }}
               >
                 <p>
-                  <span className="font-medium text-muted-foreground">Capital In Use:</span>{" "}
-                  {trade.status === "open" ? formatUSD(calcCapitalInUse(trade)) : "-"}
+                  <span className="font-medium text-muted-foreground">
+                    Capital In Use:
+                  </span>{" "}
+                  {trade.status === "open"
+                    ? formatUSD(calcCapitalInUse(trade))
+                    : "-"}
                 </p>
                 <p>
                   <span className="font-medium text-muted-foreground">

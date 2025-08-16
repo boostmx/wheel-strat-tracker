@@ -3,14 +3,14 @@ import { useEffect, useRef } from "react";
 import { signOut } from "next-auth/react";
 
 type Props = {
-  timeoutMs?: number;  // total idle time before signout
-  warnMs?: number;     // how long before signout to warn
+  timeoutMs?: number; // total idle time before signout
+  warnMs?: number; // how long before signout to warn
   onWarn?: () => void; // e.g., toast("Signing out in 1 minute…")
 };
 
 export function IdleSignout({
   timeoutMs = 30 * 60 * 1000, // 30m
-  warnMs = 60 * 1000,         // 1m
+  warnMs = 60 * 1000, // 1m
   onWarn,
 }: Props) {
   // Use ReturnType<typeof setTimeout> so it works in both browser and node typings
