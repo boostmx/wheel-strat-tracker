@@ -103,9 +103,7 @@ export async function GET(
   // After fetching the portfolio:
   const startingCapital: number = Number(portfolio?.startingCapital ?? 0);
   const percentCapitalDeployed =
-    startingCapital > 0
-      ? (capitalUsed / startingCapital) * 100
-      : 0;
+    startingCapital > 0 ? (capitalUsed / startingCapital) * 100 : 0;
 
   // Potential premium (unrealized): sum of open credits × 100 × contracts
   const potentialPremium = openTrades.reduce((sum: number, t: Trade) => {

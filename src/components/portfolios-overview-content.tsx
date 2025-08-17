@@ -1,26 +1,17 @@
 "use client";
 
-import useSWR, { mutate } from "swr";
+import useSWR from "swr";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+//import { toast } from "sonner";
 import { CreatePortfolioModal } from "@/components/create-portfolio-modal";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
 import { useEffect, useState } from "react";
 import type { Portfolio } from "@/types";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
+import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
 
 // --- Snapshot types (returned by /api/portfolios/snapshot/bulk) ---
 export type Snapshot = {
@@ -86,25 +77,6 @@ export default function PortfoliosOverviewContent() {
     fetchSnapshots();
   }, [portfolios]);
 
-  async function handleDelete(portfolioId: string) {
-    try {
-      const res = await fetch(`/api/portfolios/${portfolioId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to delete");
-      }
-
-      toast.success("Portfolio deleted");
-      mutate("/api/portfolios");
-    } catch (err) {
-      toast.error("Failed to delete portfolio");
-      console.error(err);
-    }
-  }
-
   return (
     <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
       <motion.div
@@ -150,35 +122,17 @@ export default function PortfoliosOverviewContent() {
                 style={{ willChange: "opacity, transform" }}
               >
                 <Card className="relative hover:shadow-lg transition duration-200">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute top-2 right-2 px-2 py-1 text-sm text-red-600 border border-red-500 rounded hover:bg-red-50 transition"
-                      >
-                        Delete
-                      </button>
-                    </AlertDialogTrigger>
-
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete this portfolio and all
-                          its trades.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          onClick={() => handleDelete(p.id)}
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Link
+                    href={`/portfolio/${p.id}/settings`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-2 right-2"
+                    aria-label="Edit portfolio settings"
+                    title="Edit Portfolio"
+                  >
+                    <Button variant="ghost" size="icon">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </Link>
 
                   <Link href={`/portfolio/${p.id}`}>
                     <CardContent className="p-6 cursor-pointer">

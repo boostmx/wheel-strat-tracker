@@ -127,7 +127,11 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                 className={`text-3xl font-bold dark:text-gray-300 ${
                   metrics?.capitalUsed != null &&
                   metrics?.totalProfit != null &&
-                  starting + addl + Number(metrics.totalProfit) - Number(metrics.capitalUsed) < 0
+                  starting +
+                    addl +
+                    Number(metrics.totalProfit) -
+                    Number(metrics.capitalUsed) <
+                    0
                     ? "text-red-600"
                     : "text-green-600"
                 }`}

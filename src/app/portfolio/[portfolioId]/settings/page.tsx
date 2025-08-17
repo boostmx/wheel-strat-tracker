@@ -1,7 +1,8 @@
+// src/app/portfolio/[id]/settings/page.tsx
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getBaseUrl } from "@/lib/getBaseUrl";
-import PortfolioPageClient from "@/components/portfolio-page-client"; // make this a regular component
+import { EditPortfolioForm } from "@/components/portfolio/porfolio-edit-form"; // keep your filename
 import ProtectedPage from "@/components/protected-page";
 
 export default async function Page(props: {
@@ -21,12 +22,11 @@ export default async function Page(props: {
   });
 
   if (!res.ok) return notFound();
-
   const portfolio = await res.json();
 
   return (
     <ProtectedPage>
-      <PortfolioPageClient portfolio={portfolio} />
+      <EditPortfolioForm portfolio={portfolio} />
     </ProtectedPage>
   );
 }

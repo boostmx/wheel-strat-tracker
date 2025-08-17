@@ -24,7 +24,7 @@ export interface Portfolio {
   name: string | null;
   startingCapital: number;
   additionalCapital: number;
-  capitalUsed?: number;
+  notes?: string | null;
 }
 
 export interface Metrics {
