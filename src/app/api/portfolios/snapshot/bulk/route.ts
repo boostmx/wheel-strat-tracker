@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 type Snapshot = {
   portfolioId: string;
   startingCapital: number;
-  currentCapital: number; // NEW: starting + totalProfitAll
-  totalProfitAll: number; // realized P/L all time
+  additionalCapital: number; // NEW
+  capitalBase: number;       // NEW: starting + additional
+  currentCapital: number;    // capitalBase + totalProfitAll (realized)
+  totalProfitAll: number;    // realized P/L all time
   openCount: number;
-  capitalInUse: number; // CSP collateral
-  cashAvailable: number; // currentCapital - capitalInUse
+  capitalInUse: number;      // CSP collateral
+  cashAvailable: number;     // currentCapital - capitalInUse
   biggest: {
     ticker: string;
     strikePrice: number;
@@ -83,7 +85,7 @@ export async function POST(req: Request) {
         await Promise.all([
           prisma.portfolio.findUnique({
             where: { id: portfolioId },
-            select: { startingCapital: true },
+            select: { startingCapital: true, additionalCapital: true },
           }),
           prisma.trade.findMany({
             where: { portfolioId, status: "open" },
@@ -217,13 +219,17 @@ export async function POST(req: Request) {
 
       // Current & available capital
       const starting = Number(portfolio.startingCapital);
-      const currentCapital = starting + totalProfitAll; // NEW
-      const cashAvailable = currentCapital - capitalInUse; // uses realized already
+      const additional = Number(portfolio.additionalCapital ?? 0);
+      const capitalBase = starting + additional; // baseline pool committed to strategy
+      const currentCapital = capitalBase + totalProfitAll; // realized P&L increases/decreases cash
+      const cashAvailable = currentCapital - capitalInUse; // free after collateral usage
 
       const snap: Snapshot = {
         portfolioId,
         startingCapital: starting,
-        currentCapital, // NEW
+        additionalCapital: additional,
+        capitalBase,
+        currentCapital,
         totalProfitAll,
         openCount: openTrades.length,
         capitalInUse,

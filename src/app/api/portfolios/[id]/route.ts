@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -62,6 +63,56 @@ export async function DELETE(
   } catch {
     return NextResponse.json(
       { error: "Something went wrong" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(
+  req: Request,
+  props: { params: Promise<{ id: string }> },
+) {
+  const params = await props.params;
+  const id = await params.id;
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+    const { name, startingCapital, additionalCapital, notes } = body;
+
+    const updated = await prisma.portfolio.updateMany({
+      where: {
+        id,
+        userId: session.user.id,
+      },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(startingCapital !== undefined && {
+          startingCapital: new Prisma.Decimal(startingCapital),
+        }),
+        ...(additionalCapital !== undefined && {
+          additionalCapital: new Prisma.Decimal(additionalCapital),
+        }),
+        ...(notes !== undefined && { notes }),
+      },
+    });
+
+    if (updated.count === 0) {
+      return NextResponse.json(
+        { error: "Portfolio not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ message: "Portfolio updated" });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
       { status: 500 },
     );
   }

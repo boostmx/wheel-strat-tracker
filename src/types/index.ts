@@ -24,12 +24,14 @@ export interface Portfolio {
   name: string | null;
   startingCapital: number;
   additionalCapital: number;
-  capitalUsed?: number;
+  notes?: string | null;
 }
 
 export interface Metrics {
   startingCapital: number;
   capitalUsed?: number;
+  capitalBase?: number;
+  cashAvailable?: number;
   winRate: number | null;
   totalProfit: number | null;
   avgPLPercent: number | null;

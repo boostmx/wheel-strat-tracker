@@ -60,7 +60,7 @@ export async function GET(
 
   const portfolio = await prisma.portfolio.findUnique({
     where: { id: portfolioId },
-    select: { startingCapital: true },
+    select: { startingCapital: true, additionalCapital: true },
   });
 
   if (!portfolio) {
@@ -102,10 +102,10 @@ export async function GET(
 
   // After fetching the portfolio:
   const startingCapital: number = Number(portfolio?.startingCapital ?? 0);
-  const percentCapitalDeployed =
-    startingCapital > 0
-      ? (capitalUsed / startingCapital) * 100
-      : 0;
+  const additionalCapital: number = Number(portfolio?.additionalCapital ?? 0);
+  const capitalBase: number = startingCapital + additionalCapital;
+  const percentCapitalDeployed = capitalBase > 0 ? (capitalUsed / capitalBase) * 100 : 0;
+  const cashAvailable: number = capitalBase - capitalUsed;
 
   // Potential premium (unrealized): sum of open credits × 100 × contracts
   const potentialPremium = openTrades.reduce((sum: number, t: Trade) => {
@@ -128,7 +128,10 @@ export async function GET(
   if (closedTrades.length === 0) {
     return jsonNoStore({
       startingCapital: portfolio.startingCapital,
+      additionalCapital: portfolio.additionalCapital,
+      capitalBase,
       capitalUsed,
+      cashAvailable,
       percentCapitalDeployed,
       avgDaysInTrade,
       winRate: 0,
@@ -162,7 +165,10 @@ export async function GET(
 
   return jsonNoStore({
     startingCapital: portfolio.startingCapital,
+    additionalCapital: portfolio.additionalCapital,
+    capitalBase,
     capitalUsed,
+    cashAvailable,
     percentCapitalDeployed,
     avgDaysInTrade,
     winRate,
