@@ -1,5 +1,5 @@
-import ProtectedPage from "@/components/protected-page";
-import TradeDetailPageClient from "@/components/trade-detail-page-client";
+import ProtectedPage from "@/features/auth/components/ProtectedPage";
+import TradeDetailPageClient from "@/features/trades/components/TradeDetailPageClient";
 
 export default async function Page(props: {
   params: Promise<{ portfolioId: string; tradeId: string }>;

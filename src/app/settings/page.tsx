@@ -1,5 +1,5 @@
-import SettingsForm from "@/components/settings/settings-form";
-import ProtectedPage from "@/components/protected-page";
+import SettingsForm from "@/features/settings/components/SettingsForm";
+import ProtectedPage from "@/features/auth/components/ProtectedPage";
 
 export default function SettingsPage() {
   return (

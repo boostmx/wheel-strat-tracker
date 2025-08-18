@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Github, Mail } from "lucide-react";
-import { VersionBadge } from "./version-badge";
+import { VersionBadge } from "./VersionBadge";
 
 const APP_NAME = "Trade Tracker";
 //const VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "v0.1.0";

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TradeNotesSimple } from "@/components/trade-notes-simple";
+import { TradeNotesSimple } from "@/features/trades/components/TradeNotesSimple";
 import {
   Dialog,
   DialogContent,

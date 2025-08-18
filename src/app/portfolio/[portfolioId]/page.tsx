@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getBaseUrl } from "@/lib/getBaseUrl";
-import PortfolioPageClient from "@/components/portfolio-page-client"; // make this a regular component
-import ProtectedPage from "@/components/protected-page";
+import PortfolioPageClient from "@/features/portfolios/components/PortfolioPageClient"; // make this a regular component
+import ProtectedPage from "@/features/auth/components/ProtectedPage";
 
 export default async function Page(props: {
   params: Promise<{ portfolioId: string }>;

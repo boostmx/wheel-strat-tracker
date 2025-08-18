@@ -2,8 +2,8 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getBaseUrl } from "@/lib/getBaseUrl";
-import { EditPortfolioForm } from "@/components/portfolio/porfolio-edit-form"; // keep your filename
-import ProtectedPage from "@/components/protected-page";
+import { EditPortfolioForm } from "@/features/portfolios/components/PortfolioEditForm"; // keep your filename
+import ProtectedPage from "@/features/auth/components/ProtectedPage";
 
 export default async function Page(props: {
   params: Promise<{ portfolioId: string }>;

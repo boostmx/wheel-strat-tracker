@@ -1,5 +1,5 @@
-import ProtectedPage from "@/components/protected-page";
-import AccountSummaryContent from "@/components/account-summary-content";
+import ProtectedPage from "@/features/auth/components/ProtectedPage";
+import AccountSummaryContent from "@/features/summary/components/AccountSummaryContent";
 
 export default function DashboardPage() {
   return (

@@ -97,7 +97,9 @@ export default function SettingsForm() {
               Username
             </Label>
             <Input id="username" value={username} disabled readOnly />
-            <p className="mt-1 text-xs text-gray-500">Usernames can’t be changed.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Usernames can’t be changed.
+            </p>
           </div>
           <div>
             <Label htmlFor="email" className="mb-1 block">

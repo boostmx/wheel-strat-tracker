@@ -1,6 +1,6 @@
 "use client";
 import { Portfolio } from "@/types";
-import { PortfolioDetail } from "./portfolio-detail";
+import { PortfolioDetail } from "./PortfolioDetail";
 
 export default function PortfolioPageClient({
   portfolio,

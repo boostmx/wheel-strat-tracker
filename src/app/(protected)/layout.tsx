@@ -1,5 +1,5 @@
 // src/app/(protected)/layout.tsx
-import ProtectedPage from "@/components/protected-page";
+import ProtectedPage from "@/features/auth/components/ProtectedPage";
 
 export default function ProtectedLayout({
   children,
