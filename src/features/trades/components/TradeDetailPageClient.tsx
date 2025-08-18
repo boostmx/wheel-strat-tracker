@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import type React from "react";
+import useSWR, { mutate as globalMutate } from "swr";
 import { Trade } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -42,41 +44,90 @@ const calcCapitalInUse = (t: Trade) => {
   return isCashSecuredPut ? t.strikePrice * 100 * t.contracts : 0;
 };
 
+// Simple validators
+function isPositiveInt(v: string | number) {
+  const n = typeof v === "string" ? Number(v) : v;
+  return Number.isInteger(n) && n > 0;
+}
+
+const fetcher = (url: string) =>
+  fetch(url).then(async (r) => {
+    if (!r.ok)
+      throw new Error(
+        (await r.json().catch(() => ({}))).error || `Failed ${r.status}`,
+      );
+    return r.json();
+  });
+
 export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
-  const [trade, setTrade] = useState<Trade | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: trade,
+    isLoading,
+    mutate,
+  } = useSWR<Trade>(`/api/trades/${tradeId}`, fetcher, {
+    dedupingInterval: 10_000,
+  });
+
   const [addOpen, setAddOpen] = useState(false);
   const [addedContracts, setAddedContracts] = useState("");
   const [addedContractPrice, setAddedContractPrice] = useState({
     formatted: "",
     raw: 0,
   });
+  const [addedContractsTouched, setAddedContractsTouched] = useState(false);
+  const [addedPriceTouched, setAddedPriceTouched] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
+
   const [closeOpen, setCloseOpen] = useState(false);
   const [closingContracts, setClosingContracts] = useState("");
   const [closingContractPrice, setClosingContractPrice] = useState({
     formatted: "",
     raw: 0,
   });
+  const [closingContractsTouched, setClosingContractsTouched] = useState(false);
+  const [closingPriceTouched, setClosingPriceTouched] = useState(false);
+
+  // "Close full position" checkbox state
+  const [closeAll, setCloseAll] = useState(false);
+
   const [closing, setClosing] = useState(false);
 
-  useEffect(() => {
-    const fetchTrade = async () => {
-      try {
-        const res = await fetch(`/api/trades/${tradeId}`);
-        if (!res.ok) throw new Error("Failed to fetch trade");
-        const data = await res.json();
-        setTrade(data);
-      } catch (err) {
-        toast.error("Could not load trade details.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Validation helpers for modals
+  const maxClosable = trade?.contracts ?? 0;
 
-    fetchTrade();
-  }, [tradeId]);
+  // When closing full position, auto-fill contracts and lock input
+  const effectiveClosingContracts = closeAll
+    ? String(maxClosable)
+    : closingContracts;
+
+  // Validity booleans (independent of touched state for button enabling)
+  const contractsCloseValid =
+    isPositiveInt(effectiveClosingContracts) &&
+    Number(effectiveClosingContracts) <= maxClosable;
+  const priceCloseValid = Number(closingContractPrice?.raw ?? 0) > 0;
+  const canClose =
+    trade?.status === "open" && contractsCloseValid && priceCloseValid;
+
+  const contractsAddValid = isPositiveInt(addedContracts);
+  const priceAddValid = Number(addedContractPrice?.raw ?? 0) > 0;
+  const canAdd = trade?.status === "open" && contractsAddValid && priceAddValid;
+
+  // Error text (shown only if touched)
+  const closeContractsErr = !contractsCloseValid
+    ? !isPositiveInt(effectiveClosingContracts)
+      ? "Enter a valid whole number of contracts."
+      : Number(effectiveClosingContracts) > maxClosable
+        ? `Cannot close more than ${maxClosable} contracts.`
+        : ""
+    : "";
+
+  const closePriceErr = !priceCloseValid ? "Enter a valid closing price." : "";
+
+  const addContractsErr = !contractsAddValid
+    ? "Enter a valid whole number of contracts."
+    : "";
+  const addPriceErr = !priceAddValid ? "Enter a valid price per contract." : "";
 
   const formatType = (type: string) => type.replace(/([a-z])([A-Z])/g, "$1 $2");
 
@@ -93,29 +144,40 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
     );
   };
 
-  const refetchTrade = async () => {
-    try {
-      const res = await fetch(`/api/trades/${tradeId}`);
-      if (!res.ok) throw new Error("Failed to fetch trade");
-      const data = await res.json();
-      setTrade(data);
-    } catch {
-      toast.error("Failed to refresh trade after update.");
-    }
-  };
+  // Derived values (memoized so they don't re-run on every small state change)
+  const capitalInUse = useMemo(
+    () => (trade ? calcCapitalInUse(trade) : 0),
+    [trade],
+  );
+
+  const daysUntilExpiration = useMemo(() => {
+    if (!trade || trade.status !== "open") return null;
+    const msPerDay = 86_400_000;
+    const exp = ensureUtcMidnight(trade.expirationDate).getTime();
+    const today = ensureUtcMidnight(new Date()).getTime();
+    return Math.max(0, Math.ceil((exp - today) / msPerDay));
+  }, [trade]);
+
+  const daysHeld = useMemo(() => {
+    if (!trade || trade.status !== "closed" || !trade.closedAt) return null;
+    const msPerDay = 86_400_000;
+    const closed = ensureUtcMidnight(trade.closedAt).getTime();
+    const opened = ensureUtcMidnight(trade.createdAt).getTime();
+    return Math.max(0, Math.ceil((closed - opened) / msPerDay));
+  }, [trade]);
 
   const submitCloseTrade = async () => {
-    const contractsNum = Number(closingContracts);
+    if (!canClose) {
+      // Respect touched UX: show an error only after marking both inputs touched
+      setClosingContractsTouched(true);
+      setClosingPriceTouched(true);
+      toast.error(
+        closeContractsErr || closePriceErr || "Fix errors before submitting.",
+      );
+      return;
+    }
+    const contractsNum = Number(effectiveClosingContracts);
     const priceNum = Number(closingContractPrice?.raw ?? Number.NaN);
-
-    if (!Number.isFinite(contractsNum) || contractsNum <= 0) {
-      toast.error("Enter a valid number of contracts to close.");
-      return;
-    }
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      toast.error("Enter a valid closing price per contract.");
-      return;
-    }
 
     setClosing(true);
     try {
@@ -131,34 +193,36 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Unable to close trade");
       }
-      await refetchTrade();
+      // Refresh this trade
+      await mutate();
+      // Also refresh related portfolio metrics (detail + overview)
+      void globalMutate(`/api/portfolios/${portfolioId}/detail-metrics`);
+      void globalMutate(`/api/portfolios/${portfolioId}/metrics`);
+
       toast.success("Position closed.");
       setCloseOpen(false);
       setClosingContracts("");
       setClosingContractPrice({ formatted: "", raw: 0 });
+      setClosingContractsTouched(false);
+      setClosingPriceTouched(false);
     } catch (e: unknown) {
-      if (e instanceof Error) {
-        toast.error(e.message);
-      } else {
-        toast.error("Failed to close trade.");
-      }
+      toast.error(e instanceof Error ? e.message : "Failed to close trade.");
     } finally {
       setClosing(false);
     }
   };
 
   const submitAddToTrade = async () => {
+    if (!canAdd) {
+      setAddedContractsTouched(true);
+      setAddedPriceTouched(true);
+      toast.error(
+        addContractsErr || addPriceErr || "Fix errors before submitting.",
+      );
+      return;
+    }
     const contractsNum = Number(addedContracts);
     const priceNum = Number(addedContractPrice?.raw ?? Number.NaN);
-
-    if (!Number.isFinite(contractsNum) || contractsNum <= 0) {
-      toast.error("Enter a valid number of contracts.");
-      return;
-    }
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      toast.error("Enter a valid price per contract.");
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -174,23 +238,26 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Unable to add to trade");
       }
-      await refetchTrade();
+      // Refresh this trade
+      await mutate();
+      // Also refresh related portfolio metrics (detail + overview)
+      void globalMutate(`/api/portfolios/${portfolioId}/detail-metrics`);
+      void globalMutate(`/api/portfolios/${portfolioId}/metrics`);
+
       toast.success("Position updated.");
       setAddOpen(false);
       setAddedContracts("");
       setAddedContractPrice({ formatted: "", raw: 0 });
+      setAddedContractsTouched(false);
+      setAddedPriceTouched(false);
     } catch (e: unknown) {
-      if (e instanceof Error) {
-        toast.error(e.message);
-      } else {
-        toast.error("Failed to update trade.");
-      }
+      toast.error(e instanceof Error ? e.message : "Failed to update trade.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-6 w-1/3" />
@@ -203,6 +270,13 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   if (!trade) {
     return <p className="text-red-500">Trade not found.</p>;
   }
+
+  const handleClosePriceKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter") submitCloseTrade();
+  };
+  const handleAddPriceKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter") submitAddToTrade();
+  };
 
   return (
     <div className="max-w-3xl mx-auto py-10 space-y-6 relative bg-transparent">
@@ -235,13 +309,6 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
               </h1>
               <div className="flex items-center gap-3">
                 {statusBadge(trade.status)}
-                {/* 
-                  // Keeping this block as a placeholder for future edit functionality
-                {trade.status === "open" && (
-                  <Button variant="outline" disabled>
-                    Edit
-                  </Button>
-                )} */}
               </div>
             </div>
 
@@ -296,9 +363,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   <span className="font-medium text-muted-foreground">
                     Capital In Use:
                   </span>{" "}
-                  {trade.status === "open"
-                    ? formatUSD(calcCapitalInUse(trade))
-                    : "-"}
+                  {trade.status === "open" ? formatUSD(capitalInUse) : "-"}
                 </p>
                 <p>
                   <span className="font-medium text-muted-foreground">
@@ -318,14 +383,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                     <span className="font-medium text-muted-foreground">
                       Days Until Expiration:
                     </span>{" "}
-                    {(() => {
-                      const msPerDay = 86_400_000;
-                      const exp = ensureUtcMidnight(
-                        trade.expirationDate,
-                      ).getTime();
-                      const today = ensureUtcMidnight(new Date()).getTime();
-                      return Math.max(0, Math.ceil((exp - today) / msPerDay));
-                    })()}
+                    {daysUntilExpiration ?? "-"}
                   </p>
                 )}
 
@@ -341,21 +399,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                       <span className="font-medium text-muted-foreground">
                         Days Held:
                       </span>{" "}
-                      {trade.closedAt
-                        ? (() => {
-                            const msPerDay = 86_400_000;
-                            const closed = ensureUtcMidnight(
-                              trade.closedAt,
-                            ).getTime();
-                            const opened = ensureUtcMidnight(
-                              trade.createdAt,
-                            ).getTime();
-                            return Math.max(
-                              0,
-                              Math.ceil((closed - opened) / msPerDay),
-                            );
-                          })()
-                        : "-"}
+                      {daysHeld ?? "-"}
                     </p>
                     <p>
                       <span className="font-medium text-muted-foreground">
@@ -388,7 +432,17 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
             {trade.status === "open" && (
               <div className="flex justify-end gap-2 pt-2">
                 {/* Close Position Button/Modal (left) */}
-                <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
+                <Dialog
+                  open={closeOpen}
+                  onOpenChange={(o) => {
+                    setCloseOpen(o);
+                    if (!o) {
+                      // reset touched on close
+                      setClosingContractsTouched(false);
+                      setClosingPriceTouched(false);
+                    }
+                  }}
+                >
                   <DialogTrigger asChild>
                     <Button variant="outline">Close Position</Button>
                   </DialogTrigger>
@@ -396,35 +450,91 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                     <DialogHeader>
                       <DialogTitle>Close Position</DialogTitle>
                     </DialogHeader>
-                    <div className="grid gap-4 sm:grid-cols-3 items-end">
+                    <div className="grid gap-4 sm:grid-cols-3 items-start">
                       <div className="sm:col-span-1">
                         <label className="text-sm block mb-1">Contracts</label>
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={closingContracts}
-                          onChange={(e) =>
+                          autoFocus
+                          disabled={closeAll}
+                          aria-invalid={
+                            closingContractsTouched && !contractsCloseValid
+                          }
+                          aria-describedby="close-contracts-help"
+                          value={effectiveClosingContracts}
+                          onBlur={() => setClosingContractsTouched(true)}
+                          onChange={(e) => {
+                            setClosingContractsTouched(true);
                             setClosingContracts(
                               e.target.value.replace(/\D/g, ""),
-                            )
-                          }
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") submitCloseTrade();
+                          }}
                           placeholder={`e.g., ${trade.contracts}`}
+                          className="h-11 text-base"
                         />
+                        <p
+                          id="close-contracts-help"
+                          className={`text-xs mt-1 h-6 ${closingContractsTouched && !contractsCloseValid ? "text-red-600" : "text-muted-foreground"}`}
+                        >
+                          {closingContractsTouched && !contractsCloseValid
+                            ? closeContractsErr
+                            : closeAll
+                              ? "Closing all contracts"
+                              : `Max: ${maxClosable}`}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            id="close-all"
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={closeAll}
+                            onChange={(e) => {
+                              const next = e.target.checked;
+                              setCloseAll(next);
+                              if (next) {
+                                setClosingContracts(String(maxClosable));
+                                setClosingContractsTouched(true);
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor="close-all"
+                            className="text-xs text-muted-foreground select-none"
+                          >
+                            Close full position
+                          </label>
+                        </div>
                       </div>
                       <div className="sm:col-span-1">
                         <label className="text-sm block mb-1">
                           Closing Price
                         </label>
-                        <CurrencyInput
-                          value={closingContractPrice}
-                          onChange={setClosingContractPrice}
-                          placeholder="e.g., 0.20"
-                        />
+                        <div onKeyDown={handleClosePriceKeyDown}>
+                          <CurrencyInput
+                            value={closingContractPrice}
+                            onChange={(v) => {
+                              setClosingPriceTouched(true);
+                              setClosingContractPrice(v);
+                            }}
+                            placeholder="e.g., 0.20"
+                          />
+                        </div>
+                        <p
+                          className={`text-xs mt-1 h-6 ${closingPriceTouched && !priceCloseValid ? "text-red-600" : "text-muted-foreground"}`}
+                        >
+                          {closingPriceTouched && !priceCloseValid
+                            ? closePriceErr
+                            : "Enter per‑contract price"}
+                        </p>
                       </div>
-                      <div className="sm:col-span-1 flex items-end">
+                      <div className="sm:col-span-1 flex items-start pt-6">
                         <Button
                           onClick={submitCloseTrade}
-                          disabled={closing}
+                          disabled={closing || !canClose}
                           className="w-full"
                         >
                           {closing ? "Closing…" : "Submit"}
@@ -435,7 +545,17 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                 </Dialog>
 
                 {/* Add to Position Button/Modal (right) */}
-                <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                <Dialog
+                  open={addOpen}
+                  onOpenChange={(o) => {
+                    setAddOpen(o);
+                    if (!o) {
+                      // reset touched on close
+                      setAddedContractsTouched(false);
+                      setAddedPriceTouched(false);
+                    }
+                  }}
+                >
                   <DialogTrigger asChild>
                     <Button>Add to Position</Button>
                   </DialogTrigger>
@@ -443,7 +563,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                     <DialogHeader>
                       <DialogTitle>Add to Position</DialogTitle>
                     </DialogHeader>
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-3 items-start">
                       <div className="sm:col-span-1">
                         <label className="text-sm block mb-1">
                           Contracts to Add
@@ -451,27 +571,60 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={addedContracts}
-                          onChange={(e) =>
-                            setAddedContracts(e.target.value.replace(/\D/g, ""))
+                          autoFocus
+                          aria-invalid={
+                            addedContractsTouched && !contractsAddValid
                           }
+                          aria-describedby="add-contracts-help"
+                          value={addedContracts}
+                          onBlur={() => setAddedContractsTouched(true)}
+                          onChange={(e) => {
+                            setAddedContractsTouched(true);
+                            setAddedContracts(
+                              e.target.value.replace(/\D/g, ""),
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") submitAddToTrade();
+                          }}
                           placeholder="e.g., 2"
+                          className="h-11 text-base"
                         />
+                        <p
+                          id="add-contracts-help"
+                          className={`text-xs mt-1 h-6 ${addedContractsTouched && !contractsAddValid ? "text-red-600" : "text-muted-foreground"}`}
+                        >
+                          {addedContractsTouched && !contractsAddValid
+                            ? addContractsErr
+                            : "Whole numbers only"}
+                        </p>
                       </div>
                       <div className="sm:col-span-1">
                         <label className="text-sm block mb-1">
                           Price per Contract
                         </label>
-                        <CurrencyInput
-                          value={addedContractPrice}
-                          onChange={setAddedContractPrice}
-                          placeholder="e.g., 0.85"
-                        />
+                        <div onKeyDown={handleAddPriceKeyDown}>
+                          <CurrencyInput
+                            value={addedContractPrice}
+                            onChange={(v) => {
+                              setAddedPriceTouched(true);
+                              setAddedContractPrice(v);
+                            }}
+                            placeholder="e.g., 0.85"
+                          />
+                        </div>
+                        <p
+                          className={`text-xs mt-1 h-6 ${addedPriceTouched && !priceAddValid ? "text-red-600" : "text-muted-foreground"}`}
+                        >
+                          {addedPriceTouched && !priceAddValid
+                            ? addPriceErr
+                            : "Enter per‑contract price"}
+                        </p>
                       </div>
-                      <div className="sm:col-span-1 flex items-end">
+                      <div className="sm:col-span-1 flex items-start pt-6">
                         <Button
                           onClick={submitAddToTrade}
-                          disabled={submitting}
+                          disabled={submitting || !canAdd}
                           className="w-full"
                         >
                           {submitting ? "Updating…" : "Submit"}

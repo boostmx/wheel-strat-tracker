@@ -14,7 +14,11 @@ import { Settings } from "lucide-react";
 
 function dollars(n?: number | null) {
   if (n == null || Number.isNaN(n)) return "$0";
-  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return n.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 }
 
 function toNum(v: unknown): number | null {
@@ -26,12 +30,18 @@ function toNum(v: unknown): number | null {
 
 function extractLatestNoteText(n?: string | null): string | null {
   if (!n) return null;
-  const parts = n.split(/\n+/).map((s: string) => s.trim()).filter(Boolean);
+  const parts = n
+    .split(/\n+/)
+    .map((s: string) => s.trim())
+    .filter(Boolean);
   if (parts.length === 0) return null;
   return parts[0];
 }
 
-function parseNoteLine(line: string): { timestamp?: string | undefined; body: string } {
+function parseNoteLine(line: string): {
+  timestamp?: string | undefined;
+  body: string;
+} {
   const m = line.match(/\*\*\[(.+?)\]\*\*/);
   const timestamp = m?.[1];
   const body = line.replace(/\s*\*\*\[.+?\]\*\*/, "").trim();
@@ -105,21 +115,32 @@ export default function PortfoliosOverviewContent() {
                         {p.name || "Unnamed Portfolio"}
                       </h2>
                       {/* Portfolio info row: capital + description/notes (lightweight, no extra fetch) */}
-                      {((p.startingCapital != null) || (p.additionalCapital != null) || 
-                      //p.description || 
-                      p.notes) && (
+                      {(p.startingCapital != null ||
+                        p.additionalCapital != null ||
+                        //p.description ||
+                        p.notes) && (
                         <div className="mt-3 text-sm text-muted-foreground">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                             {starting !== null && (
-                              <span><span className="font-medium text-foreground">Starting:</span> {dollars(starting)}</span>
+                              <span>
+                                <span className="font-medium text-foreground">
+                                  Starting:
+                                </span>{" "}
+                                {dollars(starting)}
+                              </span>
                             )}
                             {additional !== null && (
                               <>
                                 <span className="opacity-60">•</span>
-                                <span><span className="font-medium text-foreground">Additional:</span> {dollars(additional)}</span>
+                                <span>
+                                  <span className="font-medium text-foreground">
+                                    Additional:
+                                  </span>{" "}
+                                  {dollars(additional)}
+                                </span>
                               </>
                             )}
-                            
+
                             {/* Notes inline snippet removed */}
                             {/*p.description && (
                               <>
@@ -132,27 +153,32 @@ export default function PortfoliosOverviewContent() {
                           </div>
                         </div>
                       )}
-                      {p.notes && (() => {
-                        const latestRaw = extractLatestNoteText(p.notes);
-                        if (!latestRaw) return null;
-                        const { timestamp, body } = parseNoteLine(latestRaw);
-                        return (
-                          <div className="mt-2">
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-xs text-muted-foreground">Latest note</span>
-                              {timestamp && (
-                                <span className="text-xs text-muted-foreground">{timestamp}</span>
-                              )}
+                      {p.notes &&
+                        (() => {
+                          const latestRaw = extractLatestNoteText(p.notes);
+                          if (!latestRaw) return null;
+                          const { timestamp, body } = parseNoteLine(latestRaw);
+                          return (
+                            <div className="mt-2">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  Latest note
+                                </span>
+                                {timestamp && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {timestamp}
+                                  </span>
+                                )}
+                              </div>
+                              <div
+                                className="text-sm leading-relaxed whitespace-pre-wrap break-words line-clamp-3"
+                                title={body}
+                              >
+                                {body || latestRaw}
+                              </div>
                             </div>
-                            <div
-                              className="text-sm leading-relaxed whitespace-pre-wrap break-words line-clamp-3"
-                              title={body}
-                            >
-                              {body || latestRaw}
-                            </div>
-                          </div>
-                        );
-                      })()}
+                          );
+                        })()}
                       <div className="mt-4">
                         <OverviewMetrics portfolioId={p.id} />
                       </div>

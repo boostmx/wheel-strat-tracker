@@ -60,8 +60,8 @@ export async function GET(
           strikePrice: true,
           createdAt: true,
           closedAt: true,
-          percentPL: true,     // percent P/L for the trade (if you store it)
-          premiumCaptured: true // optional: if you store absolute realized P/L
+          percentPL: true, // percent P/L for the trade (if you store it)
+          premiumCaptured: true, // optional: if you store absolute realized P/L
         },
         orderBy: { closedAt: "desc" },
       }),
@@ -69,7 +69,9 @@ export async function GET(
 
     // 3) capital used from CSPs (collateral tied up)
     const capitalUsed = openTrades.reduce((sum, t) => {
-      return sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contracts) : 0);
+      return (
+        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contracts) : 0)
+      );
     }, 0);
     // 4) open premium (potential/at-entry premium outstanding)
     const potentialPremium = openTrades.reduce((sum, t) => {
@@ -97,13 +99,13 @@ export async function GET(
         : 0;
       const basisPremium = premiumNotional(t.contractPrice, t.contracts);
 
-      // Prefer stored realizedProfit; otherwise approximate:
+      // Prefer stored premiumCaptured (realized $); otherwise approximate via %PL.
       // - For puts, use percentPL * collateral
       // - For others, use percentPL * premium as a rough fallback
       const pct = t.percentPL ?? null;
       const realized =
-        (t as any).realizedProfit != null
-          ? Number((t as any).realizedProfit)
+        t.premiumCaptured != null
+          ? Number(t.premiumCaptured)
           : pct != null
             ? (pct / 100) * (basisCollateral || basisPremium)
             : 0;
@@ -142,7 +144,8 @@ export async function GET(
     const cashAvailable = currentCapital - capitalUsed; // cash available after collateral
 
     // percentCapitalDeployed based on currentCapital only
-    const percentCapitalDeployed = currentCapital > 0 ? (capitalUsed / currentCapital) * 100 : 0;
+    const percentCapitalDeployed =
+      currentCapital > 0 ? (capitalUsed / currentCapital) * 100 : 0;
 
     return NextResponse.json({
       // capital

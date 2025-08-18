@@ -16,7 +16,6 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { mutate } from "swr";
-import { metricsKey, openTradesKey, closedTradesKey } from "@/lib/swrKeys";
 
 interface CloseTradeModalProps {
   id: string;
@@ -89,8 +88,8 @@ export function CloseTradeModal({
       // Revalidate all dependent data
       await Promise.allSettled([
         mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
-        mutate(openTradesKey(portfolioId)),
-        mutate(closedTradesKey(portfolioId)),
+        mutate(`/api/trades?portfolioId=${portfolioId}&status=open`),
+        mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`),
       ]);
 
       // If any cards are server-rendered, force a refresh as well

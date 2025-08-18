@@ -5,8 +5,11 @@ import { OpenTradesTable } from "@/features/trades/components/TradeTables/OpenTr
 // dynamic import for faster initial render
 import dynamic from "next/dynamic";
 const ClosedTradesTable = dynamic(
-  () => import("@/features/trades/components/TradeTables/ClosedTradesTable").then(m => m.ClosedTradesTable),
-  { ssr: false, loading: () => <p>Loading closed trades…</p> }
+  () =>
+    import("@/features/trades/components/TradeTables/ClosedTradesTable").then(
+      (m) => m.ClosedTradesTable,
+    ),
+  { ssr: false, loading: () => <p>Loading closed trades…</p> },
 );
 
 import { Portfolio } from "@/types";
@@ -32,12 +35,15 @@ function useInViewOnce<T extends HTMLElement = HTMLDivElement>() {
   const [inView, setInView] = useState(false);
   useEffect(() => {
     if (!ref.current || inView) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setInView(true);
-        obs.disconnect();
-      }
-    }, { rootMargin: "200px" });
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
     obs.observe(ref.current);
     return () => obs.disconnect();
   }, [inView]);
@@ -230,9 +236,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         initial={{ opacity: 1 }}
         animate={{ opacity: 1 }}
       >
-        {[
-          ...metricItems
-        ]
+        {[...metricItems]
           .sort((a, b) => a.order - b.order)
           .map((m, i) => (
             <motion.div
@@ -301,7 +305,10 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           loadingClosed ? (
             <p>Loading closed trades...</p>
           ) : (
-            <ClosedTradesTable trades={closedTrades} portfolioId={portfolio.id} />
+            <ClosedTradesTable
+              trades={closedTrades}
+              portfolioId={portfolio.id}
+            />
           )
         ) : (
           <p>Scroll to load closed trades…</p>

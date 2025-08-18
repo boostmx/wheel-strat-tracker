@@ -52,7 +52,9 @@ export async function GET(
 
     // Capital used = total CSP collateral locked
     const capitalUsed = openTrades.reduce((sum, t) => {
-      return sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contracts) : 0);
+      return (
+        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contracts) : 0)
+      );
     }, 0);
 
     // Biggest position by CSP collateral
@@ -86,8 +88,8 @@ export async function GET(
     return NextResponse.json({
       openTradesCount,
       capitalUsed,
-      biggestPosition,  // null or { id, ticker, strikePrice, contracts, locked, expirationDate }
-      nextExpirations,  // array (<= limit)
+      biggestPosition, // null or { id, ticker, strikePrice, contracts, locked, expirationDate }
+      nextExpirations, // array (<= limit)
     });
   } catch (err) {
     console.error("GET /api/portfolios/[id]/metrics error", err);

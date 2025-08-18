@@ -1,6 +1,6 @@
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then(r => r.json());
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function useOverviewMetrics(portfolioId?: string) {
   const key = portfolioId ? `/api/portfolios/${portfolioId}/metrics` : null;
