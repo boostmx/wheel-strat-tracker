@@ -7,6 +7,7 @@ type ProfilePayload = {
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
+  email?: string;
 };
 
 export async function PATCH(req: Request) {
@@ -22,10 +23,20 @@ export async function PATCH(req: Request) {
   const hasChanges =
     typeof body.firstName === "string" ||
     typeof body.lastName === "string" ||
-    typeof body.avatarUrl === "string";
+    typeof body.avatarUrl === "string" ||
+    typeof body.email === "string";
 
   if (!hasChanges) {
     return NextResponse.json({ error: "No changes provided" }, { status: 400 });
+  }
+
+  if (typeof body.email === "string") {
+    const existingUser = await prisma.user.findFirst({
+      where: { email: body.email },
+    });
+    if (existingUser && existingUser.id !== sessionUser.id) {
+      return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+    }
   }
 
   const updated = await prisma.user.update({
@@ -36,6 +47,7 @@ export async function PATCH(req: Request) {
         : {}),
       ...(typeof body.lastName === "string" ? { lastName: body.lastName } : {}),
       ...(typeof body.avatarUrl === "string" ? { image: body.avatarUrl } : {}),
+      ...(typeof body.email === "string" ? { email: body.email } : {}),
     },
     select: {
       id: true,

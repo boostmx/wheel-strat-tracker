@@ -125,24 +125,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               </p>
               <p
                 className={`text-3xl font-bold dark:text-gray-300 ${
-                  metrics?.capitalUsed != null &&
-                  metrics?.totalProfit != null &&
-                  starting +
-                    addl +
-                    Number(metrics.totalProfit) -
-                    Number(metrics.capitalUsed) <
-                    0
+                  metrics?.cashAvailable != null && metrics.cashAvailable < 0
                     ? "text-red-600"
                     : "text-green-600"
                 }`}
               >
-                {metrics?.capitalUsed != null && metrics?.totalProfit != null
-                  ? formatCompactCurrency(
-                      starting +
-                        addl +
-                        Number(metrics.totalProfit) -
-                        Number(metrics.capitalUsed),
-                    )
+                {metrics?.cashAvailable != null
+                  ? formatCompactCurrency(metrics.cashAvailable)
                   : "Loading..."}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -150,6 +139,9 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Additional: {formatCompactCurrency(addl)}
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Capital Base: {metrics?.capitalBase != null ? formatCompactCurrency(metrics.capitalBase) : "—"}
               </p>
               <p
                 className={`text-sm font-medium ${

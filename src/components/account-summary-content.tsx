@@ -9,6 +9,9 @@ import { motion } from "framer-motion";
 type Snapshot = {
   portfolioId: string;
   startingCapital: number;
+  additionalCapital: number; // NEW
+  capitalBase: number;       // NEW: starting + additional
+  currentCapital: number;    // NEW: capitalBase + totalProfitAll (realized)
   totalProfitAll: number;
   openCount: number;
   capitalInUse: number;
@@ -77,13 +80,12 @@ export default function AccountSummaryContent() {
     ) as NonNullable<Snapshot>[];
 
     const accountStarting = snaps.reduce((s, n) => s + n.startingCapital, 0);
+    const accountAdditional = snaps.reduce((s, n) => s + n.additionalCapital, 0);
+    const accountBase = snaps.reduce((s, n) => s + n.capitalBase, 0); // starting + additional
     const accountProfit = snaps.reduce((s, n) => s + n.totalProfitAll, 0);
-    const accountCurrentCapital = accountStarting + accountProfit;
+    const accountCurrentCapital = accountBase + accountProfit; // realized P&L adjusts cash
     const accountCapitalUsed = snaps.reduce((s, n) => s + n.capitalInUse, 0);
-    const accountPercentUsed =
-      accountCurrentCapital > 0
-        ? (accountCapitalUsed / accountCurrentCapital) * 100
-        : 0;
+    const accountPercentUsed = accountBase > 0 ? (accountCapitalUsed / accountBase) * 100 : 0;
     const accountCashAvailable = accountCurrentCapital - accountCapitalUsed;
 
     const totalOpenTrades = snaps.reduce((s, n) => s + n.openCount, 0);
@@ -125,8 +127,7 @@ export default function AccountSummaryContent() {
 
     // Per-portfolio chips
     const perPortfolio = snaps.map((n) => {
-      const current = n.startingCapital + n.totalProfitAll;
-      const pctUsed = current > 0 ? (n.capitalInUse / current) * 100 : 0;
+      const pctUsed = n.capitalBase > 0 ? (n.capitalInUse / n.capitalBase) * 100 : 0;
       return {
         id: n.portfolioId,
         pctUsed,
@@ -137,6 +138,8 @@ export default function AccountSummaryContent() {
 
     return {
       accountStarting,
+      accountAdditional,
+      accountBase,
       accountProfit,
       accountCurrentCapital,
       accountCapitalUsed,
@@ -192,7 +195,10 @@ export default function AccountSummaryContent() {
                 {formatLongCurrency(agg.accountCurrentCapital)}
               </p>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {`Starting ${formatLongCurrency(agg.accountStarting)} · Realized ${formatCompactCurrency(agg.accountProfit)}`}
+                {`Base ${formatLongCurrency(agg.accountBase)} (Start ${formatLongCurrency(agg.accountStarting)} · Addl ${formatLongCurrency(agg.accountAdditional)})`}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {`Realized ${formatCompactCurrency(agg.accountProfit)}`}
               </p>
             </CardContent>
           </Card>

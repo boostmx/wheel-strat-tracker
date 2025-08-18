@@ -16,7 +16,8 @@ export default function SettingsForm() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [image, setImage] = useState("");
+  const [email, setEmail] = useState("");
+  const username = user?.username ?? "";
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -25,8 +26,8 @@ export default function SettingsForm() {
   useEffect(() => {
     setFirstName(user?.firstName ?? "");
     setLastName(user?.lastName ?? "");
-    setImage(user?.image ?? "");
-  }, [user?.firstName, user?.lastName, user?.image]);
+    setEmail(user?.email ?? "");
+  }, [user?.firstName, user?.lastName, user?.email]);
 
   async function saveProfile() {
     try {
@@ -34,7 +35,7 @@ export default function SettingsForm() {
       const res = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, image }),
+        body: JSON.stringify({ firstName, lastName, email }),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed");
       toast.success("Profile updated", {
@@ -92,6 +93,25 @@ export default function SettingsForm() {
         <h2 className="text-lg font-medium mb-4">Profile</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
+            <Label htmlFor="username" className="mb-1 block">
+              Username
+            </Label>
+            <Input id="username" value={username} disabled readOnly />
+            <p className="mt-1 text-xs text-gray-500">Usernames can’t be changed.</p>
+          </div>
+          <div>
+            <Label htmlFor="email" className="mb-1 block">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
+          </div>
+          <div>
             <Label htmlFor="firstName" className="mb-1 block">
               First name
             </Label>
@@ -110,20 +130,6 @@ export default function SettingsForm() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="image" className="mb-1 block">
-              Avatar URL
-            </Label>
-            <Input
-              id="image"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="https://…/avatar.png"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Paste an image URL. (Local uploads can be added later.)
-            </p>
           </div>
         </div>
         <div className="mt-4 flex gap-2">
@@ -183,8 +189,8 @@ export default function SettingsForm() {
       </section>
 
       <section className="rounded-lg border p-6 bg-white dark:bg-zinc-950">
-        <h2 className="text-lg font-medium mb-4">Danger zone</h2>
-        <Button variant="destructive" onClick={() => signOut()}>
+        <h2 className="text-lg font-medium mb-4">Session</h2>
+        <Button variant="default" onClick={() => signOut()}>
           Sign out
         </Button>
       </section>

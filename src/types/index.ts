@@ -30,6 +30,8 @@ export interface Portfolio {
 export interface Metrics {
   startingCapital: number;
   capitalUsed?: number;
+  capitalBase?: number;
+  cashAvailable?: number;
   winRate: number | null;
   totalProfit: number | null;
   avgPLPercent: number | null;
