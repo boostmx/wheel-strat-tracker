@@ -5,46 +5,37 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 //import { toast } from "sonner";
-import { CreatePortfolioModal } from "@/features/portfolios/components/CreatePortfolioModal";
+import { CreatePortfolioModal } from "./CreatePortfolioModal";
 import { Card, CardContent } from "@/components/ui/card";
-import { useEffect, useState } from "react";
+import { OverviewMetrics } from "./OverviewMetrics";
 import type { Portfolio } from "@/types";
-import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 
-// --- Snapshot types (returned by /api/portfolios/snapshot/bulk) ---
-export type Snapshot = {
-  openCount: number;
-  capitalInUse: number;
-  cashAvailable: number;
-  biggest?: {
-    ticker: string;
-    strikePrice: number;
-    contracts: number;
-    collateral: number;
-    expirationDate: string;
-  } | null;
-  topTickers: { ticker: string; collateral: number; pct: number }[];
-  nextExpiration?: { date: string; contracts: number } | null;
-  expiringSoonCount: number;
-  openAvgDays: number | null;
-  realizedMTD: number;
-  realizedYTD: number;
-} | null;
-
-// Currency formatting utility (compact)
-function formatCompactCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 2,
-  }).format(value);
+function dollars(n?: number | null) {
+  if (n == null || Number.isNaN(n)) return "$0";
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-function formatPercent(value: number, digits = 0) {
-  return `${value.toFixed(digits)}%`;
+function toNum(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const n = Number(v as unknown);
+  return Number.isFinite(n) ? n : null;
+}
+
+function extractLatestNoteText(n?: string | null): string | null {
+  if (!n) return null;
+  const parts = n.split(/\n+/).map((s: string) => s.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts[0];
+}
+
+function parseNoteLine(line: string): { timestamp?: string | undefined; body: string } {
+  const m = line.match(/\*\*\[(.+?)\]\*\*/);
+  const timestamp = m?.[1];
+  const body = line.replace(/\s*\*\*\[.+?\]\*\*/, "").trim();
+  return { timestamp, body };
 }
 
 export default function PortfoliosOverviewContent() {
@@ -55,27 +46,6 @@ export default function PortfoliosOverviewContent() {
     error,
     isLoading,
   } = useSWR<Portfolio[]>(session?.user?.id ? "/api/portfolios" : null);
-
-  const [snapshots, setSnapshots] = useState<Record<string, Snapshot>>({});
-
-  useEffect(() => {
-    async function fetchSnapshots() {
-      if (!portfolios || portfolios.length === 0) return;
-      const ids = portfolios.map((p) => p.id);
-      try {
-        const res = await fetch("/api/portfolios/snapshot/bulk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids }),
-        });
-        const data: Record<string, Snapshot> = res.ok ? await res.json() : {};
-        setSnapshots(data);
-      } catch (e) {
-        console.error("Failed to fetch snapshots", e);
-      }
-    }
-    fetchSnapshots();
-  }, [portfolios]);
 
   return (
     <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
@@ -105,13 +75,8 @@ export default function PortfoliosOverviewContent() {
       ) : (
         <ul className="space-y-4">
           {portfolios.map((p, i) => {
-            const snap = snapshots[p.id];
-            const top = snap?.topTickers ?? [];
-            const topLine = top
-              .slice(0, 3)
-              .map((t) => `${t.ticker} ${formatPercent(t.pct, 0)}`)
-              .join(" · ");
-
+            const starting = toNum(p.startingCapital);
+            const additional = toNum(p.additionalCapital);
             return (
               <motion.li
                 key={p.id}
@@ -139,141 +104,57 @@ export default function PortfoliosOverviewContent() {
                       <h2 className="text-xl font-semibold text-green-600">
                         {p.name || "Unnamed Portfolio"}
                       </h2>
-
-                      {/* Row 1: Open Trades, Capital In Use, Cash Available */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">
-                            Open Trades
-                          </p>
-                          <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                            {snap ? snap.openCount : "-"}
-                          </p>
-                        </div>
-
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">
-                            Capital In Use
-                          </p>
-                          <p className="text-2xl font-semibold text-amber-700 dark:text-amber-300">
-                            {snap
-                              ? formatCompactCurrency(snap.capitalInUse)
-                              : "-"}
-                          </p>
-                        </div>
-
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">
-                            Cash Available
-                          </p>
-                          <p
-                            className={`text-2xl font-semibold ${
-                              snap && snap.cashAvailable < 0
-                                ? "text-red-700 dark:text-red-400"
-                                : "text-green-700 dark:text-green-300"
-                            }`}
-                          >
-                            {snap
-                              ? formatCompactCurrency(snap.cashAvailable)
-                              : "-"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Row 2: Biggest Position, Next Expiration, Expiring Soon */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">
-                            Biggest Position
-                          </p>
-                          {snap?.biggest ? (
-                            <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
-                              {snap.biggest.ticker} · $
-                              {snap.biggest.strikePrice.toFixed(2)} ·{" "}
-                              {snap.biggest.contracts} contracts
-                              <span className="block text-xs text-slate-600 dark:text-slate-400 mt-1">
-                                Collateral:{" "}
-                                {formatCompactCurrency(snap.biggest.collateral)}{" "}
-                                · Exp{" "}
-                                {formatDateOnlyUTC(snap.biggest.expirationDate)}
-                              </span>
-                            </p>
-                          ) : (
-                            <p className="text-base text-slate-500 dark:text-slate-400">
-                              —
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">
-                            Next Expiration
-                          </p>
-                          {snap?.nextExpiration ? (
-                            <p className="text-base font-semibold text-blue-800 dark:text-blue-300">
-                              {snap.nextExpiration
-                                ? `${formatDateOnlyUTC(snap.nextExpiration.date)} · ${snap.nextExpiration.contracts} contracts`
-                                : "—"}
-                            </p>
-                          ) : (
-                            <p className="text-base text-blue-700 dark:text-blue-300">
-                              —
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-600 dark:text-gray-400 font-medium">
-                            Expiring in 7 Days
-                          </p>
-                          <p className="text-2xl font-semibold text-rose-700 dark:text-rose-300">
-                            {snap ? snap.expiringSoonCount : "-"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Row 3: Top Exposures, Open Avg Days, MTD/YTD Realized */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">
-                            Top Exposures
-                          </p>
-                          <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-                            {topLine || "—"}
-                          </p>
-                        </div>
-
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">
-                            Open Avg Days
-                          </p>
-                          <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                            {snap?.openAvgDays != null ? snap.openAvgDays : "—"}
-                          </p>
-                        </div>
-
-                        <div className="rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 text-sm">
-                          <p className="text-gray-500 dark:text-gray-400 font-medium">
-                            Realized P&L
-                          </p>
-                          <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                            MTD{" "}
-                            {snap ? (
-                              formatCompactCurrency(snap.realizedMTD)
-                            ) : (
-                              <span className="dark:text-gray-500">—</span>
+                      {/* Portfolio info row: capital + description/notes (lightweight, no extra fetch) */}
+                      {((p.startingCapital != null) || (p.additionalCapital != null) || 
+                      //p.description || 
+                      p.notes) && (
+                        <div className="mt-3 text-sm text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            {starting !== null && (
+                              <span><span className="font-medium text-foreground">Starting:</span> {dollars(starting)}</span>
                             )}
-                            <span className="mx-2 text-gray-400 dark:text-gray-500">
-                              •
-                            </span>
-                            YTD{" "}
-                            {snap ? (
-                              formatCompactCurrency(snap.realizedYTD)
-                            ) : (
-                              <span className="dark:text-gray-500">—</span>
+                            {additional !== null && (
+                              <>
+                                <span className="opacity-60">•</span>
+                                <span><span className="font-medium text-foreground">Additional:</span> {dollars(additional)}</span>
+                              </>
                             )}
-                          </p>
+                            
+                            {/* Notes inline snippet removed */}
+                            {/*p.description && (
+                              <>
+                                <span className="opacity-60">•</span>
+                                <span className="truncate max-w-[32ch]" title={p.description}>
+                                  <span className="font-medium text-foreground">Description:</span> {p.description}
+                                </span>
+                              </>
+                            )*/}
+                          </div>
                         </div>
+                      )}
+                      {p.notes && (() => {
+                        const latestRaw = extractLatestNoteText(p.notes);
+                        if (!latestRaw) return null;
+                        const { timestamp, body } = parseNoteLine(latestRaw);
+                        return (
+                          <div className="mt-2">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-xs text-muted-foreground">Latest note</span>
+                              {timestamp && (
+                                <span className="text-xs text-muted-foreground">{timestamp}</span>
+                              )}
+                            </div>
+                            <div
+                              className="text-sm leading-relaxed whitespace-pre-wrap break-words line-clamp-3"
+                              title={body}
+                            >
+                              {body || latestRaw}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      <div className="mt-4">
+                        <OverviewMetrics portfolioId={p.id} />
                       </div>
                     </CardContent>
                   </Link>
