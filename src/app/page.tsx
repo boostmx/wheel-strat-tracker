@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/server/auth/auth";
 import { Loader2 } from "lucide-react";
 
 export default async function Home() {

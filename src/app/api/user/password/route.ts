@@ -1,8 +1,8 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/server/prisma";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { authOptions } from "@/server/auth/auth";
+import { hashPassword, verifyPassword } from "@/server/auth/password";
 
 type PasswordPayload = {
   currentPassword?: string;

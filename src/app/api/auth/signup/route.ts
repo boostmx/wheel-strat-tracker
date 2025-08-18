@@ -1,7 +1,7 @@
 // app/api/auth/signup/route.ts
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { prisma } from "@/lib/db";
+import { prisma } from "@/server/db";
 
 export async function POST(req: Request) {
   const { firstName, lastName, email, username, password } = await req.json();

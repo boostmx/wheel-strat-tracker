@@ -1,7 +1,7 @@
 // src/app/api/trades/[id]/route.ts
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/server/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/server/auth/auth";
 import { NextResponse } from "next/server";
 import { Prisma, TradeType } from "@prisma/client";
 

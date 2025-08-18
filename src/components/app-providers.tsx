@@ -1,7 +1,7 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
-import { IdleSignout } from "@/components/idle-signout";
+import { IdleSignout } from "@/features/auth/components/IdleSignout";
 import { Toaster, toast } from "sonner";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {

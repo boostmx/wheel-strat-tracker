@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/server/prisma";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -8,12 +8,12 @@ type Snapshot = {
   portfolioId: string;
   startingCapital: number;
   additionalCapital: number; // NEW
-  capitalBase: number;       // NEW: starting + additional
-  currentCapital: number;    // capitalBase + totalProfitAll (realized)
-  totalProfitAll: number;    // realized P/L all time
+  capitalBase: number; // NEW: starting + additional
+  currentCapital: number; // capitalBase + totalProfitAll (realized)
+  totalProfitAll: number; // realized P/L all time
   openCount: number;
-  capitalInUse: number;      // CSP collateral
-  cashAvailable: number;     // currentCapital - capitalInUse
+  capitalInUse: number; // CSP collateral
+  cashAvailable: number; // currentCapital - capitalInUse
   biggest: {
     ticker: string;
     strikePrice: number;

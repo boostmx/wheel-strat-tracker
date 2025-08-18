@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 //import { toast } from "sonner";
-import { CreatePortfolioModal } from "@/components/create-portfolio-modal";
+import { CreatePortfolioModal } from "@/features/portfolios/components/CreatePortfolioModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import type { Portfolio } from "@/types";

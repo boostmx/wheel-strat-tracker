@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { auth } from "@/server/auth/auth";
+import { db } from "@/server/db";
 
 /**
  * POST Route to create a new trade

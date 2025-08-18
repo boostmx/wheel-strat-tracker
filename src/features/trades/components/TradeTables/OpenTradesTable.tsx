@@ -11,7 +11,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { makeOpenColumns } from "./columns-open";
 import { Trade } from "@/types";
-import { CloseTradeModal } from "@/components/close-trade-modal";
+import { CloseTradeModal } from "@/features/trades/components/CloseTradeModal";
 import { mutate } from "swr";
 import {
   Tooltip,

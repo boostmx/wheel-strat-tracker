@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/server/prisma";
 import { Trade } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -104,7 +104,8 @@ export async function GET(
   const startingCapital: number = Number(portfolio?.startingCapital ?? 0);
   const additionalCapital: number = Number(portfolio?.additionalCapital ?? 0);
   const capitalBase: number = startingCapital + additionalCapital;
-  const percentCapitalDeployed = capitalBase > 0 ? (capitalUsed / capitalBase) * 100 : 0;
+  const percentCapitalDeployed =
+    capitalBase > 0 ? (capitalUsed / capitalBase) * 100 : 0;
   const cashAvailable: number = capitalBase - capitalUsed;
 
   // Potential premium (unrealized): sum of open credits × 100 × contracts

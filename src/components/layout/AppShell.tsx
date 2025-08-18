@@ -2,9 +2,9 @@
 
 import { usePathname } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
-import { SiteHeader } from "@/components/site-header";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SWRConfig } from "swr";
-import { SiteFooter } from "@/components/site-footer";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();

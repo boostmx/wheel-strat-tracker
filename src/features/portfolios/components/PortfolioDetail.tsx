@@ -3,13 +3,13 @@
 //import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Card, CardContent } from "@/components/ui/card";
-import { AddTradeModal } from "@/components/add-trade-modal";
-import { OpenTradesTable } from "@/components/trade-tables/open-trades-table";
-import { ClosedTradesTable } from "@/components/trade-tables/closed-trades-table";
+import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
+import { OpenTradesTable } from "@/features/trades/components/TradeTables/OpenTradesTable";
+import { ClosedTradesTable } from "@/features/trades/components/TradeTables/ClosedTradesTable";
 import { Portfolio } from "@/types";
-import { useTrades } from "@/hooks/useTrades";
-import { MetricsCard } from "@/components/metrics-card";
-import { getPortfolioMetrics } from "@/lib/getPortfolioMetrics";
+import { useTrades } from "@/features/trades/hooks/useTrades";
+import { MetricsCard } from "@/features/portfolios/components/MetricsCard";
+import { getPortfolioMetrics } from "@/server/services/getPortfolioMetrics";
 import { motion } from "framer-motion";
 
 //Currency formatting utility for Total Profit display
@@ -141,7 +141,10 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                 Additional: {formatCompactCurrency(addl)}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Capital Base: {metrics?.capitalBase != null ? formatCompactCurrency(metrics.capitalBase) : "—"}
+                Capital Base:{" "}
+                {metrics?.capitalBase != null
+                  ? formatCompactCurrency(metrics.capitalBase)
+                  : "—"}
               </p>
               <p
                 className={`text-sm font-medium ${

@@ -27,8 +27,8 @@ import remarkBreaks from "remark-breaks";
 
 type FormValues = {
   name: string;
-  startingCapital: number;     // RHF wants a number
-  additionalCapital: number;   // RHF wants a number
+  startingCapital: number; // RHF wants a number
+  additionalCapital: number; // RHF wants a number
   notes?: string;
   // transient-only: used to compose an auto note when additionalCapital changes
   notesDeltaReason?: string;
@@ -50,12 +50,15 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
   const router = useRouter();
 
   // --- 1) Initialize RHF with portfolio values (numbers) ---
-  const defaultValues = useMemo<FormValues>(() => ({
-    name: portfolio.name ?? "",
-    startingCapital: Number(portfolio.startingCapital ?? 0),
-    additionalCapital: Number(portfolio.additionalCapital ?? 0),
-    notes: portfolio.notes ?? "",
-  }), [portfolio]);
+  const defaultValues = useMemo<FormValues>(
+    () => ({
+      name: portfolio.name ?? "",
+      startingCapital: Number(portfolio.startingCapital ?? 0),
+      additionalCapital: Number(portfolio.additionalCapital ?? 0),
+      notes: portfolio.notes ?? "",
+    }),
+    [portfolio],
+  );
 
   const {
     register,
@@ -82,7 +85,9 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
   });
 
   // track the baseline locally so the delta reflects the last saved state while staying on-page
-  const [oldAddlBase, setOldAddlBase] = useState<number>(Number(portfolio.additionalCapital ?? 0));
+  const [oldAddlBase, setOldAddlBase] = useState<number>(
+    Number(portfolio.additionalCapital ?? 0),
+  );
   const addlWatch = watch("additionalCapital", defaultValues.additionalCapital);
   const addlDelta = (Number(addlWatch) || 0) - oldAddlBase;
 
@@ -121,7 +126,10 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
 
       // Update local UI state so deltas and notes reflect immediately without a full reload
       setOldAddlBase(Number(values.additionalCapital) || 0);
-      setValue("notes", outNotes, { shouldDirty: false, shouldValidate: false });
+      setValue("notes", outNotes, {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
       setNotesEditing(false);
 
       toast.success("Portfolio updated");
@@ -135,7 +143,9 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
 
   async function onDelete() {
     try {
-      const res = await fetch(`/api/portfolios/${portfolio.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/portfolios/${portfolio.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Failed to delete portfolio");
       toast.success("Portfolio deleted");
       router.push("/overview");
@@ -153,7 +163,11 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
     >
-      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2 }}
+      >
         <Card>
           <CardHeader>
             <CardTitle>Edit Portfolio Details</CardTitle>
@@ -168,17 +182,25 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                   placeholder="Portfolio name"
                   {...register("name", { required: "Name is required" })}
                 />
-                {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>}
+                {errors.name && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {errors.name.message}
+                  </p>
+                )}
               </div>
 
               {/* Capital fields */}
               <div className="space-y-6">
                 {/* Starting Capital (locked) */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Starting Capital</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Starting Capital
+                  </label>
                   <CurrencyInput
                     value={startingCapUI}
-                    onChange={() => { /* locked */ }}
+                    onChange={() => {
+                      /* locked */
+                    }}
                     placeholder="0.00"
                     disabled
                     aria-label="Starting Capital (locked)"
@@ -186,7 +208,8 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                   {/* Preserve startingCapital in submission */}
                   <input type="hidden" {...register("startingCapital")} />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Starting capital is a baseline and is locked. Use <em>Additional Capital</em> for deposits/withdrawals.
+                    Starting capital is a baseline and is locked. Use{" "}
+                    <em>Additional Capital</em> for deposits/withdrawals.
                   </p>
                 </div>
 
@@ -195,8 +218,13 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
 
                 {/* Additional Capital (its own row) */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Additional Capital (Total to date)</label>
-                  <p className="text-xs text-muted-foreground mb-2">Total external cash added minus withdrawals. Edit to record deposits/withdrawals.</p>
+                  <label className="block text-sm font-medium mb-1">
+                    Additional Capital (Total to date)
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Total external cash added minus withdrawals. Edit to record
+                    deposits/withdrawals.
+                  </p>
                   <Controller
                     name="additionalCapital"
                     control={control}
@@ -225,8 +253,12 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                     </span>
                     <span>•</span>
                     <span>
-                      Delta: {" "}
-                      <strong className={addlDelta >= 0 ? "text-green-600" : "text-red-600"}>
+                      Delta:{" "}
+                      <strong
+                        className={
+                          addlDelta >= 0 ? "text-green-600" : "text-red-600"
+                        }
+                      >
                         {addlDelta >= 0 ? "+" : "-"}
                         {formatUSD(Math.abs(addlDelta))}
                       </strong>
@@ -273,10 +305,17 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                       }}
                     />
                     <div className="mt-2 flex items-center justify-between">
-                      <Button type="button" variant="secondary" size="sm" onClick={insertTimestamp}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={insertTimestamp}
+                      >
                         Insert timestamp
                       </Button>
-                      <span className="text-xs text-muted-foreground">⌘/Ctrl+Enter to save</span>
+                      <span className="text-xs text-muted-foreground">
+                        ⌘/Ctrl+Enter to save
+                      </span>
                     </div>
                   </>
                 ) : (
@@ -284,7 +323,9 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                     {(() => {
                       const notesVal = getValues("notes") ?? "";
                       if (!notesVal.trim()) {
-                        return <p className="text-sm text-gray-600">No notes yet.</p>;
+                        return (
+                          <p className="text-sm text-gray-600">No notes yet.</p>
+                        );
                       }
                       return (
                         <div
@@ -292,7 +333,9 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                                      prose-strong:text-gray-700 dark:prose-strong:text-gray-300 
                                      prose-p:my-1 prose-li:my-0 prose-ul:my-2 prose-ol:my-2"
                         >
-                          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkBreaks]}
+                          >
                             {notesVal}
                           </ReactMarkdown>
                         </div>
@@ -304,7 +347,11 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
 
               {/* Footer: only cancel/save now */}
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="ghost" onClick={() => router.push(`/overview`)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => router.push(`/overview`)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
@@ -325,12 +372,14 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
       >
         <Card className="border-red-200 dark:border-red-900">
           <CardHeader>
-            <CardTitle className="text-red-600 dark:text-red-400">Danger zone</CardTitle>
+            <CardTitle className="text-red-600 dark:text-red-400">
+              Danger zone
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Deleting this portfolio will permanently remove all associated trades and data.
-              This action cannot be undone.
+              Deleting this portfolio will permanently remove all associated
+              trades and data. This action cannot be undone.
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -342,7 +391,8 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete this portfolio?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. All trades and data associated with this portfolio will be permanently removed.
+                    This action cannot be undone. All trades and data associated
+                    with this portfolio will be permanently removed.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

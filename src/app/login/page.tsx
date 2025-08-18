@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { VersionBadge } from "@/components/version-badge";
+import { VersionBadge } from "@/components/layout/VersionBadge";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
