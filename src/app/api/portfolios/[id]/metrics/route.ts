@@ -1,3 +1,5 @@
+// src/app/api/portfolios/[id]/metrics/route.ts
+// This file handles metrics for a specific portfolio identified by its ID.
 import { prisma } from "@/server/prisma";
 import { NextResponse } from "next/server";
 

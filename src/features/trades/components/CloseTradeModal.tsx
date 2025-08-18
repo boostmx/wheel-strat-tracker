@@ -88,7 +88,7 @@ export function CloseTradeModal({
 
       // Revalidate all dependent data
       await Promise.allSettled([
-        mutate(metricsKey(portfolioId)),
+        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
         mutate(openTradesKey(portfolioId)),
         mutate(closedTradesKey(portfolioId)),
       ]);
