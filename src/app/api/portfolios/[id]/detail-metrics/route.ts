@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth/auth";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -23,16 +25,25 @@ export async function GET(
   props: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: portfolioId } = await props.params;
 
     // 1) portfolio capital
-    const portfolio = await prisma.portfolio.findUnique({
-      where: { id: portfolioId },
+    const portfolio = await prisma.portfolio.findFirst({
+      where: { id: portfolioId, userId },
       select: {
         startingCapital: true,
         additionalCapital: true,
       },
     });
+    if (!portfolio) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     const starting = Number(portfolio?.startingCapital ?? 0);
     const additional = Number(portfolio?.additionalCapital ?? 0);
@@ -41,7 +52,10 @@ export async function GET(
     // 2) open + closed trades (narrow selects)
     const [openTrades, closedTrades] = await Promise.all([
       prisma.trade.findMany({
-        where: { portfolioId, status: "open" },
+        where: {
+          status: "open",
+          portfolio: { id: portfolioId, userId },
+        },
         select: {
           id: true,
           type: true,
@@ -51,7 +65,10 @@ export async function GET(
         },
       }),
       prisma.trade.findMany({
-        where: { portfolioId, status: "closed" },
+        where: {
+          status: "closed",
+          portfolio: { id: portfolioId, userId },
+        },
         select: {
           id: true,
           type: true,

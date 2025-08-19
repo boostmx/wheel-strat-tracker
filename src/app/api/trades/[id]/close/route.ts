@@ -1,5 +1,7 @@
 import { prisma } from "@/server/prisma";
 import { NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth/auth";
 
 type CloseTradePayload = {
   closingContracts?: number;
@@ -17,6 +19,12 @@ export async function PATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
 ) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  if (!userId) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const params = await props.params;
   const id = await params.id;
 
@@ -25,9 +33,10 @@ export async function PATCH(
     .catch(() => ({}) as CloseTradePayload);
 
   // Support both new and legacy payload shapes
-  const contractsToClose = Number(
+  const contractsToCloseRaw = Number(
     body.closingContracts ?? body.contractsToClose ?? body.contracts,
   );
+  const contractsToClose = Math.trunc(contractsToCloseRaw);
   const closingPrice = Number(
     body.closingContractPrice ?? body.closingPrice ?? body.price,
   );
@@ -41,7 +50,7 @@ export async function PATCH(
     return new Response("Invalid closingPrice", { status: 400 });
   }
 
-  const trade = await prisma.trade.findUnique({ where: { id } });
+  const trade = await prisma.trade.findFirst({ where: { id, portfolio: { userId } } });
   if (!trade) return new Response("Trade not found", { status: 404 });
 
   if (trade.status !== "open") {

@@ -2,6 +2,8 @@
 // This file handles metrics for a specific portfolio identified by its ID.
 import { prisma } from "@/server/prisma";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth/auth";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -22,7 +24,21 @@ export async function GET(
   props: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id: portfolioId } = await props.params;
+
+    const owns = await prisma.portfolio.findFirst({
+      where: { id: portfolioId, userId },
+      select: { id: true },
+    });
+    if (!owns) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     // Optional: limit how many upcoming expirations are returned (default 3, max 10)
     const url = new URL(req.url);
@@ -35,7 +51,10 @@ export async function GET(
 
     // Only OPEN trades and only fields we need (fast)
     const openTrades = await prisma.trade.findMany({
-      where: { portfolioId, status: "open" },
+      where: {
+        status: "open",
+        portfolio: { id: portfolioId, userId },
+      },
       select: {
         id: true,
         ticker: true,
