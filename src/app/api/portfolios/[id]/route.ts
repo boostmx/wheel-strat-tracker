@@ -1,3 +1,5 @@
+// api/portfolios/[id]/route.ts
+// This file handles operations for a specific portfolio identified by its ID.
 import { auth } from "@/server/auth/auth";
 import { prisma } from "@/server/prisma";
 import { Prisma } from "@prisma/client";

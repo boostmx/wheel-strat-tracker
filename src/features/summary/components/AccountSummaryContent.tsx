@@ -1,17 +1,17 @@
 "use client";
 
 import useSWR from "swr";
-import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Portfolio } from "@/types";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 import { motion } from "framer-motion";
-type Snapshot = {
+
+type SummaryPortfolio = {
   portfolioId: string;
+  name: string;
   startingCapital: number;
-  additionalCapital: number; // NEW
-  capitalBase: number; // NEW: starting + additional
-  currentCapital: number; // NEW: capitalBase + totalProfitAll (realized)
+  additionalCapital: number;
+  capitalBase: number;
+  currentCapital: number;
   totalProfitAll: number;
   openCount: number;
   capitalInUse: number;
@@ -29,7 +29,23 @@ type Snapshot = {
   openAvgDays: number | null;
   realizedMTD: number;
   realizedYTD: number;
-} | null;
+};
+
+type SummaryResponse = {
+  perPortfolio: Record<string, SummaryPortfolio>;
+  totals: {
+    portfolioCount: number;
+    capitalBase: number;
+    currentCapital: number;
+    capitalInUse: number;
+    cashAvailable: number;
+    percentUsed: number;
+    realizedMTD: number;
+    realizedYTD: number;
+  };
+  nextExpiration: { date: string; contracts: number; topTicker?: string } | null;
+  topTickers: { ticker: string; collateral: number }[];
+};
 
 function formatCompactCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -53,91 +69,62 @@ function pctColor(p: number) {
 }
 
 export default function AccountSummaryContent() {
-  const {
-    data: portfolios = [],
-    isLoading,
-    error,
-  } = useSWR<Portfolio[]>("/api/portfolios");
-  const [snapshots, setSnapshots] = useState<Record<string, Snapshot>>({});
+  const { data, isLoading, error } = useSWR<SummaryResponse>("/api/account/summary");
 
-  useEffect(() => {
-    (async () => {
-      if (!portfolios?.length) return;
-      const ids = portfolios.map((p) => p.id);
-      const res = await fetch("/api/portfolios/snapshot/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-      const data: Record<string, Snapshot> = res.ok ? await res.json() : {};
-      setSnapshots(data);
-    })();
-  }, [portfolios]);
-
-  const agg = useMemo(() => {
-    const snaps = Object.values(snapshots).filter(
-      Boolean,
-    ) as NonNullable<Snapshot>[];
-
-    const accountStarting = snaps.reduce((s, n) => s + n.startingCapital, 0);
-    const accountAdditional = snaps.reduce(
-      (s, n) => s + n.additionalCapital,
-      0,
-    );
-    const accountBase = snaps.reduce((s, n) => s + n.capitalBase, 0); // starting + additional
-    const accountProfit = snaps.reduce((s, n) => s + n.totalProfitAll, 0);
-    const accountCurrentCapital = accountBase + accountProfit; // realized P&L adjusts cash
-    const accountCapitalUsed = snaps.reduce((s, n) => s + n.capitalInUse, 0);
-    const accountPercentUsed =
-      accountBase > 0 ? (accountCapitalUsed / accountBase) * 100 : 0;
-    const accountCashAvailable = accountCurrentCapital - accountCapitalUsed;
-
-    const totalOpenTrades = snaps.reduce((s, n) => s + n.openCount, 0);
-    const totalRealizedMTD = snaps.reduce((s, n) => s + n.realizedMTD, 0);
-    const totalRealizedYTD = snaps.reduce((s, n) => s + n.realizedYTD, 0);
-    const totalExpiringSoon = snaps.reduce(
-      (s, n) => s + n.expiringSoonCount,
-      0,
-    );
-
-    // Next expiration across account
-    let nextDate: string | null = null;
-    const contractsByDate = new Map<string, number>();
-    for (const n of snaps) {
-      if (n.nextExpiration?.date) {
-        const d = new Date(n.nextExpiration.date).toISOString().slice(0, 10);
-        contractsByDate.set(
-          d,
-          (contractsByDate.get(d) ?? 0) + (n.nextExpiration.contracts || 0),
-        );
-        if (!nextDate || d < nextDate) nextDate = d;
-      }
+  const agg = (() => {
+    if (!data) {
+      return {
+        accountStarting: 0,
+        accountAdditional: 0,
+        accountBase: 0,
+        accountProfit: 0,
+        accountCurrentCapital: 0,
+        accountCapitalUsed: 0,
+        accountPercentUsed: 0,
+        accountCashAvailable: 0,
+        totalOpenTrades: 0,
+        totalRealizedMTD: 0,
+        totalRealizedYTD: 0,
+        totalExpiringSoon: 0,
+        nextExpiration: null as { date: string; contracts: number; topTicker?: string } | null,
+        topExposures: [] as { ticker: string; pct: number }[],
+        perPortfolio: [] as { id: string; pctUsed: number; open: number; soon: number }[],
+      };
     }
-    const nextExpiration = nextDate
-      ? { date: nextDate, contracts: contractsByDate.get(nextDate) ?? 0 }
-      : null;
 
-    // Top exposures (account)
-    const byTicker = new Map<string, number>();
-    for (const n of snaps)
-      for (const t of n.topTickers)
-        byTicker.set(t.ticker, (byTicker.get(t.ticker) ?? 0) + t.collateral);
-    const totalColl =
-      Array.from(byTicker.values()).reduce((a, b) => a + b, 0) || 1;
-    const topExposures = Array.from(byTicker.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([ticker, coll]) => ({ ticker, pct: (coll / totalColl) * 100 }));
+    const portfolios = Object.values(data.perPortfolio);
+
+    const accountStarting = portfolios.reduce((s, p) => s + p.startingCapital, 0);
+    const accountAdditional = portfolios.reduce((s, p) => s + p.additionalCapital, 0);
+    const accountBase = data.totals.capitalBase;
+    const accountCurrentCapital = data.totals.currentCapital;
+    const accountProfit = portfolios.reduce((s, p) => s + p.totalProfitAll, 0);
+    const accountCapitalUsed = data.totals.capitalInUse;
+    const accountPercentUsed = data.totals.percentUsed;
+    const accountCashAvailable = data.totals.cashAvailable;
+
+    const totalOpenTrades = portfolios.reduce((s, p) => s + p.openCount, 0);
+    const totalRealizedMTD = data.totals.realizedMTD;
+    const totalRealizedYTD = data.totals.realizedYTD;
+    const totalExpiringSoon = portfolios.reduce((s, p) => s + p.expiringSoonCount, 0);
+
+    const nextExpiration = data.nextExpiration; // may include topTicker
+
+    // Top exposures: compute pct from returned collaterals
+    const totalColl = data.topTickers.reduce((s, t) => s + t.collateral, 0) || 1;
+    const topExposures = data.topTickers.map((t) => ({
+      ticker: t.ticker,
+      pct: (t.collateral / totalColl) * 100,
+    }));
 
     // Per-portfolio chips
-    const perPortfolio = snaps.map((n) => {
-      const pctUsed =
-        n.capitalBase > 0 ? (n.capitalInUse / n.capitalBase) * 100 : 0;
+    const perPortfolio = portfolios.map((p) => {
+      const pctUsed = p.capitalBase > 0 ? (p.capitalInUse / p.capitalBase) * 100 : 0;
       return {
-        id: n.portfolioId,
+        id: p.portfolioId,
         pctUsed,
-        open: n.openCount,
-        soon: n.expiringSoonCount,
+        open: p.openCount,
+        soon: p.expiringSoonCount,
       };
     });
 
@@ -158,7 +145,7 @@ export default function AccountSummaryContent() {
       topExposures,
       perPortfolio,
     };
-  }, [snapshots]);
+  })();
 
   if (isLoading)
     return <div className="max-w-5xl mx-auto py-16 px-6">Loading...</div>;
@@ -200,7 +187,9 @@ export default function AccountSummaryContent() {
                 {formatLongCurrency(agg.accountCurrentCapital)}
               </p>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {`Base ${formatLongCurrency(agg.accountBase)} (Start ${formatLongCurrency(agg.accountStarting)} · Addl ${formatLongCurrency(agg.accountAdditional)})`}
+                {`Base ${formatLongCurrency(agg.accountBase)} (Start ${formatLongCurrency(
+                  agg.accountStarting,
+                )} · Addl ${formatLongCurrency(agg.accountAdditional)})`}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {`Realized ${formatCompactCurrency(agg.accountProfit)}`}
@@ -246,7 +235,11 @@ export default function AccountSummaryContent() {
                 Cash Available
               </p>
               <p
-                className={`text-3xl font-bold ${agg.accountCashAvailable < 0 ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-100"}`}
+                className={`text-3xl font-bold ${
+                  agg.accountCashAvailable < 0
+                    ? "text-red-700 dark:text-red-400"
+                    : "text-green-700 dark:text-green-100"
+                }`}
               >
                 {formatLongCurrency(agg.accountCashAvailable)}
               </p>
@@ -290,7 +283,13 @@ export default function AccountSummaryContent() {
               </p>
               <p className="text-xl font-semibold text-blue-800 dark:text-blue-200">
                 {agg.nextExpiration
-                  ? `${formatDateOnlyUTC(agg.nextExpiration.date)} · ${agg.nextExpiration.contracts} contracts`
+                  ? `${formatDateOnlyUTC(agg.nextExpiration.date)} · ${
+                      agg.nextExpiration.contracts
+                    } contracts${
+                      agg.nextExpiration.topTicker
+                        ? ` · ${agg.nextExpiration.topTicker}`
+                        : ""
+                    }`
                   : "—"}
               </p>
             </CardContent>
@@ -389,9 +388,7 @@ export default function AccountSummaryContent() {
         transition={{ duration: 0.24, delay: 0.42 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-          By portfolio
-        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">By portfolio</p>
         <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-800 p-2 rounded">
           {agg.perPortfolio.map((pp, i) => (
             <motion.span
@@ -399,7 +396,9 @@ export default function AccountSummaryContent() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: 0.02 * i }}
-              className={`text-xs px-2 py-1 rounded border bg-white dark:bg-gray-800 ${pctColor(pp.pctUsed)} dark:text-gray-100`}
+              className={`text-xs px-2 py-1 rounded border bg-white dark:bg-gray-800 ${pctColor(
+                pp.pctUsed,
+              )} dark:text-gray-100`}
               title={`% Used ${pp.pctUsed.toFixed(1)} · Open ${pp.open} · Exp ≤7d ${pp.soon}`}
             >
               {`${pp.id.slice(0, 4)}… · ${pp.pctUsed.toFixed(0)}% used · ${pp.open} open · ${pp.soon} ≤7d`}

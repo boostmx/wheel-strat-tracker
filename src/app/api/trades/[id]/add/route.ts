@@ -1,10 +1,18 @@
 import { prisma } from "@/server/prisma";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth/auth";
 
 export async function PATCH(
   req: Request,
   props: { params: Promise<{ id: string }> },
 ) {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const params = await props.params;
   const id = await params.id;
 
@@ -19,7 +27,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
-  const trade = await prisma.trade.findUnique({ where: { id } });
+  const trade = await prisma.trade.findFirst({
+    where: { id, portfolio: { userId } },
+  });
   if (!trade) {
     return NextResponse.json({ error: "Trade not found" }, { status: 404 });
   }
@@ -28,7 +38,7 @@ export async function PATCH(
   const existingContracts = Number(trade.contracts);
   const existingContractPrice = Number(trade.contractPrice ?? 0);
 
-  const totalContracts = existingContracts + addedContracts;
+  const totalContracts = Math.trunc(existingContracts + addedContracts);
   const totalPremium =
     existingContractPrice * existingContracts +
     addedContractPrice * addedContracts;

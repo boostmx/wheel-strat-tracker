@@ -1,21 +1,15 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import type React from "react";
+import useSWR from "swr";
 import { Trade } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TradeNotesSimple } from "@/features/trades/components/TradeNotesSimple";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { CurrencyInput } from "@/components/ui/currency-input";
+import CloseTradeModal from "@/features/trades/components/CloseTradeModal";
+import AddToTradeModal from "@/features/trades/components/AddToTradeModal";
 import { formatDateOnlyUTC, ensureUtcMidnight } from "@/lib/formatDateOnly";
 import { motion } from "framer-motion";
 
@@ -42,42 +36,29 @@ const calcCapitalInUse = (t: Trade) => {
   return isCashSecuredPut ? t.strikePrice * 100 * t.contracts : 0;
 };
 
+const fetcher = (url: string) =>
+  fetch(url).then(async (r) => {
+    if (!r.ok)
+      throw new Error(
+        (await r.json().catch(() => ({}))).error || `Failed ${r.status}`,
+      );
+    return r.json();
+  });
+
 export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
-  const [trade, setTrade] = useState<Trade | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [addOpen, setAddOpen] = useState(false);
-  const [addedContracts, setAddedContracts] = useState("");
-  const [addedContractPrice, setAddedContractPrice] = useState({
-    formatted: "",
-    raw: 0,
+  const {
+    data: trade,
+    isLoading,
+    mutate,
+  } = useSWR<Trade>(`/api/trades/${tradeId}`, fetcher, {
+    dedupingInterval: 10_000,
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [closeOpen, setCloseOpen] = useState(false);
-  const [closingContracts, setClosingContracts] = useState("");
-  const [closingContractPrice, setClosingContractPrice] = useState({
-    formatted: "",
-    raw: 0,
-  });
-  const [closing, setClosing] = useState(false);
 
-  useEffect(() => {
-    const fetchTrade = async () => {
-      try {
-        const res = await fetch(`/api/trades/${tradeId}`);
-        if (!res.ok) throw new Error("Failed to fetch trade");
-        const data = await res.json();
-        setTrade(data);
-      } catch (err) {
-        toast.error("Could not load trade details.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // State for shared close modal and add modal
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
-    fetchTrade();
-  }, [tradeId]);
-
+  
   const formatType = (type: string) => type.replace(/([a-z])([A-Z])/g, "$1 $2");
 
   const statusBadge = (status: "open" | "closed") => {
@@ -93,104 +74,29 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
     );
   };
 
-  const refetchTrade = async () => {
-    try {
-      const res = await fetch(`/api/trades/${tradeId}`);
-      if (!res.ok) throw new Error("Failed to fetch trade");
-      const data = await res.json();
-      setTrade(data);
-    } catch {
-      toast.error("Failed to refresh trade after update.");
-    }
-  };
+  // Derived values (memoized so they don't re-run on every small state change)
+  const capitalInUse = useMemo(
+    () => (trade ? calcCapitalInUse(trade) : 0),
+    [trade],
+  );
 
-  const submitCloseTrade = async () => {
-    const contractsNum = Number(closingContracts);
-    const priceNum = Number(closingContractPrice?.raw ?? Number.NaN);
+  const daysUntilExpiration = useMemo(() => {
+    if (!trade || trade.status !== "open") return null;
+    const msPerDay = 86_400_000;
+    const exp = ensureUtcMidnight(trade.expirationDate).getTime();
+    const today = ensureUtcMidnight(new Date()).getTime();
+    return Math.max(0, Math.ceil((exp - today) / msPerDay));
+  }, [trade]);
 
-    if (!Number.isFinite(contractsNum) || contractsNum <= 0) {
-      toast.error("Enter a valid number of contracts to close.");
-      return;
-    }
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      toast.error("Enter a valid closing price per contract.");
-      return;
-    }
+  const daysHeld = useMemo(() => {
+    if (!trade || trade.status !== "closed" || !trade.closedAt) return null;
+    const msPerDay = 86_400_000;
+    const closed = ensureUtcMidnight(trade.closedAt).getTime();
+    const opened = ensureUtcMidnight(trade.createdAt).getTime();
+    return Math.max(0, Math.ceil((closed - opened) / msPerDay));
+  }, [trade]);
 
-    setClosing(true);
-    try {
-      const res = await fetch(`/api/trades/${tradeId}/close`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          closingContracts: contractsNum,
-          closingContractPrice: priceNum,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || "Unable to close trade");
-      }
-      await refetchTrade();
-      toast.success("Position closed.");
-      setCloseOpen(false);
-      setClosingContracts("");
-      setClosingContractPrice({ formatted: "", raw: 0 });
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        toast.error(e.message);
-      } else {
-        toast.error("Failed to close trade.");
-      }
-    } finally {
-      setClosing(false);
-    }
-  };
-
-  const submitAddToTrade = async () => {
-    const contractsNum = Number(addedContracts);
-    const priceNum = Number(addedContractPrice?.raw ?? Number.NaN);
-
-    if (!Number.isFinite(contractsNum) || contractsNum <= 0) {
-      toast.error("Enter a valid number of contracts.");
-      return;
-    }
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      toast.error("Enter a valid price per contract.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await fetch(`/api/trades/${tradeId}/add`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          addedContracts: contractsNum,
-          addedContractPrice: priceNum,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || "Unable to add to trade");
-      }
-      await refetchTrade();
-      toast.success("Position updated.");
-      setAddOpen(false);
-      setAddedContracts("");
-      setAddedContractPrice({ formatted: "", raw: 0 });
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        toast.error(e.message);
-      } else {
-        toast.error("Failed to update trade.");
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-6 w-1/3" />
@@ -235,13 +141,6 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
               </h1>
               <div className="flex items-center gap-3">
                 {statusBadge(trade.status)}
-                {/* 
-                  // Keeping this block as a placeholder for future edit functionality
-                {trade.status === "open" && (
-                  <Button variant="outline" disabled>
-                    Edit
-                  </Button>
-                )} */}
               </div>
             </div>
 
@@ -296,9 +195,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   <span className="font-medium text-muted-foreground">
                     Capital In Use:
                   </span>{" "}
-                  {trade.status === "open"
-                    ? formatUSD(calcCapitalInUse(trade))
-                    : "-"}
+                  {trade.status === "open" ? formatUSD(capitalInUse) : "-"}
                 </p>
                 <p>
                   <span className="font-medium text-muted-foreground">
@@ -318,14 +215,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                     <span className="font-medium text-muted-foreground">
                       Days Until Expiration:
                     </span>{" "}
-                    {(() => {
-                      const msPerDay = 86_400_000;
-                      const exp = ensureUtcMidnight(
-                        trade.expirationDate,
-                      ).getTime();
-                      const today = ensureUtcMidnight(new Date()).getTime();
-                      return Math.max(0, Math.ceil((exp - today) / msPerDay));
-                    })()}
+                    {daysUntilExpiration ?? "-"}
                   </p>
                 )}
 
@@ -341,21 +231,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                       <span className="font-medium text-muted-foreground">
                         Days Held:
                       </span>{" "}
-                      {trade.closedAt
-                        ? (() => {
-                            const msPerDay = 86_400_000;
-                            const closed = ensureUtcMidnight(
-                              trade.closedAt,
-                            ).getTime();
-                            const opened = ensureUtcMidnight(
-                              trade.createdAt,
-                            ).getTime();
-                            return Math.max(
-                              0,
-                              Math.ceil((closed - opened) / msPerDay),
-                            );
-                          })()
-                        : "-"}
+                      {daysHeld ?? "-"}
                     </p>
                     <p>
                       <span className="font-medium text-muted-foreground">
@@ -388,98 +264,35 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
             {trade.status === "open" && (
               <div className="flex justify-end gap-2 pt-2">
                 {/* Close Position Button/Modal (left) */}
-                <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">Close Position</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Close Position</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 sm:grid-cols-3 items-end">
-                      <div className="sm:col-span-1">
-                        <label className="text-sm block mb-1">Contracts</label>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={closingContracts}
-                          onChange={(e) =>
-                            setClosingContracts(
-                              e.target.value.replace(/\D/g, ""),
-                            )
-                          }
-                          placeholder={`e.g., ${trade.contracts}`}
-                        />
-                      </div>
-                      <div className="sm:col-span-1">
-                        <label className="text-sm block mb-1">
-                          Closing Price
-                        </label>
-                        <CurrencyInput
-                          value={closingContractPrice}
-                          onChange={setClosingContractPrice}
-                          placeholder="e.g., 0.20"
-                        />
-                      </div>
-                      <div className="sm:col-span-1 flex items-end">
-                        <Button
-                          onClick={submitCloseTrade}
-                          disabled={closing}
-                          className="w-full"
-                        >
-                          {closing ? "Closing…" : "Submit"}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button variant="outline" onClick={() => setCloseModalOpen(true)}>
+                  Close Position
+                </Button>
+                <CloseTradeModal
+                  id={trade.id}
+                  portfolioId={portfolioId}
+                  isOpen={closeModalOpen}
+                  onClose={() => setCloseModalOpen(false)}
+                  strikePrice={trade.strikePrice}
+                  contracts={trade.contracts}
+                  ticker={trade.ticker}
+                  expirationDate={String(trade.expirationDate)}
+                  type={trade.type}
+                  refresh={() => mutate()} // revalidate this page's trade fetch
+                />
 
-                {/* Add to Position Button/Modal (right) */}
-                <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                  <DialogTrigger asChild>
-                    <Button>Add to Position</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add to Position</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <div className="sm:col-span-1">
-                        <label className="text-sm block mb-1">
-                          Contracts to Add
-                        </label>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={addedContracts}
-                          onChange={(e) =>
-                            setAddedContracts(e.target.value.replace(/\D/g, ""))
-                          }
-                          placeholder="e.g., 2"
-                        />
-                      </div>
-                      <div className="sm:col-span-1">
-                        <label className="text-sm block mb-1">
-                          Price per Contract
-                        </label>
-                        <CurrencyInput
-                          value={addedContractPrice}
-                          onChange={setAddedContractPrice}
-                          placeholder="e.g., 0.85"
-                        />
-                      </div>
-                      <div className="sm:col-span-1 flex items-end">
-                        <Button
-                          onClick={submitAddToTrade}
-                          disabled={submitting}
-                          className="w-full"
-                        >
-                          {submitting ? "Updating…" : "Submit"}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button onClick={() => setAddModalOpen(true)}>
+                  Add to Position
+                </Button>
+                <AddToTradeModal
+                  isOpen={addModalOpen}
+                  onClose={() => setAddModalOpen(false)}
+                  tradeId={trade.id}
+                  portfolioId={portfolioId}
+                  currentContracts={trade.contracts}
+                  avgContractPrice={trade.contractPrice}
+                  ticker={trade.ticker}
+                  onUpdated={() => mutate()}
+                />
               </div>
             )}
           </CardContent>

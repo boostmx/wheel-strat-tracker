@@ -1,16 +1,23 @@
 "use client";
-
-//import { useRouter } from "next/navigation";
-import useSWR from "swr";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
 import { OpenTradesTable } from "@/features/trades/components/TradeTables/OpenTradesTable";
-import { ClosedTradesTable } from "@/features/trades/components/TradeTables/ClosedTradesTable";
+// dynamic import for faster initial render
+import dynamic from "next/dynamic";
+const ClosedTradesTable = dynamic(
+  () =>
+    import("@/features/trades/components/TradeTables/ClosedTradesTable").then(
+      (m) => m.ClosedTradesTable,
+    ),
+  { ssr: false, loading: () => <p>Loading closed trades…</p> },
+);
+
 import { Portfolio } from "@/types";
 import { useTrades } from "@/features/trades/hooks/useTrades";
 import { MetricsCard } from "@/features/portfolios/components/MetricsCard";
-import { getPortfolioMetrics } from "@/server/services/getPortfolioMetrics";
 import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { useDetailMetrics } from "@/features/portfolios/hooks/useDetailMetrics";
 
 //Currency formatting utility for Total Profit display
 function formatCompactCurrency(value: number) {
@@ -22,8 +29,28 @@ function formatCompactCurrency(value: number) {
   }).format(value);
 }
 
+// Simple in-view hook to lazily mount closed trades
+function useInViewOnce<T extends HTMLElement = HTMLDivElement>() {
+  const ref = useRef<T | null>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    if (!ref.current || inView) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [inView]);
+  return { ref, inView };
+}
+
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
-  //const router = useRouter();
   const { trades: openTrades, isLoading: loadingOpen } = useTrades(
     portfolio.id,
     "open",
@@ -33,40 +60,18 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
     "closed",
   );
 
-  const { data: metrics } = useSWR(["portfolioMetrics", portfolio.id], () =>
-    getPortfolioMetrics(portfolio.id),
-  );
+  // NEW: detail metrics from API
+  const { data: metrics } = useDetailMetrics(portfolio.id);
 
   // Normalize numeric fields (Decimal/string -> number)
   const starting = Number(portfolio.startingCapital ?? 0);
   const addl = Number(portfolio.additionalCapital ?? 0);
 
-  // Prepare metric items for display
-  // Note: This assumes metrics object has the necessary fields
-  // Order them by the 'order' property
+  // Defer mounting closed trades until scrolled near
+  const { ref: closedSentinelRef, inView: showClosed } = useInViewOnce();
+
+  // Prepare metric items for display (unchanged API shape)
   const metricItems = [
-    {
-      key: "avgDays",
-      order: 4,
-      label: "Avg. Days Held",
-      value:
-        metrics?.avgDaysInTrade != null
-          ? `${metrics.avgDaysInTrade.toFixed(0).toLocaleString()}`
-          : "-",
-    },
-    {
-      key: "winRate",
-      order: 3,
-      label: "Win Rate",
-      value:
-        metrics?.winRate != null
-          ? `${(metrics.winRate * 100).toFixed(2)}%`
-          : "Loading...",
-      className:
-        metrics?.winRate != null && metrics.winRate > 0.5
-          ? "text-green-600"
-          : "text-red-600",
-    },
     {
       key: "openPremium",
       order: 1,
@@ -90,6 +95,28 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           ? "text-green-600"
           : "text-red-600",
     },
+    {
+      key: "winRate",
+      order: 3,
+      label: "Win Rate",
+      value:
+        metrics?.winRate != null
+          ? `${(metrics.winRate * 100).toFixed(2)}%`
+          : "Loading...",
+      className:
+        metrics?.winRate != null && metrics.winRate > 0.5
+          ? "text-green-600"
+          : "text-red-600",
+    },
+    {
+      key: "avgDays",
+      order: 4,
+      label: "Avg. Days Held",
+      value:
+        metrics?.avgDaysInTrade != null
+          ? `${metrics.avgDaysInTrade.toFixed(0)}`
+          : "Loading...",
+    },
   ];
 
   return (
@@ -106,6 +133,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         </h1>
       </motion.div>
 
+      {/* Capital & P/L cards */}
       <motion.div
         className="grid grid-cols-1 sm:grid-cols-2 gap-4"
         initial={{ opacity: 1 }}
@@ -202,12 +230,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         </motion.div>
       </motion.div>
 
+      {/* Secondary metrics */}
       <motion.div
         className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]"
         initial={{ opacity: 1 }}
         animate={{ opacity: 1 }}
       >
-        {metricItems
+        {[...metricItems]
           .sort((a, b) => a.order - b.order)
           .map((m, i) => (
             <motion.div
@@ -227,6 +256,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           ))}
       </motion.div>
 
+      {/* Open positions */}
       <motion.div
         className="flex justify-between items-center"
         initial={{ opacity: 0, y: 6 }}
@@ -253,6 +283,8 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         )}
       </motion.div>
 
+      {/* Closed positions (lazy mount when near viewport) */}
+      <div ref={closedSentinelRef} />
       <motion.h2
         className="text-xl font-semibold mt-10 text-gray-900 dark:text-gray-100"
         initial={{ opacity: 0, y: 6 }}
@@ -269,10 +301,17 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         transition={{ duration: 0.22, delay: 0.3 }}
         style={{ willChange: "opacity, transform" }}
       >
-        {loadingClosed ? (
-          <p>Loading closed trades...</p>
+        {showClosed ? (
+          loadingClosed ? (
+            <p>Loading closed trades...</p>
+          ) : (
+            <ClosedTradesTable
+              trades={closedTrades}
+              portfolioId={portfolio.id}
+            />
+          )
         ) : (
-          <ClosedTradesTable trades={closedTrades} portfolioId={portfolio.id} />
+          <p>Scroll to load closed trades…</p>
         )}
       </motion.div>
     </div>
