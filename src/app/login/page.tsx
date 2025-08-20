@@ -75,7 +75,11 @@ export default function LoginPage() {
         </a>
       </p>
       <div className="mt-6 text-center text-xs italic text-muted-foreground">
-        <VersionBadge className="mt-4" />
+        <VersionBadge className="mt-4" /> (
+          <a href="/changelog" className="text-blue-600 hover:underline font-medium">
+            changelog
+          </a>
+        )
       </div>
     </div>
   );

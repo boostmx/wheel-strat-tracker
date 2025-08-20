@@ -50,7 +50,9 @@ export async function PATCH(
     return new Response("Invalid closingPrice", { status: 400 });
   }
 
-  const trade = await prisma.trade.findFirst({ where: { id, portfolio: { userId } } });
+  const trade = await prisma.trade.findFirst({
+    where: { id, portfolio: { userId } },
+  });
   if (!trade) return new Response("Trade not found", { status: 404 });
 
   if (trade.status !== "open") {

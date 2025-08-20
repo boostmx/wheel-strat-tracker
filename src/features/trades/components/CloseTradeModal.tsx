@@ -75,8 +75,8 @@ export function CloseTradeModal({
   // Fetch trade for fallback display fields when props are missing
   const { data: tradeData } = useSWR<Trade>(
     isOpen ? `/api/trades/${id}` : null,
-    (url: string) => fetch(url).then(r => r.json()),
-    { dedupingInterval: 10_000 }
+    (url: string) => fetch(url).then((r) => r.json()),
+    { dedupingInterval: 10_000 },
   );
 
   // Prefer props; fall back to fetched trade data
@@ -91,14 +91,17 @@ export function CloseTradeModal({
   const displayType = humanize(type ?? tradeData?.type ?? "");
 
   const displayAvgPrice = tradeData?.contractPrice; // average price per contract (fallback)
-  const displayExpiration = expirationDate ?? (tradeData?.expirationDate ? String(tradeData.expirationDate) : undefined);
+  const displayExpiration =
+    expirationDate ??
+    (tradeData?.expirationDate ? String(tradeData.expirationDate) : undefined);
 
   // Effective contracts (honor full close)
   const effectiveContracts = fullClose ? contracts : contractsToClose;
 
   // Validations
   const contractsValid =
-    isPositiveInt(effectiveContracts) && Number(effectiveContracts) <= contracts;
+    isPositiveInt(effectiveContracts) &&
+    Number(effectiveContracts) <= contracts;
   const priceValid = Number(closingPrice.raw) > 0;
   const canSubmit = contractsValid && priceValid;
 
@@ -106,8 +109,8 @@ export function CloseTradeModal({
     ? !isPositiveInt(effectiveContracts)
       ? "Enter a valid whole number of contracts."
       : Number(effectiveContracts) > contracts
-      ? `Cannot close more than ${contracts} contracts.`
-      : ""
+        ? `Cannot close more than ${contracts} contracts.`
+        : ""
     : "";
 
   const priceErr = !priceValid ? "Enter a valid closing price." : "";
@@ -161,8 +164,8 @@ export function CloseTradeModal({
         err instanceof Error
           ? err.message
           : typeof err === "string"
-          ? err
-          : "Error closing trade";
+            ? err
+            : "Error closing trade";
       toast.error(errorMessage);
     } finally {
       setSubmitting(false);
@@ -184,11 +187,13 @@ export function CloseTradeModal({
             <span className="font-medium">Type:</span> {displayType}
           </p>
           <p>
-            <span className="font-medium">Strike:</span> ${strikePrice.toFixed(2)}
+            <span className="font-medium">Strike:</span> $
+            {strikePrice.toFixed(2)}
           </p>
           {typeof displayAvgPrice === "number" && (
             <p>
-              <span className="font-medium">Avg Price:</span> ${displayAvgPrice.toFixed(2)}
+              <span className="font-medium">Avg Price:</span> $
+              {displayAvgPrice.toFixed(2)}
             </p>
           )}
           {displayExpiration && (
@@ -202,7 +207,12 @@ export function CloseTradeModal({
         <div className="grid gap-3 sm:[grid-template-columns:1fr_1fr auto] items-start">
           {/* Contracts column */}
           <div className="sm:col-span-1">
-            <Label htmlFor="contractsToClose" className="text-sm whitespace-nowrap">Contracts</Label>
+            <Label
+              htmlFor="contractsToClose"
+              className="text-sm whitespace-nowrap"
+            >
+              Contracts
+            </Label>
 
             <Input
               id="contractsToClose"
@@ -212,7 +222,13 @@ export function CloseTradeModal({
               disabled={!!fullClose}
               aria-invalid={contractsTouched && !contractsValid}
               aria-describedby="contracts-help"
-              value={fullClose ? String(contracts) : contractsToClose === 0 ? "" : String(contractsToClose)}
+              value={
+                fullClose
+                  ? String(contracts)
+                  : contractsToClose === 0
+                    ? ""
+                    : String(contractsToClose)
+              }
               onBlur={() => setContractsTouched(true)}
               onChange={(e) => {
                 setContractsTouched(true);
@@ -238,8 +254,8 @@ export function CloseTradeModal({
               {contractsTouched && !contractsValid
                 ? contractsErr
                 : fullClose
-                ? "Closing all contracts"
-                : `Max: ${contracts}`}
+                  ? "Closing all contracts"
+                  : `Max: ${contracts}`}
             </p>
           </div>
 
@@ -248,9 +264,7 @@ export function CloseTradeModal({
             <Label className="text-sm whitespace-nowrap">Close Price</Label>
             {/* CurrencyInput doesn't expose onBlur/onKeyDown, wrap to capture Enter */}
             <div
-              onKeyDown={(
-                e: React.KeyboardEvent<HTMLDivElement>
-              ) => {
+              onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
                 if (e.key === "Enter") handleSubmit();
               }}
             >
@@ -260,7 +274,7 @@ export function CloseTradeModal({
                   setPriceTouched(true);
                   setClosingPrice(v);
                 }}
-                placeholder="e.g., 0.20" 
+                placeholder="e.g., 0.20"
               />
             </div>
 
@@ -300,7 +314,9 @@ export function CloseTradeModal({
                 if (isChecked) setContractsToClose(contracts);
               }}
             />
-            <span className="text-xs text-muted-foreground">Close full position</span>
+            <span className="text-xs text-muted-foreground">
+              Close full position
+            </span>
           </label>
         </div>
       </DialogContent>
