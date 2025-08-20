@@ -31,6 +31,14 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
+} from "@/components/ui/sheet";
 
 // ---------- Helpers ----------
 const formatUSD = (n: number) =>
@@ -97,6 +105,7 @@ const buildTooltipContent = (t: Trade) => (
     )}
   </div>
 );
+
 
 type Timeframe = "week" | "month" | "year" | "all";
 
@@ -170,10 +179,15 @@ export function OpenTradesTable({
     contracts: number;
   } | null>(null);
 
+  // Mobile filters sheet
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   // Pagination & Filters
   const [timeframe, setTimeframe] = useState<Timeframe>("all");
   const [pageSize, setPageSize] = useState<number>(10);
   const [pageIndex, setPageIndex] = useState<number>(0);
+
+  // No longer need responsive column visibility logic (Option 1 removed)
 
   const filteredTrades = useMemo(() => {
     const start = getStartDate(timeframe);
@@ -221,8 +235,65 @@ export function OpenTradesTable({
 
   return (
     <div className="w-full overflow-x-auto">
+      {/* Mobile toolbar: Filters + Pagination */}
+      <div className="mb-3 md:hidden flex items-center justify-between">
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm">Filters</Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="p-4">
+            <SheetHeader>
+              <SheetTitle>Open Trades Filters</SheetTitle>
+            </SheetHeader>
+            <div className="mt-3 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="ot-timeframe-mobile" className="text-sm">Timeframe</Label>
+                <Select value={timeframe} onValueChange={(v) => setTimeframe(toTimeframe(v))}>
+                  <SelectTrigger id="ot-timeframe-mobile" className="w-40">
+                    <SelectValue placeholder="Select timeframe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Last 7 days</SelectItem>
+                    <SelectItem value="month">Last 30 days</SelectItem>
+                    <SelectItem value="year">Last 12 months</SelectItem>
+                    <SelectItem value="all">All time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="ot-pagesize-mobile" className="text-sm">Rows</Label>
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger id="ot-pagesize-mobile" className="w-28">
+                    <SelectValue placeholder="Rows" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <SheetFooter className="mt-4 flex items-center justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setFiltersOpen(false)}>Close</Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+
+        {/* Compact mobile pagination */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.max(0, p - 1))} disabled={pageIndex === 0}>
+            ‹ Prev
+          </Button>
+          <span className="text-xs text-muted-foreground">{Math.min(pageIndex + 1, pageCount)}/{pageCount}</span>
+          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))} disabled={pageIndex >= pageCount - 1}>
+            Next ›
+          </Button>
+        </div>
+      </div>
       {/* Controls & Metrics */}
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-3 hidden md:flex md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Label htmlFor="ot-timeframe" className="text-sm">Timeframe</Label>
@@ -267,7 +338,47 @@ export function OpenTradesTable({
           </div>
         </div>
       </div>
-      <TooltipProvider delayDuration={150}>
+      {/* Mobile cards (shown on <md) */}
+      <div className="md:hidden space-y-2">
+        {pageRows.length === 0 ? (
+          <div className="rounded border p-3 text-center text-sm text-muted-foreground">No trades currently open.</div>
+        ) : (
+          pageRows.map((row) => {
+            const t = row.original as Trade;
+            return (
+              <button
+                key={t.id}
+                onClick={() => router.push(`/portfolio/${portfolioId}/trade/${t.id}`)}
+                className="w-full text-left rounded-xl border p-3 bg-card hover:bg-accent transition"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold">{t.ticker}</div>
+                  <div className="text-xs text-muted-foreground">{t.type}</div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Strike</span> ${t.strikePrice.toFixed(2)}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Exp</span> {formatDateOnlyUTC(new Date(t.expirationDate))}
+                  </div>
+                  {typeof t.contractPrice === "number" && (
+                    <div>
+                      <span className="text-muted-foreground">Premium</span> {formatUSD((t.contractPrice ?? 0) * 100 * t.contracts)}
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">Contracts</span> {t.contracts}
+                  </div>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+      {/* Desktop table (shown on md+) */}
+      <div className="hidden md:block">
+        <TooltipProvider delayDuration={150}>
         <table className="min-w-full text-sm text-left text-gray-700 dark:text-gray-100">
           <thead className="bg-gray-100 dark:bg-gray-800">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -362,8 +473,9 @@ export function OpenTradesTable({
           </tbody>
         </table>
       </TooltipProvider>
+    </div>
       {/* Pagination footer */}
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 hidden md:flex items-center justify-between">
         <div className="text-xs text-gray-600 dark:text-gray-400">
           Page {Math.min(pageIndex + 1, pageCount)} of {pageCount} • {totalRows} result{totalRows === 1 ? "" : "s"}
         </div>
