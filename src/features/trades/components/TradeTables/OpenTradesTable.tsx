@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -22,6 +22,15 @@ import {
 import { Info, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 // ---------- Helpers ----------
 const formatUSD = (n: number) =>
@@ -89,6 +98,30 @@ const buildTooltipContent = (t: Trade) => (
   </div>
 );
 
+type Timeframe = "week" | "month" | "year" | "all";
+
+const toTimeframe = (v: string): Timeframe =>
+  v === "week" || v === "month" || v === "year" || v === "all" ? v : "all";
+
+const getStartDate = (tf: Timeframe) => {
+  const now = new Date();
+  const d = new Date(now);
+  if (tf === "week") d.setDate(d.getDate() - 7);
+  if (tf === "month") d.setMonth(d.getMonth() - 1);
+  if (tf === "year") d.setFullYear(d.getFullYear() - 1);
+  return tf === "all" ? null : d;
+};
+
+const getTradeOpenDate = (t: Trade): Date | undefined => {
+  // Prefer createdAt for open trades; fallback to updatedAt if needed
+  const toDate = (val: unknown): Date | undefined => {
+    if (val == null) return undefined;
+    const d = new Date(val as string | number | Date);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  };
+  return toDate(t.createdAt);
+};
+
 const infoColumn: ColumnDef<Trade> = {
   id: "info",
   header: "",
@@ -137,13 +170,32 @@ export function OpenTradesTable({
     contracts: number;
   } | null>(null);
 
+  // Pagination & Filters
+  const [timeframe, setTimeframe] = useState<Timeframe>("all");
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageIndex, setPageIndex] = useState<number>(0);
+
+  const filteredTrades = useMemo(() => {
+    const start = getStartDate(timeframe);
+    if (!start) return trades;
+    return trades.filter((t) => {
+      const opened = getTradeOpenDate(t);
+      if (!opened) return true;
+      return opened >= start;
+    });
+  }, [trades, timeframe]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [timeframe, pageSize]);
+
   const columns = useMemo(() => {
     const base = makeOpenColumns() as ColumnDef<Trade, unknown>[];
     return [infoColumn, ...base];
   }, []);
 
   const table = useReactTable({
-    data: trades,
+    data: filteredTrades,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -151,8 +203,70 @@ export function OpenTradesTable({
     getSortedRowModel: getSortedRowModel(),
   });
 
+  // Rows after sorting
+  const allRows = table.getRowModel().rows;
+  const totalRows = allRows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+  const start = pageIndex * pageSize;
+  const end = start + pageSize;
+  const pageRows = allRows.slice(start, end);
+
+  // Metrics for header (client-side, uses visible rows)
+  const metrics = useMemo(() => {
+    const originals = allRows.map((r) => r.original as Trade);
+    const count = originals.length;
+    const totalOpenPremium = originals.reduce((sum, t) => sum + calcOpenPremium(t), 0);
+    return { count, totalOpenPremium };
+  }, [allRows]);
+
   return (
     <div className="w-full overflow-x-auto">
+      {/* Controls & Metrics */}
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="ot-timeframe" className="text-sm">Timeframe</Label>
+            <Select value={timeframe} onValueChange={(v) => setTimeframe(toTimeframe(v))}>
+              <SelectTrigger id="ot-timeframe" className="w-44">
+                <SelectValue placeholder="Select timeframe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="week">Last 7 days</SelectItem>
+                <SelectItem value="month">Last 30 days</SelectItem>
+                <SelectItem value="year">Last 12 months</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label htmlFor="ot-pagesize" className="text-sm">Rows per page</Label>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger id="ot-pagesize" className="w-28">
+                <SelectValue placeholder="Rows" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Metrics summary */}
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground w-full sm:w-auto">
+          <div>
+            <div className="uppercase text-[11px] tracking-wide">Open trades</div>
+            <div className="text-base font-semibold text-foreground">{metrics.count}</div>
+          </div>
+          <div>
+            <div className="uppercase text-[11px] tracking-wide">Open premium (total)</div>
+            <div className="text-base font-semibold text-foreground">{formatUSD(metrics.totalOpenPremium)}</div>
+          </div>
+        </div>
+      </div>
       <TooltipProvider delayDuration={150}>
         <table className="min-w-full text-sm text-left text-gray-700 dark:text-gray-100">
           <thead className="bg-gray-100 dark:bg-gray-800">
@@ -175,7 +289,7 @@ export function OpenTradesTable({
           </thead>
 
           <tbody>
-            {table.getRowModel().rows.length === 0 ? (
+            {pageRows.length === 0 ? (
               <tr>
                 <td
                   colSpan={table.getAllColumns().length}
@@ -185,7 +299,7 @@ export function OpenTradesTable({
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row) => (
+              pageRows.map((row) => (
                 <tr
                   key={row.id}
                   className="group border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
@@ -248,6 +362,26 @@ export function OpenTradesTable({
           </tbody>
         </table>
       </TooltipProvider>
+      {/* Pagination footer */}
+      <div className="mt-3 flex items-center justify-between">
+        <div className="text-xs text-gray-600 dark:text-gray-400">
+          Page {Math.min(pageIndex + 1, pageCount)} of {pageCount} • {totalRows} result{totalRows === 1 ? "" : "s"}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setPageIndex(0)} disabled={pageIndex === 0}>
+            « First
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.max(0, p - 1))} disabled={pageIndex === 0}>
+            ‹ Prev
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))} disabled={pageIndex >= pageCount - 1}>
+            Next ›
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPageIndex(pageCount - 1)} disabled={pageIndex >= pageCount - 1}>
+            Last »
+          </Button>
+        </div>
+      </div>
       {selectedTrade && (
         <CloseTradeModal
           id={selectedTrade.id}
