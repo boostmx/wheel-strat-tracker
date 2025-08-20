@@ -183,7 +183,7 @@ export function OpenTradesTable({
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Pagination & Filters
-  const [timeframe, setTimeframe] = useState<Timeframe>("all");
+  const [timeframe, setTimeframe] = useState<Timeframe>("month");
   const [pageSize, setPageSize] = useState<number>(10);
   const [pageIndex, setPageIndex] = useState<number>(0);
 
