@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 // Helpers
 // -------------------------
 const DAY_MS = 86_400_000;
-const isCSP = (type: string | null | undefined) => (type ?? "") === "CashSecuredPut";
+const isCSP = (type: string | null | undefined) =>
+  (type ?? "") === "CashSecuredPut";
 const collateralFor = (strike: number, contracts: number) =>
   Number(strike) * 100 * Number(contracts);
 
@@ -32,7 +33,9 @@ const startOfYearUTC = () => {
 // UTC-safe day math (avoid TZ off-by-one)
 const ensureUtcMidnight = (d: Date | string) => {
   const dt = new Date(d);
-  return new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+  return new Date(
+    Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()),
+  );
 };
 
 // Prefer stored premiumCaptured; otherwise estimate from contractPrice vs closingPrice.
@@ -44,7 +47,9 @@ const realizedFor = (row: {
 }) => {
   if (row.premiumCaptured != null) return Number(row.premiumCaptured);
   const close = row.closingPrice ?? 0;
-  return (Number(row.contractPrice) - Number(close)) * 100 * Number(row.contracts);
+  return (
+    (Number(row.contractPrice) - Number(close)) * 100 * Number(row.contracts)
+  );
 };
 
 const sumRealized = (
@@ -70,7 +75,12 @@ export async function GET() {
   // 1) Load portfolios scoped to the current user
   const portfolios = await prisma.portfolio.findMany({
     where: { userId },
-    select: { id: true, name: true, startingCapital: true, additionalCapital: true },
+    select: {
+      id: true,
+      name: true,
+      startingCapital: true,
+      additionalCapital: true,
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -87,7 +97,11 @@ export async function GET() {
         realizedMTD: 0,
         realizedYTD: 0,
       },
-      nextExpiration: null as { date: string; contracts: number; topTicker?: string } | null,
+      nextExpiration: null as {
+        date: string;
+        contracts: number;
+        topTicker?: string;
+      } | null,
       topTickers: [] as Array<{ ticker: string; collateral: number }>,
     });
   }
@@ -97,7 +111,11 @@ export async function GET() {
   const yearStart = startOfYearUTC();
 
   // Collector for a true global next-expiration across all portfolios
-  const allOpenForNext: Array<{ dateIso: string; ticker: string; contracts: number }> = [];
+  const allOpenForNext: Array<{
+    dateIso: string;
+    ticker: string;
+    contracts: number;
+  }> = [];
 
   // 2) Per-portfolio snapshots (parallelized)
   const perPortfolioEntries = await Promise.all(
@@ -126,7 +144,11 @@ export async function GET() {
           },
         }),
         prisma.trade.findMany({
-          where: { portfolioId: p.id, status: "closed", closedAt: { gte: monthStart } },
+          where: {
+            portfolioId: p.id,
+            status: "closed",
+            closedAt: { gte: monthStart },
+          },
           select: {
             contracts: true,
             contractPrice: true,
@@ -135,7 +157,11 @@ export async function GET() {
           },
         }),
         prisma.trade.findMany({
-          where: { portfolioId: p.id, status: "closed", closedAt: { gte: yearStart } },
+          where: {
+            portfolioId: p.id,
+            status: "closed",
+            closedAt: { gte: yearStart },
+          },
           select: {
             contracts: true,
             contractPrice: true,
@@ -179,11 +205,16 @@ export async function GET() {
         const add = collateralFor(t.strikePrice, t.contracts);
         byTicker.set(t.ticker, (byTicker.get(t.ticker) ?? 0) + add);
       }
-      const totalColl = Array.from(byTicker.values()).reduce((a, b) => a + b, 0) || 1;
+      const totalColl =
+        Array.from(byTicker.values()).reduce((a, b) => a + b, 0) || 1;
       const topTickers = Array.from(byTicker.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
-        .map(([ticker, coll]) => ({ ticker, collateral: coll, pct: (coll / totalColl) * 100 }));
+        .map(([ticker, coll]) => ({
+          ticker,
+          collateral: coll,
+          pct: (coll / totalColl) * 100,
+        }));
 
       // Expirations (per-portfolio) + “expiring in 7 days”
       const expirationsByDay = new Map<number, number>(); // key = UTC midnight millis
@@ -201,7 +232,10 @@ export async function GET() {
         // Ignore expirations strictly before today
         if (dayKey < todayKey) continue;
 
-        expirationsByDay.set(dayKey, (expirationsByDay.get(dayKey) ?? 0) + contracts);
+        expirationsByDay.set(
+          dayKey,
+          (expirationsByDay.get(dayKey) ?? 0) + contracts,
+        );
 
         // Count contracts expiring within 7 days (inclusive), UTC-safe
         const du = Math.ceil((dayKey - todayKey) / DAY_MS);
@@ -216,10 +250,15 @@ export async function GET() {
       }
 
       // Per-portfolio next expiration (earliest FUTURE date with >0 contracts)
-      const nextPair = Array.from(expirationsByDay.entries()).sort((a, b) => a[0] - b[0])[0];
+      const nextPair = Array.from(expirationsByDay.entries()).sort(
+        (a, b) => a[0] - b[0],
+      )[0];
 
       const nextExpiration = nextPair
-        ? { date: new Date(nextPair[0]).toISOString().slice(0, 10), contracts: nextPair[1] }
+        ? {
+            date: new Date(nextPair[0]).toISOString().slice(0, 10),
+            contracts: nextPair[1],
+          }
         : null;
 
       // Open avg age (days)
@@ -233,7 +272,8 @@ export async function GET() {
                     s +
                     Math.max(
                       0,
-                      (now.getTime() - new Date(t.createdAt).getTime()) / DAY_MS,
+                      (now.getTime() - new Date(t.createdAt).getTime()) /
+                        DAY_MS,
                     ),
                   0,
                 ) / openTrades.length
@@ -308,11 +348,18 @@ export async function GET() {
       : 0;
 
   // Global next expiration (earliest FUTURE date, contracts > 0, with top ticker on that date)
-  let nextExpiration: { date: string; contracts: number; topTicker?: string } | null = null;
+  let nextExpiration: {
+    date: string;
+    contracts: number;
+    topTicker?: string;
+  } | null = null;
 
   if (allOpenForNext.length > 0) {
     // fold into UTC-day buckets numerically
-    const byDay = new Map<number, { contracts: number; byTicker: Map<string, number> }>();
+    const byDay = new Map<
+      number,
+      { contracts: number; byTicker: Map<string, number> }
+    >();
     const todayKey = ensureUtcMidnight(now).getTime();
 
     for (const row of allOpenForNext) {
@@ -322,9 +369,15 @@ export async function GET() {
       if (contracts <= 0) continue;
       if (dayKey < todayKey) continue;
 
-      const entry = byDay.get(dayKey) ?? { contracts: 0, byTicker: new Map<string, number>() };
+      const entry = byDay.get(dayKey) ?? {
+        contracts: 0,
+        byTicker: new Map<string, number>(),
+      };
       entry.contracts += contracts;
-      entry.byTicker.set(row.ticker, (entry.byTicker.get(row.ticker) ?? 0) + contracts);
+      entry.byTicker.set(
+        row.ticker,
+        (entry.byTicker.get(row.ticker) ?? 0) + contracts,
+      );
       byDay.set(dayKey, entry);
     }
 
@@ -351,7 +404,10 @@ export async function GET() {
   const aggTickerMap = new Map<string, number>();
   for (const p of Object.values(perPortfolio)) {
     for (const t of p.topTickers) {
-      aggTickerMap.set(t.ticker, (aggTickerMap.get(t.ticker) ?? 0) + t.collateral);
+      aggTickerMap.set(
+        t.ticker,
+        (aggTickerMap.get(t.ticker) ?? 0) + t.collateral,
+      );
     }
   }
   const topTickers = Array.from(aggTickerMap.entries())

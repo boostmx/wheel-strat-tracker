@@ -58,7 +58,6 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
-  
   const formatType = (type: string) => type.replace(/([a-z])([A-Z])/g, "$1 $2");
 
   const statusBadge = (status: "open" | "closed") => {
@@ -264,7 +263,10 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
             {trade.status === "open" && (
               <div className="flex justify-end gap-2 pt-2">
                 {/* Close Position Button/Modal (left) */}
-                <Button variant="outline" onClick={() => setCloseModalOpen(true)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setCloseModalOpen(true)}
+                >
                   Close Position
                 </Button>
                 <CloseTradeModal

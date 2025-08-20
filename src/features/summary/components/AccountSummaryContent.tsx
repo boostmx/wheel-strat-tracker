@@ -43,7 +43,11 @@ type SummaryResponse = {
     realizedMTD: number;
     realizedYTD: number;
   };
-  nextExpiration: { date: string; contracts: number; topTicker?: string } | null;
+  nextExpiration: {
+    date: string;
+    contracts: number;
+    topTicker?: string;
+  } | null;
   topTickers: { ticker: string; collateral: number }[];
 };
 
@@ -69,7 +73,9 @@ function pctColor(p: number) {
 }
 
 export default function AccountSummaryContent() {
-  const { data, isLoading, error } = useSWR<SummaryResponse>("/api/account/summary");
+  const { data, isLoading, error } = useSWR<SummaryResponse>(
+    "/api/account/summary",
+  );
 
   const agg = (() => {
     if (!data) {
@@ -86,16 +92,31 @@ export default function AccountSummaryContent() {
         totalRealizedMTD: 0,
         totalRealizedYTD: 0,
         totalExpiringSoon: 0,
-        nextExpiration: null as { date: string; contracts: number; topTicker?: string } | null,
+        nextExpiration: null as {
+          date: string;
+          contracts: number;
+          topTicker?: string;
+        } | null,
         topExposures: [] as { ticker: string; pct: number }[],
-        perPortfolio: [] as { id: string; pctUsed: number; open: number; soon: number }[],
+        perPortfolio: [] as {
+          id: string;
+          pctUsed: number;
+          open: number;
+          soon: number;
+        }[],
       };
     }
 
     const portfolios = Object.values(data.perPortfolio);
 
-    const accountStarting = portfolios.reduce((s, p) => s + p.startingCapital, 0);
-    const accountAdditional = portfolios.reduce((s, p) => s + p.additionalCapital, 0);
+    const accountStarting = portfolios.reduce(
+      (s, p) => s + p.startingCapital,
+      0,
+    );
+    const accountAdditional = portfolios.reduce(
+      (s, p) => s + p.additionalCapital,
+      0,
+    );
     const accountBase = data.totals.capitalBase;
     const accountCurrentCapital = data.totals.currentCapital;
     const accountProfit = portfolios.reduce((s, p) => s + p.totalProfitAll, 0);
@@ -106,12 +127,16 @@ export default function AccountSummaryContent() {
     const totalOpenTrades = portfolios.reduce((s, p) => s + p.openCount, 0);
     const totalRealizedMTD = data.totals.realizedMTD;
     const totalRealizedYTD = data.totals.realizedYTD;
-    const totalExpiringSoon = portfolios.reduce((s, p) => s + p.expiringSoonCount, 0);
+    const totalExpiringSoon = portfolios.reduce(
+      (s, p) => s + p.expiringSoonCount,
+      0,
+    );
 
     const nextExpiration = data.nextExpiration; // may include topTicker
 
     // Top exposures: compute pct from returned collaterals
-    const totalColl = data.topTickers.reduce((s, t) => s + t.collateral, 0) || 1;
+    const totalColl =
+      data.topTickers.reduce((s, t) => s + t.collateral, 0) || 1;
     const topExposures = data.topTickers.map((t) => ({
       ticker: t.ticker,
       pct: (t.collateral / totalColl) * 100,
@@ -119,7 +144,8 @@ export default function AccountSummaryContent() {
 
     // Per-portfolio chips
     const perPortfolio = portfolios.map((p) => {
-      const pctUsed = p.capitalBase > 0 ? (p.capitalInUse / p.capitalBase) * 100 : 0;
+      const pctUsed =
+        p.capitalBase > 0 ? (p.capitalInUse / p.capitalBase) * 100 : 0;
       return {
         id: p.portfolioId,
         pctUsed,
@@ -388,7 +414,9 @@ export default function AccountSummaryContent() {
         transition={{ duration: 0.24, delay: 0.42 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">By portfolio</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+          By portfolio
+        </p>
         <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-800 p-2 rounded">
           {agg.perPortfolio.map((pp, i) => (
             <motion.span

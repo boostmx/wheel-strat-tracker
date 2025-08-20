@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -62,7 +67,9 @@ export default function AddToTradeModal({
   const priceValid = Number(price.raw) > 0;
   const canSubmit = contractsValid && priceValid;
 
-  const contractsErr = !contractsValid ? "Enter a valid whole number of contracts." : "";
+  const contractsErr = !contractsValid
+    ? "Enter a valid whole number of contracts."
+    : "";
   const priceErr = !priceValid ? "Enter a valid price per contract." : "";
 
   const handleSubmit = async () => {
@@ -114,14 +121,24 @@ export default function AddToTradeModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Add to Position{ticker ? ` — ${ticker}` : ""}</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            Add to Position{ticker ? ` — ${ticker}` : ""}
+          </DialogTitle>
         </DialogHeader>
 
         {/* Summary */}
         <div className="bg-muted rounded-md px-3 py-2 text-sm mb-3 space-y-0.5">
-          <p className="flex justify-between"><span>Current Contracts:</span><span className="font-medium">{currentContracts}</span></p>
+          <p className="flex justify-between">
+            <span>Current Contracts:</span>
+            <span className="font-medium">{currentContracts}</span>
+          </p>
           {typeof avgContractPrice === "number" && (
-            <p className="flex justify-between"><span>Avg Price:</span><span className="font-medium">${avgContractPrice.toFixed(2)}</span></p>
+            <p className="flex justify-between">
+              <span>Avg Price:</span>
+              <span className="font-medium">
+                ${avgContractPrice.toFixed(2)}
+              </span>
+            </p>
           )}
         </div>
 
@@ -129,7 +146,12 @@ export default function AddToTradeModal({
         <div className="flex flex-col">
           {/* Contracts */}
           <div className="mt-4">
-            <Label htmlFor="add-contracts" className="text-sm whitespace-nowrap">Contracts</Label>
+            <Label
+              htmlFor="add-contracts"
+              className="text-sm whitespace-nowrap"
+            >
+              Contracts
+            </Label>
             <Input
               id="add-contracts"
               type="text"
@@ -145,29 +167,47 @@ export default function AddToTradeModal({
               }}
               placeholder="e.g., 2"
             />
-            <p id="add-contracts-help" className={`text-xs mt-1 h-6 ${contractsTouched && !contractsValid ? "text-red-600" : "text-muted-foreground"}`}>
-              {contractsTouched && !contractsValid ? contractsErr : "Whole numbers only"}
+            <p
+              id="add-contracts-help"
+              className={`text-xs mt-1 h-6 ${contractsTouched && !contractsValid ? "text-red-600" : "text-muted-foreground"}`}
+            >
+              {contractsTouched && !contractsValid
+                ? contractsErr
+                : "Whole numbers only"}
             </p>
           </div>
 
           {/* Price */}
           <div className="mt-4">
-            <Label className="text-sm whitespace-nowrap">Price per Contract</Label>
+            <Label className="text-sm whitespace-nowrap">
+              Price per Contract
+            </Label>
             <div onKeyDown={handlePriceKeyDown}>
               <CurrencyInput
                 value={price}
-                onChange={(v) => { setPriceTouched(true); setPrice(v); }}
+                onChange={(v) => {
+                  setPriceTouched(true);
+                  setPrice(v);
+                }}
                 placeholder="e.g., 0.85"
               />
             </div>
-            <p className={`text-xs mt-1 h-6 ${priceTouched && !priceValid ? "text-red-600" : "text-muted-foreground"}`}>
-              {priceTouched && !priceValid ? priceErr : "Enter per‑contract price"}
+            <p
+              className={`text-xs mt-1 h-6 ${priceTouched && !priceValid ? "text-red-600" : "text-muted-foreground"}`}
+            >
+              {priceTouched && !priceValid
+                ? priceErr
+                : "Enter per‑contract price"}
             </p>
           </div>
 
           {/* Submit */}
           <div className="mt-6">
-            <Button className="w-full" onClick={handleSubmit} disabled={submitting || !canSubmit}>
+            <Button
+              className="w-full"
+              onClick={handleSubmit}
+              disabled={submitting || !canSubmit}
+            >
               {submitting ? "Updating…" : "Submit"}
             </Button>
           </div>
