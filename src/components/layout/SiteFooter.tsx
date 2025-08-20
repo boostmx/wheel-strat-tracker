@@ -98,6 +98,22 @@ export function SiteFooter() {
                   GitHub
                 </a>
               </li>
+              <li>
+                <a
+                  href="https://ko-fi.com/V7V21JYHVB"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Image
+                    src="https://ko-fi.com/img/githubbutton_sm.svg"
+                    alt="Buy me a coffee at ko-fi.com"
+                    width={141}
+                    height={36}
+                  />
+                </a>
+              </li>
+              
             </ul>
           </div>
         </div>
