@@ -51,6 +51,8 @@ export async function POST(req: Request) {
         expirationDate: new Date(expirationDate),
         type,
         contracts,
+        contractsInitial: contracts,
+        contractsOpen: contracts,
         contractPrice,
         entryPrice,
         status: "open",

@@ -7,7 +7,9 @@ export interface Trade {
   entryPrice?: number;
   expirationDate: string;
   type: string;
-  contracts: number;
+  contracts: number; // legacy field but keeping for backward compatibility with existing data
+  contractsInitial: number;
+  contractsOpen: number;
   contractPrice: number;
   closingPrice?: number;
   closedAt?: string | null;

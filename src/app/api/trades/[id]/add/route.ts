@@ -34,22 +34,24 @@ export async function PATCH(
     return NextResponse.json({ error: "Trade not found" }, { status: 404 });
   }
 
-  // Convert Prisma Decimal fields to numbers for arithmetic
-  const existingContracts = Number(trade.contracts);
+  // Current counts (prefer new fields, fallback to legacy)
+  const existingOpen = Number((trade as any).contractsOpen ?? trade.contracts ?? 0);
+  const existingInitial = Number((trade as any).contractsInitial ?? trade.contracts ?? 0);
   const existingContractPrice = Number(trade.contractPrice ?? 0);
 
-  const totalContracts = Math.trunc(existingContracts + addedContracts);
-  const totalPremium =
-    existingContractPrice * existingContracts +
-    addedContractPrice * addedContracts;
-
-  const newAvgPrice = totalPremium / totalContracts;
+  const totalOpen = Math.trunc(existingOpen + addedContracts);
+  const totalInitial = Math.trunc(existingInitial + addedContracts);
+  const totalPremium = existingContractPrice * existingOpen + addedContractPrice * addedContracts;
+  const newAvgPrice = totalOpen > 0 ? totalPremium / totalOpen : existingContractPrice;
 
   const updated = await prisma.trade.update({
     where: { id },
     data: {
-      contracts: totalContracts,
+      contractsOpen: totalOpen,
+      contractsInitial: totalInitial,
       contractPrice: newAvgPrice,
+      // keep legacy field in sync while migrating UI
+      contracts: totalOpen,
     },
   });
 

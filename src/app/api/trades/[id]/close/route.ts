@@ -61,7 +61,7 @@ export async function PATCH(
   if (!Number.isFinite(trade.contractPrice)) {
     return new Response("Trade.contractPrice missing/invalid", { status: 400 });
   }
-  if (!trade.contracts || trade.contracts < contractsToClose) {
+  if (!trade.contractsOpen || trade.contractsOpen < contractsToClose) {
     return new Response("contractsToClose exceeds open contracts", {
       status: 400,
     });
@@ -76,7 +76,7 @@ export async function PATCH(
   const percentPL =
     sellPrice > 0 ? ((sellPrice - closingPrice) / sellPrice) * 100 : 0;
 
-  const remaining = trade.contracts - contractsToClose;
+  const remaining = trade.contractsOpen - contractsToClose;
   const fullCloseFlag = body.fullClose;
   const isFull =
     typeof fullCloseFlag === "boolean" ? fullCloseFlag : remaining <= 0;
@@ -91,7 +91,7 @@ export async function PATCH(
         status: "closed",
         closedAt: new Date(),
         closingPrice, // last close price
-        contracts: 0,
+        contractsOpen: 0,
         premiumCaptured: newPremiumCaptured,
         percentPL, // last-leg % (optional; could also compute weighted)
       },
@@ -107,7 +107,7 @@ export async function PATCH(
     await prisma.trade.update({
       where: { id },
       data: {
-        contracts: remaining,
+        contractsOpen: remaining,
       },
     });
 
@@ -120,6 +120,8 @@ export async function PATCH(
         createdAt: trade.createdAt,
         type: trade.type,
         contracts: contractsToClose,
+        contractsInitial: contractsToClose,
+        contractsOpen: 0,
         contractPrice: sellPrice, // credit at open (avg)
         entryPrice: trade.entryPrice, // keep if you display it, but not used in P&L
         portfolioId: trade.portfolioId,

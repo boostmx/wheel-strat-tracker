@@ -28,8 +28,13 @@ export const makeOpenColumns = (): ColumnDef<Trade>[] => [
     meta: { align: "right" },
   },
   {
-    accessorKey: "contracts",
+    id: "contractsOpen",
     header: "Contracts",
+    accessorFn: (row) => (row as any).contractsOpen ?? (row as any).contracts ?? 0,
+    cell: ({ row }) => {
+      const t = row.original as any;
+      return t.contractsOpen ?? t.contracts ?? 0;
+    },
     meta: { align: "right" },
   },
   {
