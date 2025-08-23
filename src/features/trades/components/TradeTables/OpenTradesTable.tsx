@@ -55,10 +55,12 @@ const isCashSecuredPut = (type?: string) =>
   !type.toLowerCase().includes("covered");
 
 const calcCapitalInUse = (t: Trade) =>
-  isCashSecuredPut(t.type) ? t.strikePrice * 100 * t.contracts : 0;
+  isCashSecuredPut(t.type)
+    ? t.strikePrice * 100 * (t.contractsOpen ?? t.contracts ?? 0)
+    : 0;
 
 const calcOpenPremium = (t: Trade) =>
-  (t.contractPrice ?? 0) * 100 * t.contracts;
+  (t.contractPrice ?? 0) * 100 * (t.contractsOpen ?? t.contracts ?? 0);
 
 const calcBreakeven = (t: Trade) => {
   const premiumPerShare = t.contractPrice ?? 0;
@@ -421,12 +423,14 @@ export function OpenTradesTable({
                   {typeof t.contractPrice === "number" && (
                     <div>
                       <span className="text-muted-foreground">Premium</span>{" "}
-                      {formatUSD((t.contractPrice ?? 0) * 100 * t.contracts)}
+                      {formatUSD(
+                        (t.contractPrice ?? 0) * 100 * (t.contractsOpen ?? t.contracts ?? 0)
+                      )}
                     </div>
                   )}
                   <div>
                     <span className="text-muted-foreground">Contracts</span>{" "}
-                    {t.contracts}
+                    {t.contractsOpen ?? t.contracts ?? 0}
                   </div>
                 </div>
               </button>
@@ -503,7 +507,7 @@ export function OpenTradesTable({
                                       setSelectedTrade({
                                         id: t.id,
                                         strikePrice: t.strikePrice,
-                                        contracts: t.contracts,
+                                        contracts: t.contractsOpen ?? t.contracts ?? 0,
                                       });
                                     }}
                                     className="text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400"

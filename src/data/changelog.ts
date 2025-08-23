@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
     {
+        date: "2025-08-23",
+        version: "v0.9.0",
+        highlights: [
+            "Trades now keep track of both original size and remaining open contracts.",
+            "Closing trades now shows the correct numbers of contracts of the original trade moving forward.",
+        ]
+    },
+    {
         date: "2025-08-20",
         version: "v0.8.0",
         highlights: [

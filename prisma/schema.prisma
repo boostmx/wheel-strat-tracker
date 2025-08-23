@@ -48,23 +48,25 @@ model Portfolio {
 }
 
 model Trade {
-  id              String     @id @default(cuid())
-  ticker          String
-  strikePrice     Float
-  expirationDate  DateTime
-  type            TradeType
-  contracts       Int
-  contractPrice   Float
-  entryPrice      Float?
-  status          TradeStatus @default(open)
-  closedAt        DateTime?
-  closingPrice    Float?
-  premiumCaptured Float?
-  percentPL       Float?
-  portfolio       Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
-  portfolioId     String
-  createdAt       DateTime    @default(now())
-  notes           String?
+  id                String     @id @default(cuid())
+  ticker            String
+  strikePrice       Float
+  expirationDate    DateTime
+  type              TradeType
+  contracts         Int         //legacy data field, keeping for now and will remove once app is fully updated
+  contractsInitial  Int? 
+  contractsOpen     Int?
+  contractPrice     Float
+  entryPrice        Float?
+  status            TradeStatus @default(open)
+  closedAt          DateTime?
+  closingPrice      Float?
+  premiumCaptured   Float?
+  percentPL         Float?
+  portfolio         Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  portfolioId       String
+  createdAt         DateTime    @default(now())
+  notes             String?
 }
 
 enum TradeType {
@@ -77,4 +79,10 @@ enum TradeType {
 enum TradeStatus {
   open
   closed
+}
+
+enum CloseReason {
+  manual
+  expiredWorthless
+  assigned
 }

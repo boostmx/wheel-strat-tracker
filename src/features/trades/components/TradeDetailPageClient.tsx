@@ -33,7 +33,7 @@ const calcCapitalInUse = (t: Trade) => {
   const type = (t.type || "").toLowerCase();
   // Capital in use only applies to cash-secured puts (strike * 100 * contracts)
   const isCashSecuredPut = type.includes("put") && !type.includes("covered");
-  return isCashSecuredPut ? t.strikePrice * 100 * t.contracts : 0;
+  return isCashSecuredPut ? t.strikePrice * 100 * (t.contractsOpen ?? t.contracts ?? 0) : 0;
 };
 
 const fetcher = (url: string) =>
@@ -173,7 +173,9 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   <span className="font-medium text-muted-foreground">
                     Contracts:
                   </span>{" "}
-                  {trade.contracts}
+                  {trade.status === "open"
+                    ? (trade.contractsOpen ?? trade.contracts ?? 0)
+                    : (trade.contractsInitial ?? trade.contracts ?? 0)}
                 </p>
                 <p>
                   <span className="font-medium text-muted-foreground">
@@ -275,7 +277,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   isOpen={closeModalOpen}
                   onClose={() => setCloseModalOpen(false)}
                   strikePrice={trade.strikePrice}
-                  contracts={trade.contracts}
+                  contracts={trade.contractsOpen ?? trade.contracts ?? 0}
                   ticker={trade.ticker}
                   expirationDate={String(trade.expirationDate)}
                   type={trade.type}
@@ -290,7 +292,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                   onClose={() => setAddModalOpen(false)}
                   tradeId={trade.id}
                   portfolioId={portfolioId}
-                  currentContracts={trade.contracts}
+                  currentContracts={trade.contractsOpen ?? trade.contracts ?? 0}
                   avgContractPrice={trade.contractPrice}
                   ticker={trade.ticker}
                   onUpdated={() => mutate()}

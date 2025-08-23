@@ -2,6 +2,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Trade } from "@/types";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 
+type TradeWithNewFields = Trade & { contractsOpen?: number | null };
+
 // Formats enum-ish strings like "CashSecuredPut" -> "Cash Secured Put"
 const formatType = (s: string) => s.replace(/([a-z])([A-Z])/g, "$1 $2");
 
@@ -28,8 +30,13 @@ export const makeOpenColumns = (): ColumnDef<Trade>[] => [
     meta: { align: "right" },
   },
   {
-    accessorKey: "contracts",
+    id: "contractsOpen",
     header: "Contracts",
+    accessorFn: (row) => (row as TradeWithNewFields).contractsOpen ?? (row as TradeWithNewFields).contracts ?? 0,
+    cell: ({ row }) => {
+      const t = row.original as TradeWithNewFields;
+      return t.contractsOpen ?? t.contracts ?? 0;
+    },
     meta: { align: "right" },
   },
   {

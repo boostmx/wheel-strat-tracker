@@ -1,3 +1,4 @@
+type TradeWithNewFields = Trade & { contractsInitial?: number | null };
 import { ColumnDef } from "@tanstack/react-table";
 import { Trade } from "@/types";
 // Removed Link and Button imports (Action column removed)
@@ -19,16 +20,19 @@ const computePremiumCaptured = (t: Trade) => {
   if (typeof t.premiumCaptured === "number" && isFinite(t.premiumCaptured)) {
     return t.premiumCaptured;
   }
+
+  // Determine the closed contracts count: prefer contractsInitial for closed rows, fallback to legacy contracts
+  const tExt = t as TradeWithNewFields;
+  const closedContracts = tExt.contractsInitial ?? t.contracts ?? 0;
+
   // Derive from contract and closing price if available (per contract premium received - paid) * shares * contracts
   const perShare = (t.contractPrice ?? 0) - (t.closingPrice ?? 0);
-  if (
-    isFinite(perShare) &&
-    (t.contractPrice != null || t.closingPrice != null)
-  ) {
-    return perShare * 100 * t.contracts;
+  if (isFinite(perShare) && closedContracts > 0 && (t.contractPrice != null || t.closingPrice != null)) {
+    return perShare * 100 * closedContracts;
   }
+
   // Fallback: total initial premium received
-  return (t.contractPrice ?? 0) * 100 * t.contracts;
+  return (t.contractPrice ?? 0) * 100 * closedContracts;
 };
 
 export const makeClosedColumns = (): ColumnDef<Trade>[] => [

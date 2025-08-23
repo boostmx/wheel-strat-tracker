@@ -37,6 +37,7 @@ type TradeLike = Trade & {
   premiumCaptured?: number | null;
   contractPrice?: number | null;
   contracts?: number | null;
+  contractsInitial?: number | null;
 };
 type Timeframe = "week" | "month" | "year" | "all";
 
@@ -63,20 +64,26 @@ const computePercentPl = (t: Trade | TradeLike): number | null => {
       : null;
   if (direct !== null) return direct;
 
-  // Fallback: derive from premiumCaptured vs initial premium received (contractPrice * contracts * 100)
+  // Fallback: derive from premiumCaptured vs initial premium received (contractPrice * contractsInitial * 100)
   const premium =
     typeof tl.premiumCaptured === "number" ? tl.premiumCaptured : null;
   const cp = typeof tl.contractPrice === "number" ? tl.contractPrice : null;
-  const contracts = typeof tl.contracts === "number" ? tl.contracts : null;
+  const ci = (tl as TradeLike).contractsInitial;
+  const contractsInitial =
+    typeof ci === "number"
+      ? ci
+      : typeof tl.contracts === "number"
+      ? tl.contracts
+      : null;
 
   if (
     premium !== null &&
     cp !== null &&
     cp > 0 &&
-    contracts !== null &&
-    contracts > 0
+    contractsInitial !== null &&
+    contractsInitial > 0
   ) {
-    const denom = cp * contracts * 100;
+    const denom = cp * contractsInitial * 100;
     if (denom > 0) return (premium / denom) * 100;
   }
   return null;
