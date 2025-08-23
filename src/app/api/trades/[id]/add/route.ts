@@ -2,6 +2,7 @@ import { prisma } from "@/server/prisma";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
+import type { Trade } from "@prisma/client";
 
 export async function PATCH(
   req: Request,
@@ -35,8 +36,14 @@ export async function PATCH(
   }
 
   // Current counts (prefer new fields, fallback to legacy)
-  const existingOpen = Number((trade as any).contractsOpen ?? trade.contracts ?? 0);
-  const existingInitial = Number((trade as any).contractsInitial ?? trade.contracts ?? 0);
+  type TradeWithNewFields = Trade & {
+    contractsOpen?: number | null;
+    contractsInitial?: number | null;
+  };
+  const extendedTrade = trade as TradeWithNewFields;
+
+  const existingOpen = Number(extendedTrade.contractsOpen ?? trade.contracts ?? 0);
+  const existingInitial = Number(extendedTrade.contractsInitial ?? trade.contracts ?? 0);
   const existingContractPrice = Number(trade.contractPrice ?? 0);
 
   const totalOpen = Math.trunc(existingOpen + addedContracts);

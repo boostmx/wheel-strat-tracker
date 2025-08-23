@@ -68,9 +68,10 @@ const computePercentPl = (t: Trade | TradeLike): number | null => {
   const premium =
     typeof tl.premiumCaptured === "number" ? tl.premiumCaptured : null;
   const cp = typeof tl.contractPrice === "number" ? tl.contractPrice : null;
+  const ci = (tl as TradeLike).contractsInitial;
   const contractsInitial =
-    typeof (tl as any).contractsInitial === "number"
-      ? (tl as any).contractsInitial
+    typeof ci === "number"
+      ? ci
       : typeof tl.contracts === "number"
       ? tl.contracts
       : null;
