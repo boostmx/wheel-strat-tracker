@@ -122,7 +122,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
         style={{ willChange: "opacity, transform" }}
       >
         <Button variant="outline" asChild className="text-sm">
-          <Link href={`/portfolio/${portfolioId}`}>← Back to Portfolio</Link>
+          <Link href={`/portfolios/${portfolioId}`}>← Back to Portfolio</Link>
         </Button>
       </motion.div>
 
