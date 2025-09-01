@@ -9,7 +9,7 @@ export const changelog: ChangelogEntry[] = [
     date: "2025-09-01",
     version: "v0.10.0",
     highlights: [
-      "The account summary page now looks and feels more like a dashboard, showing richer details at a glance.",
+      "The account summary page now shows richer details at a glance and feels more like a dashboard.",
       "Navigation between the summary and individual portfolios is now cleaner and more intuitive.",
     ],
   },
