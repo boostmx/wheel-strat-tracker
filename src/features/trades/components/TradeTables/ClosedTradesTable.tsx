@@ -372,7 +372,7 @@ export function ClosedTradesTable({
                 <button
                   key={t.id}
                   onClick={() =>
-                    router.push(`/portfolio/${portfolioId}/trade/${t.id}`)
+                    router.push(`/portfolios/${portfolioId}/trades/${t.id}`)
                   }
                   className="w-full text-left rounded-xl border p-3 bg-card hover:bg-accent transition"
                 >
@@ -444,7 +444,7 @@ export function ClosedTradesTable({
                     className="border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
                     onClick={() =>
                       router.push(
-                        `/portfolio/${portfolioId}/trade/${row.original.id}`,
+                        `/portfolios/${portfolioId}/trades/${row.original.id}`,
                       )
                     }
                   >

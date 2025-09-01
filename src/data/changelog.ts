@@ -7,10 +7,11 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2025-09-01",
-    version: "v0.10.0",
+    version: "v0.10.1",
     highlights: [
       "The account summary page now shows richer details at a glance and feels more like a dashboard.",
       "Navigation between the summary and individual portfolios is now cleaner and more intuitive.",
+      "Updated route naming for better clarity and reduce redundancy.",
     ],
   },
   {

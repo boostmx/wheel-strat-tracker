@@ -97,7 +97,7 @@ export default function PortfoliosOverviewContent() {
               >
                 <Card className="relative hover:shadow-lg transition duration-200">
                   <Link
-                    href={`/portfolio/${p.id}/settings`}
+                    href={`/portfolios/${p.id}/settings`}
                     onClick={(e) => e.stopPropagation()}
                     className="absolute top-2 right-2"
                     aria-label="Edit portfolio settings"
@@ -108,7 +108,7 @@ export default function PortfoliosOverviewContent() {
                     </Button>
                   </Link>
 
-                  <Link href={`/portfolio/${p.id}`}>
+                  <Link href={`/portfolios/${p.id}`}>
                     <CardContent className="p-6 cursor-pointer">
                       <h2 className="text-xl font-semibold text-green-600">
                         {p.name || "Unnamed Portfolio"}
