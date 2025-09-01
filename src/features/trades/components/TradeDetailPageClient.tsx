@@ -33,7 +33,9 @@ const calcCapitalInUse = (t: Trade) => {
   const type = (t.type || "").toLowerCase();
   // Capital in use only applies to cash-secured puts (strike * 100 * contracts)
   const isCashSecuredPut = type.includes("put") && !type.includes("covered");
-  return isCashSecuredPut ? t.strikePrice * 100 * (t.contractsOpen ?? t.contracts ?? 0) : 0;
+  return isCashSecuredPut
+    ? t.strikePrice * 100 * (t.contractsOpen ?? t.contracts ?? 0)
+    : 0;
 };
 
 const fetcher = (url: string) =>

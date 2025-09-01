@@ -424,7 +424,9 @@ export function OpenTradesTable({
                     <div>
                       <span className="text-muted-foreground">Premium</span>{" "}
                       {formatUSD(
-                        (t.contractPrice ?? 0) * 100 * (t.contractsOpen ?? t.contracts ?? 0)
+                        (t.contractPrice ?? 0) *
+                          100 *
+                          (t.contractsOpen ?? t.contracts ?? 0),
                       )}
                     </div>
                   )}
@@ -507,7 +509,8 @@ export function OpenTradesTable({
                                       setSelectedTrade({
                                         id: t.id,
                                         strikePrice: t.strikePrice,
-                                        contracts: t.contractsOpen ?? t.contracts ?? 0,
+                                        contracts:
+                                          t.contractsOpen ?? t.contracts ?? 0,
                                       });
                                     }}
                                     className="text-gray-400 hover:text-emerald-600 dark:text-gray-500 dark:hover:text-emerald-400"

@@ -23,12 +23,12 @@ export default function LoginPage() {
       username,
       password,
       redirect: false,
-      callbackUrl: "/overview",
+      callbackUrl: "/summary",
     });
 
     if (res?.ok) {
       toast.success("Signed in successfully");
-      router.push(res.url || "/overview");
+      router.push(res.url || "/summary");
     } else {
       toast.error("Invalid credentials");
     }
@@ -76,9 +76,12 @@ export default function LoginPage() {
       </p>
       <div className="mt-6 text-center text-xs italic text-muted-foreground">
         <VersionBadge className="mt-4" /> (
-          <a href="/changelog" className="text-blue-600 hover:underline font-medium">
-            changelog
-          </a>
+        <a
+          href="/changelog"
+          className="text-blue-600 hover:underline font-medium"
+        >
+          changelog
+        </a>
         )
       </div>
     </div>

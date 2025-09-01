@@ -7,7 +7,7 @@ export default async function Home() {
   const session = await getServerSession(authOptions);
 
   if (session) {
-    redirect("/overview");
+    redirect("/summary");
   } else {
     redirect("/login");
   }

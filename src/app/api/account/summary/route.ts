@@ -41,7 +41,8 @@ const toIsoDayUTC = (d: Date) => {
   return dt.toISOString().slice(0, 10); // YYYY-MM-DD
 };
 
-const toIsoMonthUTC = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; // YYYY-MM
+const toIsoMonthUTC = (d: Date) =>
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; // YYYY-MM
 
 // UTC-safe day math (avoid TZ off-by-one)
 const ensureUtcMidnight = (d: Date | string) => {
@@ -73,7 +74,6 @@ const sumRealized = (
     premiumCaptured: number | null;
   }>,
 ) => rows.reduce((acc, r) => acc + realizedFor(r), 0);
-
 
 // -------------------------
 // GET /api/account/summary
@@ -141,76 +141,77 @@ export async function GET() {
   // 2) Per-portfolio snapshots (parallelized)
   const perPortfolioEntries = await Promise.all(
     portfolios.map(async (p) => {
-      const [openTrades, closedAll, closedMTD, closedYTD, closed90] = await Promise.all([
-        prisma.trade.findMany({
-          where: { portfolioId: p.id, status: "open" },
-          select: {
-            ticker: true,
-            type: true,
-            strikePrice: true,
-            contracts: true,
-            expirationDate: true,
-            createdAt: true,
-          },
-        }),
-        prisma.trade.findMany({
-          where: { portfolioId: p.id, status: "closed" },
-          select: {
-            ticker: true,
-            contracts: true,
-            contractPrice: true,
-            closingPrice: true,
-            premiumCaptured: true,
-            createdAt: true,
-            closedAt: true,
-          },
-        }),
-        prisma.trade.findMany({
-          where: {
-            portfolioId: p.id,
-            status: "closed",
-            closedAt: { gte: monthStart },
-          },
-          select: {
-            ticker: true,
-            contracts: true,
-            contractPrice: true,
-            closingPrice: true,
-            premiumCaptured: true,
-            closedAt: true,
-          },
-        }),
-        prisma.trade.findMany({
-          where: {
-            portfolioId: p.id,
-            status: "closed",
-            closedAt: { gte: yearStart },
-          },
-          select: {
-            ticker: true,
-            contracts: true,
-            contractPrice: true,
-            closingPrice: true,
-            premiumCaptured: true,
-            closedAt: true,
-          },
-        }),
-        prisma.trade.findMany({
-          where: {
-            portfolioId: p.id,
-            status: "closed",
-            closedAt: { gte: ninetyStart },
-          },
-          select: {
-            ticker: true,
-            contracts: true,
-            contractPrice: true,
-            closingPrice: true,
-            premiumCaptured: true,
-            closedAt: true,
-          },
-        }),
-      ]);
+      const [openTrades, closedAll, closedMTD, closedYTD, closed90] =
+        await Promise.all([
+          prisma.trade.findMany({
+            where: { portfolioId: p.id, status: "open" },
+            select: {
+              ticker: true,
+              type: true,
+              strikePrice: true,
+              contracts: true,
+              expirationDate: true,
+              createdAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: { portfolioId: p.id, status: "closed" },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              createdAt: true,
+              closedAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: {
+              portfolioId: p.id,
+              status: "closed",
+              closedAt: { gte: monthStart },
+            },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              closedAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: {
+              portfolioId: p.id,
+              status: "closed",
+              closedAt: { gte: yearStart },
+            },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              closedAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: {
+              portfolioId: p.id,
+              status: "closed",
+              closedAt: { gte: ninetyStart },
+            },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              closedAt: true,
+            },
+          }),
+        ]);
 
       // Capital in use = collateral of CSPs only
       const cspOpen = openTrades.filter((t) => isCSP(t.type));
@@ -336,10 +337,16 @@ export async function GET() {
         const realized = realizedFor({
           contracts: Number(row.contracts),
           contractPrice: Number(row.contractPrice),
-          closingPrice: row.closingPrice == null ? null : Number(row.closingPrice),
-          premiumCaptured: row.premiumCaptured == null ? null : Number(row.premiumCaptured),
+          closingPrice:
+            row.closingPrice == null ? null : Number(row.closingPrice),
+          premiumCaptured:
+            row.premiumCaptured == null ? null : Number(row.premiumCaptured),
         });
-        if (row.ticker) perPremiumMap.set(row.ticker, (perPremiumMap.get(row.ticker) ?? 0) + realized);
+        if (row.ticker)
+          perPremiumMap.set(
+            row.ticker,
+            (perPremiumMap.get(row.ticker) ?? 0) + realized,
+          );
       }
       const perPremiumArray = Array.from(perPremiumMap.entries())
         .map(([ticker, premium]) => ({ ticker, premium }))
@@ -354,7 +361,8 @@ export async function GET() {
           contracts: Number(r.contracts),
           contractPrice: Number(r.contractPrice),
           closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
-          premiumCaptured: r.premiumCaptured == null ? null : Number(r.premiumCaptured),
+          premiumCaptured:
+            r.premiumCaptured == null ? null : Number(r.premiumCaptured),
         });
         mtdDailyBucket.set(key, (mtdDailyBucket.get(key) ?? 0) + val);
       }
@@ -368,7 +376,8 @@ export async function GET() {
           contracts: Number(r.contracts),
           contractPrice: Number(r.contractPrice),
           closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
-          premiumCaptured: r.premiumCaptured == null ? null : Number(r.premiumCaptured),
+          premiumCaptured:
+            r.premiumCaptured == null ? null : Number(r.premiumCaptured),
         });
         ytdMonthlyBucket.set(key, (ytdMonthlyBucket.get(key) ?? 0) + val);
       }
@@ -382,7 +391,8 @@ export async function GET() {
           contracts: Number(r.contracts),
           contractPrice: Number(r.contractPrice),
           closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
-          premiumCaptured: r.premiumCaptured == null ? null : Number(r.premiumCaptured),
+          premiumCaptured:
+            r.premiumCaptured == null ? null : Number(r.premiumCaptured),
         });
         daily90Bucket.set(key, (daily90Bucket.get(key) ?? 0) + val);
       }
@@ -406,7 +416,11 @@ export async function GET() {
         const start = monthStart;
         const today = ensureUtcMidnight(now);
         let run = 0;
-        for (let d = new Date(start); d.getTime() <= today.getTime(); d = new Date(d.getTime() + DAY_MS)) {
+        for (
+          let d = new Date(start);
+          d.getTime() <= today.getTime();
+          d = new Date(d.getTime() + DAY_MS)
+        ) {
           const key = toIsoDayUTC(d);
           run += mtdDailyBucket.get(key) ?? 0;
           series.push({ label: key, realized: run });
@@ -424,7 +438,9 @@ export async function GET() {
           const key = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`;
           run += ytdMonthlyBucket.get(key) ?? 0;
           series.push({ label: key, realized: run });
-          cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+          cursor = new Date(
+            Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
+          );
         }
         return series;
       })();
@@ -434,7 +450,11 @@ export async function GET() {
         const start = ninetyStart;
         const today = ensureUtcMidnight(now);
         let run = 0;
-        for (let d = new Date(start); d.getTime() <= today.getTime(); d = new Date(d.getTime() + DAY_MS)) {
+        for (
+          let d = new Date(start);
+          d.getTime() <= today.getTime();
+          d = new Date(d.getTime() + DAY_MS)
+        ) {
           const key = toIsoDayUTC(d);
           run += daily90Bucket.get(key) ?? 0;
           series.push({ label: key, realized: run });
@@ -471,7 +491,10 @@ export async function GET() {
           realizedYTD,
           // per-portfolio visuals data
           exposures: Array.from(byTicker.entries())
-            .map(([ticker, coll]) => ({ ticker, weightPct: (coll / totalColl) * 100 }))
+            .map(([ticker, coll]) => ({
+              ticker,
+              weightPct: (coll / totalColl) * 100,
+            }))
             .sort((a, b) => b.weightPct - a.weightPct),
           premiumByTicker: perPremiumArray,
           pnlSeriesMTD: mtdSeries,
@@ -487,11 +510,16 @@ export async function GET() {
   // Global premium-by-ticker recomputed from per-portfolio arrays (idempotent per request)
   const globalPremiumMap = new Map<string, number>();
   for (const p of Object.values(perPortfolio)) {
-    const arr = (p).premiumByTicker as Array<{ ticker: string; premium: number }> | undefined;
+    const arr = p.premiumByTicker as
+      | Array<{ ticker: string; premium: number }>
+      | undefined;
     if (!Array.isArray(arr)) continue;
     for (const row of arr) {
       if (!row?.ticker) continue;
-      globalPremiumMap.set(row.ticker, (globalPremiumMap.get(row.ticker) ?? 0) + Number(row.premium || 0));
+      globalPremiumMap.set(
+        row.ticker,
+        (globalPremiumMap.get(row.ticker) ?? 0) + Number(row.premium || 0),
+      );
     }
   }
   const premiumByTicker = Array.from(globalPremiumMap.entries())
@@ -532,7 +560,11 @@ export async function GET() {
     const start = monthStart;
     const today = ensureUtcMidnight(now);
     let run = 0;
-    for (let d = new Date(start); d.getTime() <= today.getTime(); d = new Date(d.getTime() + DAY_MS)) {
+    for (
+      let d = new Date(start);
+      d.getTime() <= today.getTime();
+      d = new Date(d.getTime() + DAY_MS)
+    ) {
       const key = toIsoDayUTC(d);
       run += globalMtdDaily.get(key) ?? 0;
       series.push({ label: key, realized: run });
@@ -551,7 +583,9 @@ export async function GET() {
       const key = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`;
       run += globalYtdMonthly.get(key) ?? 0;
       series.push({ label: key, realized: run });
-      cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+      cursor = new Date(
+        Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
+      );
     }
     return series;
   })();
@@ -562,7 +596,11 @@ export async function GET() {
     const start = ninetyStart;
     const today = ensureUtcMidnight(now);
     let run = 0;
-    for (let d = new Date(start); d.getTime() <= today.getTime(); d = new Date(d.getTime() + DAY_MS)) {
+    for (
+      let d = new Date(start);
+      d.getTime() <= today.getTime();
+      d = new Date(d.getTime() + DAY_MS)
+    ) {
       const key = toIsoDayUTC(d);
       run += globalDaily90.get(key) ?? 0;
       series.push({ label: key, realized: run });
@@ -571,11 +609,14 @@ export async function GET() {
   })();
 
   // Derive global exposures (as percentages of total open CSP collateral)
-  const totalExposureColl = Array.from(globalExposureMap.values()).reduce((a, b) => a + b, 0) || 1;
+  const totalExposureColl =
+    Array.from(globalExposureMap.values()).reduce((a, b) => a + b, 0) || 1;
   const exposures = Array.from(globalExposureMap.entries())
-    .map(([ticker, coll]) => ({ ticker, weightPct: (coll / totalExposureColl) * 100 }))
+    .map(([ticker, coll]) => ({
+      ticker,
+      weightPct: (coll / totalExposureColl) * 100,
+    }))
     .sort((a, b) => b.weightPct - a.weightPct);
-
 
   // Global next expiration (earliest FUTURE date, contracts > 0, with top ticker on that date)
   let nextExpiration: {

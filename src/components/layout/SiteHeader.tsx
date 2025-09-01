@@ -58,7 +58,7 @@ export function SiteHeader() {
     <header className="w-full border-b px-6 py-4 flex items-center justify-between bg-white dark:bg-zinc-950 shadow-sm">
       {/* Left: logo + desktop nav */}
       <div className="hidden md:flex items-center gap-6">
-        <Link href="/overview" className="flex items-center gap-2">
+        <Link href="/summary" className="flex items-center gap-2">
           <Image
             src="/logo.png"
             alt="HL Financial Strategies"
@@ -71,23 +71,23 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-6">
           <Link
-            href="/overview"
-            className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
-          >
-            Overview
-          </Link>
-          <Link
             href="/summary"
             className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
           >
             Account Summary
+          </Link>
+          <Link
+            href="/overview"
+            className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
+          >
+            Portfolios
           </Link>
         </nav>
       </div>
 
       {/* Left (mobile): logo only */}
       <div className="md:hidden flex items-center gap-2">
-        <Link href="/overview" className="flex items-center gap-2">
+        <Link href="/summary" className="flex items-center gap-2">
           <Image
             src="/logo.png"
             alt="HL Financial Strategies"
@@ -115,10 +115,10 @@ export function SiteHeader() {
           <DropdownMenuContent align="end" className="w-64 md:hidden">
             {/* Nav first */}
             <DropdownMenuItem asChild>
-              <Link href="/overview">Overview</Link>
+              <Link href="/summary">Account Summary</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/summary">Account Summary</Link>
+              <Link href="/overview">Portfolios</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {/* Account actions */}

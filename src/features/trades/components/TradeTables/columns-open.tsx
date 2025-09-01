@@ -32,7 +32,10 @@ export const makeOpenColumns = (): ColumnDef<Trade>[] => [
   {
     id: "contractsOpen",
     header: "Contracts",
-    accessorFn: (row) => (row as TradeWithNewFields).contractsOpen ?? (row as TradeWithNewFields).contracts ?? 0,
+    accessorFn: (row) =>
+      (row as TradeWithNewFields).contractsOpen ??
+      (row as TradeWithNewFields).contracts ??
+      0,
     cell: ({ row }) => {
       const t = row.original as TradeWithNewFields;
       return t.contractsOpen ?? t.contracts ?? 0;

@@ -113,7 +113,6 @@ export function SiteFooter() {
                   />
                 </a>
               </li>
-              
             </ul>
           </div>
         </div>
