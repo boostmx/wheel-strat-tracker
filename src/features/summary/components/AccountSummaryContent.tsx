@@ -462,7 +462,7 @@ export default function AccountSummaryContent() {
         </h1>
         <p className="mt-3 text-gray-600 dark:text-gray-400">
           You don&apos;t have any portfolios yet. Create your first portfolio to
-          start tracking trades and premiums
+          start tracking trades and premiums and see your account summary here.
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <Button asChild variant="default" size="lg">
