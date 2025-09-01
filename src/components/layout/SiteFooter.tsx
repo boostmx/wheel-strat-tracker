@@ -47,18 +47,18 @@ export function SiteFooter() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/overview"
+                  href="/summary"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Overview
+                  Account
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/summary"
+                  href="/portfolios"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Account Summary
+                  Portfolios
                 </Link>
               </li>
             </ul>

@@ -466,7 +466,7 @@ export default function AccountSummaryContent() {
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <Button asChild variant="default" size="lg">
-            <Link href="/overview">Go to Your Portfolios</Link>
+            <Link href="/portfolios">Go to Your Portfolios</Link>
           </Button>
         </div>
       </div>
@@ -671,7 +671,7 @@ export default function AccountSummaryContent() {
           </div>
           <div className="shrink-0 mt-1">
             <Button asChild size="sm">
-              <Link href="/overview">View Portfolios</Link>
+              <Link href="/portfolios">View Portfolios</Link>
             </Button>
           </div>
         </div>

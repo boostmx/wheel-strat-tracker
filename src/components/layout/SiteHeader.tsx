@@ -74,10 +74,10 @@ export function SiteHeader() {
             href="/summary"
             className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
           >
-            Account Summary
+            Account
           </Link>
           <Link
-            href="/overview"
+            href="/portfolios"
             className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
           >
             Portfolios
@@ -115,10 +115,10 @@ export function SiteHeader() {
           <DropdownMenuContent align="end" className="w-64 md:hidden">
             {/* Nav first */}
             <DropdownMenuItem asChild>
-              <Link href="/summary">Account Summary</Link>
+              <Link href="/summary">Account</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/overview">Portfolios</Link>
+              <Link href="/portfolios">Portfolios</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {/* Account actions */}
