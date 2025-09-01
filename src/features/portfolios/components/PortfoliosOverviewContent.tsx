@@ -4,7 +4,6 @@ import useSWR from "swr";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
-//import { toast } from "sonner";
 import { CreatePortfolioModal } from "./CreatePortfolioModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { OverviewMetrics } from "./OverviewMetrics";

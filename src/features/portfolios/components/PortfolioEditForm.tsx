@@ -148,7 +148,7 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
       });
       if (!res.ok) throw new Error("Failed to delete portfolio");
       toast.success("Portfolio deleted");
-      router.push("/overview");
+      router.push("/portfolios");
       router.refresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Delete failed";
@@ -350,7 +350,7 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => router.push(`/overview`)}
+                  onClick={() => router.push(`/portfolios`)}
                 >
                   Cancel
                 </Button>

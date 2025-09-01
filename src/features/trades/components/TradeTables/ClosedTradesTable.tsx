@@ -73,8 +73,8 @@ const computePercentPl = (t: Trade | TradeLike): number | null => {
     typeof ci === "number"
       ? ci
       : typeof tl.contracts === "number"
-      ? tl.contracts
-      : null;
+        ? tl.contracts
+        : null;
 
   if (
     premium !== null &&

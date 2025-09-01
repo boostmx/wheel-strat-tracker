@@ -30,6 +30,20 @@ const startOfYearUTC = () => {
   return d;
 };
 
+const startOfNDaysAgoUTC = (n: number) => {
+  const d = ensureUtcMidnight(new Date());
+  return new Date(d.getTime() - n * DAY_MS); // inclusive window
+};
+
+// Format helpers (UTC)
+const toIsoDayUTC = (d: Date) => {
+  const dt = ensureUtcMidnight(d);
+  return dt.toISOString().slice(0, 10); // YYYY-MM-DD
+};
+
+const toIsoMonthUTC = (d: Date) =>
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; // YYYY-MM
+
 // UTC-safe day math (avoid TZ off-by-one)
 const ensureUtcMidnight = (d: Date | string) => {
   const dt = new Date(d);
@@ -109,6 +123,13 @@ export async function GET() {
   const now = new Date();
   const monthStart = startOfMonthUTC();
   const yearStart = startOfYearUTC();
+  const ninetyStart = startOfNDaysAgoUTC(89); // 90 days incl today
+
+  // Per-request aggregates (avoid module-scoped mutation across refreshes)
+  const globalExposureMap = new Map<string, number>(); // open CSP collateral by ticker
+  const globalMtdDaily = new Map<string, number>(); // YYYY-MM-DD -> sum of realized
+  const globalYtdMonthly = new Map<string, number>(); // YYYY-MM -> sum of realized
+  const globalDaily90 = new Map<string, number>(); // last 90 days, YYYY-MM-DD -> realized
 
   // Collector for a true global next-expiration across all portfolios
   const allOpenForNext: Array<{
@@ -120,56 +141,77 @@ export async function GET() {
   // 2) Per-portfolio snapshots (parallelized)
   const perPortfolioEntries = await Promise.all(
     portfolios.map(async (p) => {
-      const [openTrades, closedAll, closedMTD, closedYTD] = await Promise.all([
-        prisma.trade.findMany({
-          where: { portfolioId: p.id, status: "open" },
-          select: {
-            ticker: true,
-            type: true,
-            strikePrice: true,
-            contracts: true,
-            expirationDate: true,
-            createdAt: true,
-          },
-        }),
-        prisma.trade.findMany({
-          where: { portfolioId: p.id, status: "closed" },
-          select: {
-            contracts: true,
-            contractPrice: true,
-            closingPrice: true,
-            premiumCaptured: true,
-            createdAt: true,
-            closedAt: true,
-          },
-        }),
-        prisma.trade.findMany({
-          where: {
-            portfolioId: p.id,
-            status: "closed",
-            closedAt: { gte: monthStart },
-          },
-          select: {
-            contracts: true,
-            contractPrice: true,
-            closingPrice: true,
-            premiumCaptured: true,
-          },
-        }),
-        prisma.trade.findMany({
-          where: {
-            portfolioId: p.id,
-            status: "closed",
-            closedAt: { gte: yearStart },
-          },
-          select: {
-            contracts: true,
-            contractPrice: true,
-            closingPrice: true,
-            premiumCaptured: true,
-          },
-        }),
-      ]);
+      const [openTrades, closedAll, closedMTD, closedYTD, closed90] =
+        await Promise.all([
+          prisma.trade.findMany({
+            where: { portfolioId: p.id, status: "open" },
+            select: {
+              ticker: true,
+              type: true,
+              strikePrice: true,
+              contracts: true,
+              expirationDate: true,
+              createdAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: { portfolioId: p.id, status: "closed" },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              createdAt: true,
+              closedAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: {
+              portfolioId: p.id,
+              status: "closed",
+              closedAt: { gte: monthStart },
+            },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              closedAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: {
+              portfolioId: p.id,
+              status: "closed",
+              closedAt: { gte: yearStart },
+            },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              closedAt: true,
+            },
+          }),
+          prisma.trade.findMany({
+            where: {
+              portfolioId: p.id,
+              status: "closed",
+              closedAt: { gte: ninetyStart },
+            },
+            select: {
+              ticker: true,
+              contracts: true,
+              contractPrice: true,
+              closingPrice: true,
+              premiumCaptured: true,
+              closedAt: true,
+            },
+          }),
+        ]);
 
       // Capital in use = collateral of CSPs only
       const cspOpen = openTrades.filter((t) => isCSP(t.type));
@@ -204,6 +246,10 @@ export async function GET() {
       for (const t of cspOpen) {
         const add = collateralFor(t.strikePrice, t.contracts);
         byTicker.set(t.ticker, (byTicker.get(t.ticker) ?? 0) + add);
+      }
+      // accumulate to global exposure map
+      for (const [tk, coll] of byTicker.entries()) {
+        globalExposureMap.set(tk, (globalExposureMap.get(tk) ?? 0) + coll);
       }
       const totalColl =
         Array.from(byTicker.values()).reduce((a, b) => a + b, 0) || 1;
@@ -285,6 +331,137 @@ export async function GET() {
       const realizedMTD = sumRealized(closedMTD);
       const realizedYTD = sumRealized(closedYTD);
 
+      // Per-portfolio realized premium by ticker
+      const perPremiumMap = new Map<string, number>();
+      for (const row of closedAll) {
+        const realized = realizedFor({
+          contracts: Number(row.contracts),
+          contractPrice: Number(row.contractPrice),
+          closingPrice:
+            row.closingPrice == null ? null : Number(row.closingPrice),
+          premiumCaptured:
+            row.premiumCaptured == null ? null : Number(row.premiumCaptured),
+        });
+        if (row.ticker)
+          perPremiumMap.set(
+            row.ticker,
+            (perPremiumMap.get(row.ticker) ?? 0) + realized,
+          );
+      }
+      const perPremiumArray = Array.from(perPremiumMap.entries())
+        .map(([ticker, premium]) => ({ ticker, premium }))
+        .sort((a, b) => b.premium - a.premium);
+
+      // Build per-portfolio MTD (daily) & YTD (monthly) progress buckets
+      const mtdDailyBucket = new Map<string, number>(); // YYYY-MM-DD -> sum
+      for (const r of closedMTD) {
+        const key = r.closedAt ? toIsoDayUTC(new Date(r.closedAt)) : null;
+        if (!key) continue;
+        const val = realizedFor({
+          contracts: Number(r.contracts),
+          contractPrice: Number(r.contractPrice),
+          closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
+          premiumCaptured:
+            r.premiumCaptured == null ? null : Number(r.premiumCaptured),
+        });
+        mtdDailyBucket.set(key, (mtdDailyBucket.get(key) ?? 0) + val);
+      }
+
+      const ytdMonthlyBucket = new Map<string, number>(); // YYYY-MM -> sum
+      for (const r of closedYTD) {
+        const d = r.closedAt ? new Date(r.closedAt) : null;
+        if (!d) continue;
+        const key = toIsoMonthUTC(d);
+        const val = realizedFor({
+          contracts: Number(r.contracts),
+          contractPrice: Number(r.contractPrice),
+          closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
+          premiumCaptured:
+            r.premiumCaptured == null ? null : Number(r.premiumCaptured),
+        });
+        ytdMonthlyBucket.set(key, (ytdMonthlyBucket.get(key) ?? 0) + val);
+      }
+
+      // 90-day daily bucket (per-portfolio)
+      const daily90Bucket = new Map<string, number>(); // YYYY-MM-DD -> sum
+      for (const r of closed90) {
+        const key = r.closedAt ? toIsoDayUTC(new Date(r.closedAt)) : null;
+        if (!key) continue;
+        const val = realizedFor({
+          contracts: Number(r.contracts),
+          contractPrice: Number(r.contractPrice),
+          closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
+          premiumCaptured:
+            r.premiumCaptured == null ? null : Number(r.premiumCaptured),
+        });
+        daily90Bucket.set(key, (daily90Bucket.get(key) ?? 0) + val);
+      }
+
+      // Accumulate into global 90-day bucket
+      for (const [day, val] of daily90Bucket.entries()) {
+        globalDaily90.set(day, (globalDaily90.get(day) ?? 0) + val);
+      }
+
+      // Accumulate into global series buckets
+      for (const [day, val] of mtdDailyBucket.entries()) {
+        globalMtdDaily.set(day, (globalMtdDaily.get(day) ?? 0) + val);
+      }
+      for (const [mon, val] of ytdMonthlyBucket.entries()) {
+        globalYtdMonthly.set(mon, (globalYtdMonthly.get(mon) ?? 0) + val);
+      }
+
+      // Convert per-portfolio buckets to ordered cumulative series
+      const mtdSeries = (() => {
+        const series: { label: string; realized: number }[] = [];
+        const start = monthStart;
+        const today = ensureUtcMidnight(now);
+        let run = 0;
+        for (
+          let d = new Date(start);
+          d.getTime() <= today.getTime();
+          d = new Date(d.getTime() + DAY_MS)
+        ) {
+          const key = toIsoDayUTC(d);
+          run += mtdDailyBucket.get(key) ?? 0;
+          series.push({ label: key, realized: run });
+        }
+        return series;
+      })();
+
+      const ytdSeries = (() => {
+        const series: { label: string; realized: number }[] = [];
+        const first = yearStart;
+        let cursor = new Date(Date.UTC(first.getUTCFullYear(), 0, 1));
+        const lastMonthIndex = now.getUTCMonth();
+        let run = 0;
+        for (let m = 0; m <= lastMonthIndex; m++) {
+          const key = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`;
+          run += ytdMonthlyBucket.get(key) ?? 0;
+          series.push({ label: key, realized: run });
+          cursor = new Date(
+            Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
+          );
+        }
+        return series;
+      })();
+
+      const daily90Series = (() => {
+        const series: { label: string; realized: number }[] = [];
+        const start = ninetyStart;
+        const today = ensureUtcMidnight(now);
+        let run = 0;
+        for (
+          let d = new Date(start);
+          d.getTime() <= today.getTime();
+          d = new Date(d.getTime() + DAY_MS)
+        ) {
+          const key = toIsoDayUTC(d);
+          run += daily90Bucket.get(key) ?? 0;
+          series.push({ label: key, realized: run });
+        }
+        return series;
+      })();
+
       // Capital figures
       const starting = Number(p.startingCapital ?? 0);
       const additional = Number(p.additionalCapital ?? 0);
@@ -312,12 +489,42 @@ export async function GET() {
           openAvgDays,
           realizedMTD,
           realizedYTD,
+          // per-portfolio visuals data
+          exposures: Array.from(byTicker.entries())
+            .map(([ticker, coll]) => ({
+              ticker,
+              weightPct: (coll / totalColl) * 100,
+            }))
+            .sort((a, b) => b.weightPct - a.weightPct),
+          premiumByTicker: perPremiumArray,
+          pnlSeriesMTD: mtdSeries,
+          pnlSeriesYTD: ytdSeries,
+          pnlSeriesDaily90: daily90Series,
         },
       ] as const;
     }),
   );
 
   const perPortfolio = Object.fromEntries(perPortfolioEntries);
+
+  // Global premium-by-ticker recomputed from per-portfolio arrays (idempotent per request)
+  const globalPremiumMap = new Map<string, number>();
+  for (const p of Object.values(perPortfolio)) {
+    const arr = p.premiumByTicker as
+      | Array<{ ticker: string; premium: number }>
+      | undefined;
+    if (!Array.isArray(arr)) continue;
+    for (const row of arr) {
+      if (!row?.ticker) continue;
+      globalPremiumMap.set(
+        row.ticker,
+        (globalPremiumMap.get(row.ticker) ?? 0) + Number(row.premium || 0),
+      );
+    }
+  }
+  const premiumByTicker = Array.from(globalPremiumMap.entries())
+    .map(([ticker, premium]) => ({ ticker, premium }))
+    .sort((a, b) => b.premium - a.premium);
 
   // 3) Totals & aggregates across portfolios
   const baseTotals = Object.values(perPortfolio).reduce(
@@ -346,6 +553,70 @@ export async function GET() {
     baseTotals.currentCapital > 0
       ? (baseTotals.capitalInUse / baseTotals.currentCapital) * 100
       : 0;
+
+  // Global ordered cumulative MTD/YTD series
+  const mtdSeries: { label: string; realized: number }[] = (() => {
+    const series: { label: string; realized: number }[] = [];
+    const start = monthStart;
+    const today = ensureUtcMidnight(now);
+    let run = 0;
+    for (
+      let d = new Date(start);
+      d.getTime() <= today.getTime();
+      d = new Date(d.getTime() + DAY_MS)
+    ) {
+      const key = toIsoDayUTC(d);
+      run += globalMtdDaily.get(key) ?? 0;
+      series.push({ label: key, realized: run });
+    }
+    return series;
+  })();
+
+  const ytdSeries: { label: string; realized: number }[] = (() => {
+    const series: { label: string; realized: number }[] = [];
+    const first = yearStart;
+    // Start at Jan 1 (UTC) of the current year
+    let cursor = new Date(Date.UTC(first.getUTCFullYear(), 0, 1));
+    const lastMonthIndex = now.getUTCMonth();
+    let run = 0;
+    for (let m = 0; m <= lastMonthIndex; m++) {
+      const key = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`;
+      run += globalYtdMonthly.get(key) ?? 0;
+      series.push({ label: key, realized: run });
+      cursor = new Date(
+        Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
+      );
+    }
+    return series;
+  })();
+
+  // Global 90-day daily cumulative series
+  const daily90Series: { label: string; realized: number }[] = (() => {
+    const series: { label: string; realized: number }[] = [];
+    const start = ninetyStart;
+    const today = ensureUtcMidnight(now);
+    let run = 0;
+    for (
+      let d = new Date(start);
+      d.getTime() <= today.getTime();
+      d = new Date(d.getTime() + DAY_MS)
+    ) {
+      const key = toIsoDayUTC(d);
+      run += globalDaily90.get(key) ?? 0;
+      series.push({ label: key, realized: run });
+    }
+    return series;
+  })();
+
+  // Derive global exposures (as percentages of total open CSP collateral)
+  const totalExposureColl =
+    Array.from(globalExposureMap.values()).reduce((a, b) => a + b, 0) || 1;
+  const exposures = Array.from(globalExposureMap.entries())
+    .map(([ticker, coll]) => ({
+      ticker,
+      weightPct: (coll / totalExposureColl) * 100,
+    }))
+    .sort((a, b) => b.weightPct - a.weightPct);
 
   // Global next expiration (earliest FUTURE date, contracts > 0, with top ticker on that date)
   let nextExpiration: {
@@ -420,5 +691,10 @@ export async function GET() {
     totals: { ...baseTotals, percentUsed },
     nextExpiration,
     topTickers,
+    exposures,
+    premiumByTicker,
+    pnlSeriesMTD: mtdSeries,
+    pnlSeriesYTD: ytdSeries,
+    pnlSeriesDaily90: daily90Series,
   });
 }

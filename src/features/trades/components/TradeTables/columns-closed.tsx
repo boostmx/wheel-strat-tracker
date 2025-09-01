@@ -27,7 +27,11 @@ const computePremiumCaptured = (t: Trade) => {
 
   // Derive from contract and closing price if available (per contract premium received - paid) * shares * contracts
   const perShare = (t.contractPrice ?? 0) - (t.closingPrice ?? 0);
-  if (isFinite(perShare) && closedContracts > 0 && (t.contractPrice != null || t.closingPrice != null)) {
+  if (
+    isFinite(perShare) &&
+    closedContracts > 0 &&
+    (t.contractPrice != null || t.closingPrice != null)
+  ) {
     return perShare * 100 * closedContracts;
   }
 

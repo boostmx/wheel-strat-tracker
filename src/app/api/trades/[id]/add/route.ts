@@ -42,14 +42,20 @@ export async function PATCH(
   };
   const extendedTrade = trade as TradeWithNewFields;
 
-  const existingOpen = Number(extendedTrade.contractsOpen ?? trade.contracts ?? 0);
-  const existingInitial = Number(extendedTrade.contractsInitial ?? trade.contracts ?? 0);
+  const existingOpen = Number(
+    extendedTrade.contractsOpen ?? trade.contracts ?? 0,
+  );
+  const existingInitial = Number(
+    extendedTrade.contractsInitial ?? trade.contracts ?? 0,
+  );
   const existingContractPrice = Number(trade.contractPrice ?? 0);
 
   const totalOpen = Math.trunc(existingOpen + addedContracts);
   const totalInitial = Math.trunc(existingInitial + addedContracts);
-  const totalPremium = existingContractPrice * existingOpen + addedContractPrice * addedContracts;
-  const newAvgPrice = totalOpen > 0 ? totalPremium / totalOpen : existingContractPrice;
+  const totalPremium =
+    existingContractPrice * existingOpen + addedContractPrice * addedContracts;
+  const newAvgPrice =
+    totalOpen > 0 ? totalPremium / totalOpen : existingContractPrice;
 
   const updated = await prisma.trade.update({
     where: { id },
