@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 const DAY_MS = 86_400_000;
 const isCSP = (type: string | null | undefined) =>
   (type ?? "") === "CashSecuredPut";
-const collateralFor = (strike: number, contracts: number) =>
-  Number(strike) * 100 * Number(contracts);
+const collateralFor = (strike?: number | null, contracts?: number | null) =>
+  Number(strike ?? 0) * 100 * Number(contracts ?? 0);
 
 const startOfMonthUTC = () => {
   const d = new Date();
@@ -149,7 +149,7 @@ export async function GET() {
               ticker: true,
               type: true,
               strikePrice: true,
-              contracts: true,
+              contractsOpen: true,
               expirationDate: true,
               createdAt: true,
             },
@@ -216,7 +216,7 @@ export async function GET() {
       // Capital in use = collateral of CSPs only
       const cspOpen = openTrades.filter((t) => isCSP(t.type));
       const capitalInUse = cspOpen.reduce(
-        (sum, t) => sum + collateralFor(t.strikePrice, t.contracts),
+        (sum, t) => sum + collateralFor(t.strikePrice, t.contractsOpen),
         0,
       );
 
@@ -225,9 +225,9 @@ export async function GET() {
         .map((t) => ({
           ticker: t.ticker,
           strikePrice: Number(t.strikePrice),
-          contracts: Number(t.contracts),
+          contracts: Number(t.contractsOpen ?? 0),
           expirationDate: new Date(t.expirationDate),
-          collateral: collateralFor(t.strikePrice, t.contracts),
+          collateral: collateralFor(t.strikePrice, t.contractsOpen),
         }))
         .sort((a, b) => b.collateral - a.collateral)[0];
 
@@ -244,7 +244,7 @@ export async function GET() {
       // Top ticker exposures (by CSP collateral)
       const byTicker = new Map<string, number>();
       for (const t of cspOpen) {
-        const add = collateralFor(t.strikePrice, t.contracts);
+        const add = collateralFor(t.strikePrice, t.contractsOpen);
         byTicker.set(t.ticker, (byTicker.get(t.ticker) ?? 0) + add);
       }
       // accumulate to global exposure map
@@ -267,7 +267,7 @@ export async function GET() {
       let expiringSoonCount = 0;
 
       for (const t of openTrades) {
-        const contracts = Math.trunc(Number(t.contracts));
+        const contracts = Math.trunc(Number(t.contractsOpen ?? 0));
         if (!Number.isFinite(contracts) || contracts <= 0) continue; // ignore zero/invalid
 
         const dMid = ensureUtcMidnight(new Date(t.expirationDate));

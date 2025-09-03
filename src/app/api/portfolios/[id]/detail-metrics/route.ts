@@ -13,11 +13,15 @@ function isPut(type?: string | null) {
   if (!type) return false;
   return type.toLowerCase().includes("put");
 }
-function lockedCollateral(strikePrice: number, contracts: number) {
-  return Math.abs(strikePrice) * 100 * Math.abs(contracts);
+function lockedCollateral(strikePrice?: number | null, contractsOpen?: number | null) {
+  const strike = Number(strikePrice ?? 0);
+  const contracts = Number(contractsOpen ?? 0);
+  return Math.abs(strike) * 100 * Math.abs(contracts);
 }
-function premiumNotional(contractPrice: number, contracts: number) {
-  return Math.abs(contractPrice) * 100 * Math.abs(contracts);
+function premiumNotional(contractPrice?: number | null, contractsOpen?: number | null) {
+  const premium = Number(contractPrice ?? 0);
+  const contracts = Number(contractsOpen ?? 0);
+  return Math.abs(premium) * 100 * Math.abs(contracts);
 }
 
 export async function GET(
@@ -59,7 +63,7 @@ export async function GET(
         select: {
           id: true,
           type: true,
-          contracts: true,
+          contractsOpen: true,
           contractPrice: true, // premium per contract at entry
           strikePrice: true,
         },
@@ -72,7 +76,7 @@ export async function GET(
         select: {
           id: true,
           type: true,
-          contracts: true,
+          contractsOpen: true,
           contractPrice: true, // premium at entry
           strikePrice: true,
           createdAt: true,
@@ -87,12 +91,12 @@ export async function GET(
     // 3) capital used from CSPs (collateral tied up)
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
-        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contracts) : 0)
+        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
       );
     }, 0);
     // 4) open premium (potential/at-entry premium outstanding)
     const potentialPremium = openTrades.reduce((sum, t) => {
-      return sum + premiumNotional(t.contractPrice, t.contracts);
+      return sum + premiumNotional(t.contractPrice, t.contractsOpen);
     }, 0);
 
     // 5) closed trades analytics
@@ -112,9 +116,9 @@ export async function GET(
 
     for (const t of closedTrades) {
       const basisCollateral = isPut(t.type)
-        ? lockedCollateral(t.strikePrice, t.contracts)
+        ? lockedCollateral(t.strikePrice, t.contractsOpen)
         : 0;
-      const basisPremium = premiumNotional(t.contractPrice, t.contracts);
+      const basisPremium = premiumNotional(t.contractPrice, t.contractsOpen);
 
       // Prefer stored premiumCaptured (realized $); otherwise approximate via %PL.
       // - For puts, use percentPL * collateral

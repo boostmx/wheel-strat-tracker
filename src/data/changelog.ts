@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2025-09-03",
+    version: "v0.10.2",
+    highlights: [
+      "Open capital, open premium, and other metrics were inaccurate when trades had been edited. This has been fixed.",
+    ],
+  },
+  {
     date: "2025-09-01",
     version: "v0.10.1",
     highlights: [

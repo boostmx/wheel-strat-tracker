@@ -14,9 +14,11 @@ function isPut(type: string | null | undefined) {
   return type.toLowerCase().includes("put");
 }
 
-function lockedCollateral(strikePrice: number, contracts: number) {
+function lockedCollateral(strikePrice?: number | null, contractsOpen?: number | null) {
   // 100 shares per contract
-  return Math.abs(strikePrice) * 100 * Math.abs(contracts);
+  const strike = Number(strikePrice ?? 0);
+  const contracts = Number(contractsOpen ?? 0);
+  return Math.abs(strike) * 100 * Math.abs(contracts);
 }
 
 export async function GET(
@@ -59,7 +61,7 @@ export async function GET(
         id: true,
         ticker: true,
         type: true,
-        contracts: true,
+        contractsOpen: true,
         strikePrice: true,
         expirationDate: true,
         createdAt: true,
@@ -72,7 +74,7 @@ export async function GET(
     // Capital used = total CSP collateral locked
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
-        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contracts) : 0)
+        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
       );
     }, 0);
 
@@ -84,9 +86,9 @@ export async function GET(
           id: t.id,
           ticker: t.ticker,
           strikePrice: t.strikePrice,
-          contracts: t.contracts,
+          contracts: Number(t.contractsOpen ?? 0),
           expirationDate: t.expirationDate,
-          locked: lockedCollateral(t.strikePrice, t.contracts),
+          locked: lockedCollateral(t.strikePrice, t.contractsOpen),
         }))
         .sort((a, b) => b.locked - a.locked)[0] ?? null;
 
@@ -99,7 +101,7 @@ export async function GET(
       .map((t) => ({
         ticker: t.ticker,
         expirationDate: t.expirationDate!, // Date (serialized to ISO)
-        contracts: t.contracts,
+        contracts: Number(t.contractsOpen ?? 0),
         strikePrice: t.strikePrice,
         type: t.type,
       }));
