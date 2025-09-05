@@ -8,8 +8,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
       attribute="class" // adds/removes 'dark' class on <html>
-      defaultTheme="system" // or "light" if you prefer
-      enableSystem // respect OS theme
+      defaultTheme="light" // or "light" if you prefer
       storageKey="wheeltracker.theme" // optional, but makes it explicit/stable
       disableTransitionOnChange // prevents color-flash
     >
