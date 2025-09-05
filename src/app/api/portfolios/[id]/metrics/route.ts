@@ -14,7 +14,10 @@ function isPut(type: string | null | undefined) {
   return type.toLowerCase().includes("put");
 }
 
-function lockedCollateral(strikePrice?: number | null, contractsOpen?: number | null) {
+function lockedCollateral(
+  strikePrice?: number | null,
+  contractsOpen?: number | null,
+) {
   // 100 shares per contract
   const strike = Number(strikePrice ?? 0);
   const contracts = Number(contractsOpen ?? 0);
@@ -74,7 +77,8 @@ export async function GET(
     // Capital used = total CSP collateral locked
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
-        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
+        sum +
+        (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
       );
     }, 0);
 

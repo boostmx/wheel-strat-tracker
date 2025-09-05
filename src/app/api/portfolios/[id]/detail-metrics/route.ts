@@ -13,12 +13,18 @@ function isPut(type?: string | null) {
   if (!type) return false;
   return type.toLowerCase().includes("put");
 }
-function lockedCollateral(strikePrice?: number | null, contractsOpen?: number | null) {
+function lockedCollateral(
+  strikePrice?: number | null,
+  contractsOpen?: number | null,
+) {
   const strike = Number(strikePrice ?? 0);
   const contracts = Number(contractsOpen ?? 0);
   return Math.abs(strike) * 100 * Math.abs(contracts);
 }
-function premiumNotional(contractPrice?: number | null, contractsOpen?: number | null) {
+function premiumNotional(
+  contractPrice?: number | null,
+  contractsOpen?: number | null,
+) {
   const premium = Number(contractPrice ?? 0);
   const contracts = Number(contractsOpen ?? 0);
   return Math.abs(premium) * 100 * Math.abs(contracts);
@@ -91,7 +97,8 @@ export async function GET(
     // 3) capital used from CSPs (collateral tied up)
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
-        sum + (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
+        sum +
+        (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
       );
     }, 0);
     // 4) open premium (potential/at-entry premium outstanding)
