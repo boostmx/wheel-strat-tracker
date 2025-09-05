@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2025-09-04",
+    version: "v1.0.0",
+    highlights: [
+      "Full reporting feature launched with CSV export, date range filtering, and portfolio-wide trade history.",
+      "Minor bug fixes and improvements",
+      "version 1.0.0 marks the first true stable release of Wheel Strat Tracker. Thank you for using the app!",
+    ],
+  },
+  {
     date: "2025-09-03",
     version: "v0.10.2",
     highlights: [

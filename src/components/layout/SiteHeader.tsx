@@ -82,6 +82,12 @@ export function SiteHeader() {
           >
             Portfolios
           </Link>
+          <Link
+            href="/reports"
+            className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
+          >
+            Reports
+          </Link>
         </nav>
       </div>
 
@@ -119,6 +125,9 @@ export function SiteHeader() {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/portfolios">Portfolios</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/reports">Reports</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {/* Account actions */}
