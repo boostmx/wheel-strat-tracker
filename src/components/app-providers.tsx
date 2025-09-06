@@ -3,15 +3,21 @@
 import { ThemeProvider } from "next-themes";
 import { IdleSignout } from "@/features/auth/components/IdleSignout";
 import { Toaster, toast } from "sonner";
+import ThemeCookieSync from "./layout/ThemeCookieSync";
+
+const THEME_STORAGE_KEY = "wheeltracker.theme";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider
-      attribute="class" // adds/removes 'dark' class on <html>
-      defaultTheme="light" // or "light" if you prefer
-      storageKey="wheeltracker.theme" // optional, but makes it explicit/stable
-      disableTransitionOnChange // prevents color-flash
+      attribute="class"
+      defaultTheme="light"
+      storageKey={THEME_STORAGE_KEY}
+      enableSystem={false}
+      disableTransitionOnChange
+      themes={["light", "dark"]}
     >
+      <ThemeCookieSync />
       {/* Idle sign-out: 30 min total; warn at T-1 min */}
       <IdleSignout
         timeoutMs={30 * 60 * 1000} // 30 minutes

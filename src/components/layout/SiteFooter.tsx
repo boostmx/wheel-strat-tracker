@@ -61,6 +61,14 @@ export function SiteFooter() {
                   Portfolios
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/reports"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Reports
+                </Link>
+              </li>
             </ul>
           </div>
 

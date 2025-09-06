@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2025-09-05",
+    version: "v1.0.1",
+    highlights: [
+      "You can now switch between light and dark mode right from the login page.",
+      "Fixed an issue where two different theme toggles conflicted, causing dark mode to reset. Your theme choice now saves properly between visits.",
+      "Dark mode now looks consistent across the app — header, settings, and forms all match.", 
+    ],
+  },
+  {
     date: "2025-09-04",
     version: "v1.0.0",
     highlights: [

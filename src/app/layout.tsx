@@ -24,15 +24,22 @@ export const metadata: Metadata = {
 };
 
 // Script to set initial theme before React hydration
-const script = `
+const THEME_STORAGE_KEY = "wheeltracker.theme"; // must match ThemeProvider + toggle
+
+const themeInit = `
 (function() {
   try {
-    var t = localStorage.getItem('wheeltracker.theme');
-    if (t === 'light' || t === 'dark') {
-      document.documentElement.classList.toggle('dark', t === 'dark');
+    var d = document.documentElement;
+    var t = localStorage.getItem('${THEME_STORAGE_KEY}') || localStorage.getItem('theme');
+    if (t === 'dark' || t === 'light') {
+      d.classList.add(t);
+    } else {
+      // default when no preference stored
+      d.classList.add('light');
     }
   } catch (e) {}
-})();`;
+})();
+`;
 
 export default async function RootLayout({
   children,
@@ -42,7 +49,10 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: script }} />
+        <script
+          id="hl-theme-init"
+          dangerouslySetInnerHTML={{ __html: themeInit }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-[100dvh] flex flex-col antialiased bg-muted text-gray-900 dark:bg-gray-950 dark:text-gray-100`}

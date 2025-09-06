@@ -14,20 +14,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 
 function ThemeToggle() {
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
-  function toggle() {
-    document.documentElement.classList.toggle("dark");
-    setIsDark((x) => !x);
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  const STORAGE_KEY = "wheeltracker.theme" as const;
+  const current = (theme ?? resolvedTheme) as "light" | "dark" | undefined;
+  const isDark = current === "dark";
+  const nextTheme = isDark ? "light" : "dark";
+
+  function persist(value: "light" | "dark"): void {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, value);
+    } catch {}
+    try {
+      document.cookie = `${STORAGE_KEY}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    } catch {}
   }
+
+  function toggle() {
+    setTheme(nextTheme); // updates <html class> via next-themes
+    persist(nextTheme); // ensure persistence across refresh / SSR
+  }
+
   return (
     <button
       onClick={toggle}
       className="text-sm w-full text-left flex items-center gap-2"
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-pressed={isDark}
+      type="button"
     >
       {isDark ? (
         <>
@@ -55,7 +76,7 @@ export function SiteHeader() {
       .toUpperCase() || "U";
 
   return (
-    <header className="w-full border-b px-6 py-4 flex items-center justify-between bg-white dark:bg-zinc-950 shadow-sm">
+    <header className="w-full border-b border-border px-6 py-4 flex items-center justify-between bg-background shadow-sm">
       {/* Left: logo + desktop nav */}
       <div className="hidden md:flex items-center gap-6">
         <Link href="/summary" className="flex items-center gap-2">
@@ -65,26 +86,26 @@ export function SiteHeader() {
             width={32}
             height={32}
           />
-          <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+          <span className="text-lg font-semibold text-foreground">
             Trade Tracker
           </span>
         </Link>
         <nav className="flex items-center gap-6">
           <Link
             href="/summary"
-            className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
+            className="text-sm text-foreground hover:underline"
           >
             Account
           </Link>
           <Link
             href="/portfolios"
-            className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
+            className="text-sm text-foreground hover:underline"
           >
             Portfolios
           </Link>
           <Link
             href="/reports"
-            className="text-sm text-gray-700 dark:text-gray-200 hover:underline"
+            className="text-sm text-foreground hover:underline"
           >
             Reports
           </Link>
@@ -100,7 +121,7 @@ export function SiteHeader() {
             width={28}
             height={28}
           />
-          <span className="text-base font-semibold text-gray-800 dark:text-gray-100">
+          <span className="text-base font-semibold text-foreground">
             Trade Tracker
           </span>
         </Link>
@@ -162,7 +183,7 @@ export function SiteHeader() {
                       <span className="font-medium">
                         {user.firstName} {user.lastName}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         @{user.username}
                       </span>
                     </div>
@@ -198,7 +219,7 @@ export function SiteHeader() {
                       {initials}
                     </div>
                   )}
-                  <span className="text-sm text-gray-700 dark:text-gray-200 hidden sm:inline">
+                  <span className="text-sm text-foreground hidden sm:inline">
                     {user.firstName}
                   </span>
                 </Button>
@@ -209,7 +230,7 @@ export function SiteHeader() {
                     <span className="font-medium">
                       {user.firstName} {user.lastName}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       @{user.username}
                     </span>
                   </div>

@@ -83,13 +83,13 @@ export default function SettingsForm() {
     <main className="max-w-2xl mx-auto px-6 py-8 space-y-10">
       <section>
         <h1 className="text-2xl font-semibold">Account Settings</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           Manage your profile and security.
         </p>
       </section>
 
       {/* Profile */}
-      <section className="rounded-lg border p-6 bg-white dark:bg-zinc-950">
+      <section className="rounded-lg border p-6 bg-card">
         <h2 className="text-lg font-medium mb-4">Profile</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
@@ -97,7 +97,7 @@ export default function SettingsForm() {
               Username
             </Label>
             <Input id="username" value={username} disabled readOnly />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Usernames can’t be changed.
             </p>
           </div>
@@ -142,7 +142,7 @@ export default function SettingsForm() {
       </section>
 
       {/* Password */}
-      <section className="rounded-lg border p-6 bg-white dark:bg-zinc-950">
+      <section className="rounded-lg border p-6 bg-card">
         <h2 className="text-lg font-medium mb-4">Change password</h2>
         <div className="grid grid-cols-1 gap-4">
           <div>
@@ -190,7 +190,7 @@ export default function SettingsForm() {
         </div>
       </section>
 
-      <section className="rounded-lg border p-6 bg-white dark:bg-zinc-950">
+      <section className="rounded-lg border p-6 bg-card">
         <h2 className="text-lg font-medium mb-4">Session</h2>
         <Button variant="default" onClick={() => signOut()}>
           Sign out
