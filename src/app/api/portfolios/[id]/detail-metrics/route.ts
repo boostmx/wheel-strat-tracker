@@ -10,8 +10,20 @@ export const dynamic = "force-dynamic";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function isCSP(type?: string | null | undefined) {
-  if (!type) return false;
-  return (type ?? "") === "CashSecuredPut";
+  const t = (type ?? "").toLowerCase();
+  return t === "cash secured put" || t === "cashsecuredput" || t === "csp";
+}
+function isCC(type?: string | null | undefined) {
+  const t = (type ?? "").toLowerCase();
+  return t === "covered call" || t === "coveredcall" || t === "cc";
+}
+function isLongPut(type?: string | null | undefined) {
+  const t = (type ?? "").toLowerCase();
+  return t === "put";
+}
+function isLongCall(type?: string | null | undefined) {
+  const t = (type ?? "").toLowerCase();
+  return t === "call";
 }
 function lockedCollateral(
   strikePrice?: number | null,
@@ -28,6 +40,23 @@ function premiumNotional(
   const premium = Number(contractPrice ?? 0);
   const contracts = Number(contractsOpen ?? 0);
   return Math.abs(premium) * 100 * Math.abs(contracts);
+}
+function capitalUsedForTrade(params: {
+  type?: string | null;
+  strikePrice?: number | null;
+  contractsOpen?: number | null;
+  contractPrice?: number | null;
+}) {
+  const contracts = Math.max(0, Number(params.contractsOpen ?? 0));
+  const strike = Math.max(0, Number(params.strikePrice ?? 0));
+  const contractPrice = Math.max(0, Number(params.contractPrice ?? 0));
+
+  if (isCSP(params.type)) return strike * 100 * contracts; // CSP collateral
+  if (isCC(params.type)) return 0; // CC uses shares, not cash collateral
+  if (isLongPut(params.type) || isLongCall(params.type))
+    return contractPrice * 100 * contracts; // premium at risk for longs
+
+  return 0;
 }
 
 export async function GET(
@@ -98,12 +127,19 @@ export async function GET(
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
         sum +
-        (isCSP(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
+        capitalUsedForTrade({
+          type: t.type,
+          strikePrice: t.strikePrice,
+          contractsOpen: t.contractsOpen,
+          contractPrice: t.contractPrice,
+        })
       );
     }, 0);
     // 4) open premium (potential/at-entry premium outstanding)
     const potentialPremium = openTrades.reduce((sum, t) => {
-      return sum + premiumNotional(t.contractPrice, t.contractsOpen);
+      return sum + (isCSP(t.type) || isCC(t.type)
+        ? premiumNotional(t.contractPrice, t.contractsOpen)
+        : 0);
     }, 0);
 
     // 5) closed trades analytics

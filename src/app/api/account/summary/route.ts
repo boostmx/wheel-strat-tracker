@@ -10,10 +10,41 @@ export const dynamic = "force-dynamic";
 // Helpers
 // -------------------------
 const DAY_MS = 86_400_000;
-const isCSP = (type: string | null | undefined) =>
-  (type ?? "") === "CashSecuredPut";
+const isCSP = (type: string | null | undefined) => {
+  const t = (type ?? "").toLowerCase();
+  return t === "cash secured put" || t === "cashsecuredput" || t === "csp";
+};
+const isCC = (type: string | null | undefined) => {
+  const t = (type ?? "").toLowerCase();
+  return t === "covered call" || t === "coveredcall" || t === "cc";
+};
+const isLongPut = (type: string | null | undefined) => {
+  const t = (type ?? "").toLowerCase();
+  return t === "put";
+};
+const isLongCall = (type: string | null | undefined) => {
+  const t = (type ?? "").toLowerCase();
+  return t === "call";
+};
+
 const collateralFor = (strike?: number | null, contracts?: number | null) =>
   Number(strike ?? 0) * 100 * Number(contracts ?? 0);
+
+// Helper: computes capital used for a trade (CSP = collateral, CC = 0, Long = premium at risk)
+const capitalUsedForTrade = (row: {
+  type?: string | null;
+  strikePrice?: number | null;
+  contractsOpen?: number | null;
+  contractPrice?: number | null;
+}) => {
+  const contracts = Math.max(0, Number(row.contractsOpen ?? 0));
+  const strike = Math.max(0, Number(row.strikePrice ?? 0));
+  const px = Math.max(0, Number(row.contractPrice ?? 0));
+  if (isCSP(row.type)) return strike * 100 * contracts; // CSP collateral
+  if (isCC(row.type)) return 0; // CC uses shares (no extra cash tracked here)
+  if (isLongPut(row.type) || isLongCall(row.type)) return px * 100 * contracts; // premium at risk
+  return 0;
+};
 
 const startOfMonthUTC = () => {
   const d = new Date();
@@ -54,20 +85,31 @@ const ensureUtcMidnight = (d: Date | string) => {
 
 // Prefer stored premiumCaptured; otherwise estimate from contractPrice vs closingPrice.
 const realizedFor = (row: {
+  type?: string | null;
   contracts: number;
   contractPrice: number;
   closingPrice: number | null;
   premiumCaptured: number | null;
 }) => {
   if (row.premiumCaptured != null) return Number(row.premiumCaptured);
-  const close = row.closingPrice ?? 0;
-  return (
-    (Number(row.contractPrice) - Number(close)) * 100 * Number(row.contracts)
-  );
+  const openPx = Number(row.contractPrice);
+  const closePx = Number(row.closingPrice ?? 0);
+  const contracts = Number(row.contracts);
+  // Short (CSP/CC): credit_at_open - debit_to_close
+  if (isCSP(row.type) || isCC(row.type)) {
+    return (openPx - closePx) * 100 * contracts;
+  }
+  // Long (Put/Call): credit_from_close - debit_at_open
+  if (isLongPut(row.type) || isLongCall(row.type)) {
+    return (closePx - openPx) * 100 * contracts;
+  }
+  // Fallback: treat like short
+  return (openPx - closePx) * 100 * contracts;
 };
 
 const sumRealized = (
   rows: Array<{
+    type?: string | null;
     contracts: number;
     contractPrice: number;
     closingPrice: number | null;
@@ -152,12 +194,14 @@ export async function GET() {
               contractsOpen: true,
               expirationDate: true,
               createdAt: true,
+              contractPrice: true,
             },
           }),
           prisma.trade.findMany({
             where: { portfolioId: p.id, status: "closed" },
             select: {
               ticker: true,
+              type: true,
               contracts: true,
               contractPrice: true,
               closingPrice: true,
@@ -174,6 +218,7 @@ export async function GET() {
             },
             select: {
               ticker: true,
+              type: true,
               contracts: true,
               contractPrice: true,
               closingPrice: true,
@@ -189,6 +234,7 @@ export async function GET() {
             },
             select: {
               ticker: true,
+              type: true,
               contracts: true,
               contractPrice: true,
               closingPrice: true,
@@ -204,6 +250,7 @@ export async function GET() {
             },
             select: {
               ticker: true,
+              type: true,
               contracts: true,
               contractPrice: true,
               closingPrice: true,
@@ -213,12 +260,19 @@ export async function GET() {
           }),
         ]);
 
-      // Capital in use = collateral of CSPs only
+      // Capital in use: CSP collateral + long option premium at risk (CC = 0)
       const cspOpen = openTrades.filter((t) => isCSP(t.type));
-      const capitalInUse = cspOpen.reduce(
-        (sum, t) => sum + collateralFor(t.strikePrice, t.contractsOpen),
-        0,
-      );
+      const capitalInUse = openTrades.reduce((sum, t) => {
+        return (
+          sum +
+          capitalUsedForTrade({
+            type: t.type,
+            strikePrice: t.strikePrice,
+            contractsOpen: t.contractsOpen,
+            contractPrice: (t as { contractPrice?: number | null }).contractPrice,
+          })
+        );
+      }, 0);
 
       // Biggest CSP by collateral
       const biggestRaw = cspOpen
@@ -335,6 +389,7 @@ export async function GET() {
       const perPremiumMap = new Map<string, number>();
       for (const row of closedAll) {
         const realized = realizedFor({
+          type: row.type,
           contracts: Number(row.contracts),
           contractPrice: Number(row.contractPrice),
           closingPrice:
@@ -358,6 +413,7 @@ export async function GET() {
         const key = r.closedAt ? toIsoDayUTC(new Date(r.closedAt)) : null;
         if (!key) continue;
         const val = realizedFor({
+          type: r.type,
           contracts: Number(r.contracts),
           contractPrice: Number(r.contractPrice),
           closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
@@ -373,6 +429,7 @@ export async function GET() {
         if (!d) continue;
         const key = toIsoMonthUTC(d);
         const val = realizedFor({
+          type: r.type,
           contracts: Number(r.contracts),
           contractPrice: Number(r.contractPrice),
           closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
@@ -388,6 +445,7 @@ export async function GET() {
         const key = r.closedAt ? toIsoDayUTC(new Date(r.closedAt)) : null;
         if (!key) continue;
         const val = realizedFor({
+          type: r.type,
           contracts: Number(r.contracts),
           contractPrice: Number(r.contractPrice),
           closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
