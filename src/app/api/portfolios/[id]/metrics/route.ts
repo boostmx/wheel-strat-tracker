@@ -9,9 +9,9 @@ export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
 // Cash‑secured puts are what lock collateral
-function isPut(type: string | null | undefined) {
+function isCSP(type: string | null | undefined) {
   if (!type) return false;
-  return type.toLowerCase().includes("put");
+  return (type ?? "") === "CashSecuredPut";
 }
 
 function lockedCollateral(
@@ -78,14 +78,14 @@ export async function GET(
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
         sum +
-        (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
+        (isCSP(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
       );
     }, 0);
 
     // Biggest position by CSP collateral
     const biggestPosition =
       openTrades
-        .filter((t) => isPut(t.type))
+        .filter((t) => isCSP(t.type))
         .map((t) => ({
           id: t.id,
           ticker: t.ticker,

@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 // --- helpers ---
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function isPut(type?: string | null) {
+function isCSP(type?: string | null | undefined) {
   if (!type) return false;
-  return type.toLowerCase().includes("put");
+  return (type ?? "") === "CashSecuredPut";
 }
 function lockedCollateral(
   strikePrice?: number | null,
@@ -98,7 +98,7 @@ export async function GET(
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
         sum +
-        (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
+        (isCSP(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
       );
     }, 0);
     // 4) open premium (potential/at-entry premium outstanding)
@@ -122,7 +122,7 @@ export async function GET(
     let countDays = 0;
 
     for (const t of closedTrades) {
-      const basisCollateral = isPut(t.type)
+      const basisCollateral = isCSP(t.type)
         ? lockedCollateral(t.strikePrice, t.contractsOpen)
         : 0;
       const basisPremium = premiumNotional(t.contractPrice, t.contractsOpen);
