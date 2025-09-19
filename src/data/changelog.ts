@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2025-09-18",
+    version: "v1.0.2",
+    highlights: [
+      "Option profits now show correctly for every trade type — no more negative signs when you made money!",
+      "Capital in use is consistent across the app: CSPs use strike collateral, and long options (puts/calls) use the premium at risk.",
+      "Tooltips and the Open Positions table only show &quot;open premium&quot; when it applies (CSPs and covered calls).",
+      "Account Summary totals now include puts and calls properly for accurate roll-ups.",
+      "Small polish and copy tweaks for clarity."
+    ],
+  },
+  {
     date: "2025-09-05",
     version: "v1.0.1",
     highlights: [

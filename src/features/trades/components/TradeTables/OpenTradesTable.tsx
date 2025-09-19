@@ -49,18 +49,27 @@ const formatUSD = (n: number) =>
     maximumFractionDigits: 2,
   }).format(n);
 
-const isCashSecuredPut = (type?: string) =>
-  !!type &&
-  type.toLowerCase().includes("put") &&
-  !type.toLowerCase().includes("covered");
+const isCashSecuredPut = (type?: string) => {
+  if (!type) return false;
+  const t = type.toLowerCase().replaceAll(/\s+/g, "");
+  return t === "cashsecuredput" || t === "csp";
+};
+
+const isCoveredCall = (type?: string) =>
+  !!type && type.toLowerCase().includes("covered") && type.toLowerCase().includes("call");
 
 const calcCapitalInUse = (t: Trade) =>
   isCashSecuredPut(t.type)
     ? t.strikePrice * 100 * (t.contractsOpen ?? t.contracts ?? 0)
     : 0;
 
-const calcOpenPremium = (t: Trade) =>
-  (t.contractPrice ?? 0) * 100 * (t.contractsOpen ?? t.contracts ?? 0);
+const calcOpenPremium = (t: Trade) => {
+  // Only relevant for short options: CSP and Covered Calls
+  if (isCashSecuredPut(t.type) || isCoveredCall(t.type)) {
+    return (t.contractPrice ?? 0) * 100 * (t.contractsOpen ?? t.contracts ?? 0);
+  }
+  return undefined; // Not applicable for long Puts/Calls
+};
 
 const calcBreakeven = (t: Trade) => {
   const premiumPerShare = t.contractPrice ?? 0;
@@ -83,7 +92,11 @@ const buildTooltipContent = (t: Trade) => (
     )}
     <div>
       Open premium (total):{" "}
-      <span className="font-medium">{formatUSD(calcOpenPremium(t))}</span>
+      {typeof calcOpenPremium(t) === "number" ? (
+        <span className="font-medium">{formatUSD(calcOpenPremium(t) as number)}</span>
+      ) : (
+        <span className="font-medium">-</span>
+      )}
     </div>
     {typeof t.entryPrice === "number" && isFinite(t.entryPrice) && (
       <div>
@@ -230,10 +243,10 @@ export function OpenTradesTable({
   const metrics = useMemo(() => {
     const originals = allRows.map((r) => r.original as Trade);
     const count = originals.length;
-    const totalOpenPremium = originals.reduce(
-      (sum, t) => sum + calcOpenPremium(t),
-      0,
-    );
+    const totalOpenPremium = originals.reduce((sum, t) => {
+      const v = calcOpenPremium(t);
+      return sum + (typeof v === "number" ? v : 0);
+    }, 0);
     return { count, totalOpenPremium };
   }, [allRows]);
 
@@ -420,16 +433,16 @@ export function OpenTradesTable({
                     <span className="text-muted-foreground">Exp</span>{" "}
                     {formatDateOnlyUTC(new Date(t.expirationDate))}
                   </div>
-                  {typeof t.contractPrice === "number" && (
-                    <div>
-                      <span className="text-muted-foreground">Premium</span>{" "}
-                      {formatUSD(
-                        (t.contractPrice ?? 0) *
-                          100 *
-                          (t.contractsOpen ?? t.contracts ?? 0),
-                      )}
-                    </div>
-                  )}
+                  <div>
+                    <span className="text-muted-foreground">Premium</span>{" "}
+                    {isCashSecuredPut(t.type) || isCoveredCall(t.type)
+                      ? formatUSD(
+                          (t.contractPrice ?? 0) *
+                            100 *
+                            (t.contractsOpen ?? t.contracts ?? 0),
+                        )
+                      : "-"}
+                  </div>
                   <div>
                     <span className="text-muted-foreground">Contracts</span>{" "}
                     {t.contractsOpen ?? t.contracts ?? 0}

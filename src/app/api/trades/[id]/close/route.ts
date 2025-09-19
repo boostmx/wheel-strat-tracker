@@ -15,6 +15,15 @@ type CloseTradePayload = {
   fullClose?: boolean;
 };
 
+//helpers to interpret trade types
+const isShortOption = (type: string): boolean =>
+  type === "Cash Secured Put" || type === "Covered Call";
+
+const isLongOption = (type: string): boolean =>
+  type === "Put" || type === "Call";
+
+const CONTRACT_MULTIPLIER = 100;
+
 export async function PATCH(
   req: NextRequest,
   props: { params: Promise<{ id: string }> },
@@ -46,6 +55,7 @@ export async function PATCH(
   if (!Number.isFinite(contractsToClose) || contractsToClose <= 0) {
     return new Response("Invalid contractsToClose", { status: 400 });
   }
+  // allow 0 for expiry / buyback at 0.00
   if (!Number.isFinite(closingPrice) || closingPrice < 0) {
     return new Response("Invalid closingPrice", { status: 400 });
   }
@@ -67,14 +77,37 @@ export async function PATCH(
     });
   }
 
-  // OPTION P&L ONLY — do NOT use strike or stock entry price
-  const sellPrice = Number(trade.contractPrice); // avg credit per contract at open (e.g., 4.50)
-  const gross = (sellPrice - closingPrice) * contractsToClose * 100;
-  const feesTotal = feesPerContract * contractsToClose + flatFees;
-  const realizedNow = gross - feesTotal;
+  // --- CHANGED: correct P&L based on long vs short
+  const openPrice = Number(trade.contractPrice); // price paid (long) or credit received (short)
+  let gross: number;
+  let percentPL: number;
 
-  const percentPL =
-    sellPrice > 0 ? ((sellPrice - closingPrice) / sellPrice) * 100 : 0;
+  if (isShortOption(trade.type)) {
+    // sold to open → buy to close
+    // P&L = (credit_at_open - debit_to_close) * 100 * contracts
+    gross = (openPrice - closingPrice) * contractsToClose * CONTRACT_MULTIPLIER;
+    percentPL = openPrice > 0 ? ((openPrice - closingPrice) / openPrice) * 100 : 0;
+  } else if (isLongOption(trade.type)) {
+    // bought to open → sell to close
+    // P&L = (credit_from_close - debit_at_open) * 100 * contracts
+    gross = (closingPrice - openPrice) * contractsToClose * CONTRACT_MULTIPLIER;
+    percentPL = openPrice > 0 ? ((closingPrice - openPrice) / openPrice) * 100 : 0;
+  } else {
+    // Fallback: treat as short to avoid silent mispricing; you can also choose to 400 here.
+    gross = (openPrice - closingPrice) * contractsToClose * CONTRACT_MULTIPLIER;
+    percentPL = openPrice > 0 ? ((openPrice - closingPrice) / openPrice) * 100 : 0;
+  }
+
+  const feesTotal = feesPerContract * contractsToClose + flatFees;
+  // P&L before normalization (already long/short aware)
+  let realizedNow = gross - feesTotal;
+
+  // Normalize saved sign so profit > 0, loss < 0
+  if (percentPL >= 0 && realizedNow < 0) {
+    realizedNow = Math.abs(realizedNow);
+  } else if (percentPL < 0 && realizedNow > 0) {
+    realizedNow = -Math.abs(realizedNow);
+  }
 
   const remaining = trade.contractsOpen - contractsToClose;
   const fullCloseFlag = body.fullClose;
@@ -93,7 +126,7 @@ export async function PATCH(
         closingPrice, // last close price
         contractsOpen: 0,
         premiumCaptured: newPremiumCaptured,
-        percentPL, // last-leg % (optional; could also compute weighted)
+        percentPL, // last-leg % (kept for display)
       },
     });
 
@@ -122,12 +155,12 @@ export async function PATCH(
         contracts: contractsToClose,
         contractsInitial: contractsToClose,
         contractsOpen: 0,
-        contractPrice: sellPrice, // credit at open (avg)
-        entryPrice: trade.entryPrice, // keep if you display it, but not used in P&L
+        contractPrice: openPrice,
+        entryPrice: trade.entryPrice, // retained for display only
         portfolioId: trade.portfolioId,
         status: "closed",
         closingPrice,
-        premiumCaptured: realizedNow, // realized for this partial close
+        premiumCaptured: realizedNow,
         percentPL,
         closedAt: new Date(),
       },

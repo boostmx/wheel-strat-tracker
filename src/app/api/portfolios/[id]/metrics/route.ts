@@ -8,12 +8,51 @@ import { authOptions } from "@/server/auth/auth";
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
-// Cash‑secured puts are what lock collateral
-function isPut(type: string | null | undefined) {
-  if (!type) return false;
-  return type.toLowerCase().includes("put");
+// --- Helpers for option type classification
+function isCSP(type: string | null | undefined) {
+  const t = (type ?? "").toLowerCase();
+  return t === "cash secured put" || t === "cashsecuredput" || t === "csp";
+}
+function isCC(type: string | null | undefined) {
+  const t = (type ?? "").toLowerCase();
+  return t === "covered call" || t === "coveredcall" || t === "cc";
+}
+function isLongPut(type: string | null | undefined) {
+  const t = (type ?? "").toLowerCase();
+  return t === "put";
+}
+function isLongCall(type: string | null | undefined) {
+  const t = (type ?? "").toLowerCase();
+  return t === "call";
 }
 
+function capitalUsedForTrade(params: {
+  type?: string | null;
+  strikePrice?: number | null;
+  contractsOpen?: number | null;
+  contractPrice?: number | null;
+}) {
+  const contracts = Math.max(0, Number(params.contractsOpen ?? 0));
+  const strike = Math.max(0, Number(params.strikePrice ?? 0));
+  const contractPrice = Math.max(0, Number(params.contractPrice ?? 0));
+
+  // CSP: lock collateral = strike * 100 * contracts
+  if (isCSP(params.type)) {
+    return strike * 100 * contracts;
+  }
+  // Covered Call: no additional cash collateral tracked here
+  if (isCC(params.type)) {
+    return 0;
+  }
+  // Long options (puts/calls): cash at risk is premium paid
+  if (isLongPut(params.type) || isLongCall(params.type)) {
+    return contractPrice * 100 * contracts;
+  }
+  // Fallback: treat as no capital used
+  return 0;
+}
+
+// Cash‑secured puts are what lock collateral
 function lockedCollateral(
   strikePrice?: number | null,
   contractsOpen?: number | null,
@@ -68,24 +107,30 @@ export async function GET(
         strikePrice: true,
         expirationDate: true,
         createdAt: true,
+        contractPrice: true,
       },
       orderBy: { createdAt: "desc" },
     });
 
     const openTradesCount = openTrades.length;
 
-    // Capital used = total CSP collateral locked
+    // Capital used = total CSP collateral locked or premium paid etc.
     const capitalUsed = openTrades.reduce((sum, t) => {
       return (
         sum +
-        (isPut(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0)
+        capitalUsedForTrade({
+          type: t.type,
+          strikePrice: t.strikePrice,
+          contractsOpen: t.contractsOpen,
+          contractPrice: (t as { contractPrice?: number | null }).contractPrice,
+        })
       );
     }, 0);
 
     // Biggest position by CSP collateral
     const biggestPosition =
       openTrades
-        .filter((t) => isPut(t.type))
+        .filter((t) => isCSP(t.type))
         .map((t) => ({
           id: t.id,
           ticker: t.ticker,
