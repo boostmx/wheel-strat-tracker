@@ -9,7 +9,7 @@ export const changelog: ChangelogEntry[] = [
     date: "2025-09-23",
     version: "v1.0.3",
     highlights: [
-      "Updated reporting filter to set start date to beginning of month for more intuitive results.",
+      "Updated report filter to set start date at the beginning of month for useful results.",
     ],
   },
   {
