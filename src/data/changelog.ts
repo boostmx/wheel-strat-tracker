@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2025-09-23",
+    version: "v1.0.3",
+    highlights: [
+      "Updated reporting filter to set start date to beginning of month for more intuitive results.",
+    ],
+  },
+  {
     date: "2025-09-18",
     version: "v1.0.2",
     highlights: [
