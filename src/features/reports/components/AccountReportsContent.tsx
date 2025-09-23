@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
-import { format, startOfDay, endOfDay, isAfter } from "date-fns";
+import { format, startOfDay, endOfDay, isAfter, startOfMonth } from "date-fns";
 import type { Trade } from "@/types";
 import { Button } from "@/components/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -83,11 +83,7 @@ function getPercentPL(r: ReportRow): number {
 }
 
 export function AccountsReportContent() {
-  const [start, setStart] = useState<Date>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d;
-  });
+  const [start, setStart] = useState<Date>(() => startOfDay(startOfMonth(new Date())));
   const [end, setEnd] = useState<Date>(() => new Date());
 
   const [mounted, setMounted] = useState(false);
