@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2025-10-01",
+    version: "v1.0.4",
+    highlights: [
+      "Updated the capital card on the portfolio details page to mirror the account page for more consistency.",
+    ],
+  },
+  {
     date: "2025-09-23",
     version: "v1.0.3",
     highlights: [

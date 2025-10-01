@@ -67,6 +67,12 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const starting = Number(portfolio.startingCapital ?? 0);
   const addl = Number(portfolio.additionalCapital ?? 0);
 
+  // Total Capital = Capital Base (starting + additional) + Total Profit
+  const totalCapital =
+    (metrics?.capitalBase != null
+      ? Number(metrics.capitalBase)
+      : starting + addl) + (metrics?.totalProfit != null ? Number(metrics.totalProfit) : 0);
+
   // Defer mounting closed trades until scrolled near
   const { ref: closedSentinelRef, inView: showClosed } = useInViewOnce();
 
@@ -149,7 +155,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           <Card className="bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm rounded-lg h-full">
             <CardContent className="p-6">
               <p className="text-base font-medium text-gray-600 dark:text-gray-400">
-                Current Capital
+                Capital Available
               </p>
               <p
                 className={`text-3xl font-bold dark:text-gray-300 ${
@@ -163,16 +169,16 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                   : "Loading..."}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Total Capital: {formatCompactCurrency(totalCapital)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Starting: {formatCompactCurrency(starting)}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Additional: {formatCompactCurrency(addl)}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Capital Base:{" "}
-                {metrics?.capitalBase != null
-                  ? formatCompactCurrency(metrics.capitalBase)
-                  : "—"}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Profits: {metrics?.totalProfit != null ? formatCompactCurrency(metrics.totalProfit) : "—"}
               </p>
               <p
                 className={`text-sm font-medium ${
@@ -225,6 +231,12 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                   ? formatCompactCurrency(metrics.realizedYTD)
                   : "—"}
               </p>
+              {metrics?.realizedPrevMonth != null && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Prev Mo:{" "}
+                  {formatCompactCurrency(metrics.realizedPrevMonth)}
+                </p>
+              )}
             </CardContent>
           </Card>
         </motion.div>
