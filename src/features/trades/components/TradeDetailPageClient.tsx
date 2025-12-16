@@ -1,6 +1,5 @@
 "use client";
 import { useMemo, useState } from "react";
-import type React from "react";
 import useSWR from "swr";
 import { Trade } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
