@@ -85,6 +85,39 @@ async function main() {
 
   console.log(`📦 Created portfolio: ${portfolio.name}`);
 
+  // ✅ Seed underlying stock lots for covered call examples
+  const tslaLot = await prisma.stockLot.create({
+    data: {
+      portfolioId: portfolio.id,
+      ticker: "TSLA",
+      shares: 200, // 2 CC contracts * 100 shares
+      avgCost: 255,
+      notes: "Seed lot for covered call history",
+    },
+  });
+
+  const msftLot = await prisma.stockLot.create({
+    data: {
+      portfolioId: portfolio.id,
+      ticker: "MSFT",
+      shares: 100, // 1 CC contract * 100 shares
+      avgCost: 352,
+      notes: "Seed lot for open covered call",
+    },
+  });
+
+  const amznLot = await prisma.stockLot.create({
+    data: {
+      portfolioId: portfolio.id,
+      ticker: "AMZN",
+      shares: 200, // 2 CC contracts * 100 shares
+      avgCost: 142,
+      notes: "Seed lot for closed covered call",
+    },
+  });
+
+  console.log("📦 Seeded stock lots: TSLA/MSFT/AMZN");
+
   // ✅ Add some trades to the portfolio
   await prisma.trade.createMany({
     data: [
@@ -95,6 +128,8 @@ async function main() {
         expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week out
         type: "CashSecuredPut",
         contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 1,
         contractPrice: 2.6,
         entryPrice: 182.5,
         status: "open",
@@ -107,6 +142,8 @@ async function main() {
         expirationDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2 weeks out
         type: "CoveredCall",
         contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 0,
         contractPrice: 3.15,
         entryPrice: 255,
         status: "closed",
@@ -115,6 +152,7 @@ async function main() {
         closedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // closed yesterday
         portfolioId: portfolio.id,
         percentPL: 34.23,
+        stockLotId: tslaLot.id,
       },
       // Open CSP on NVDA
       {
@@ -123,6 +161,8 @@ async function main() {
         expirationDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 3 weeks out
         type: "CashSecuredPut",
         contracts: 3,
+        contractsInitial: 3,
+        contractsOpen: 3,
         contractPrice: 6.1,
         entryPrice: 410,
         status: "open",
@@ -135,6 +175,8 @@ async function main() {
         expirationDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // expired 1 week ago
         type: "CashSecuredPut",
         contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
         contractPrice: 2.0,
         entryPrice: 303,
         status: "closed",
@@ -151,10 +193,13 @@ async function main() {
         expirationDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000), // 4 weeks out
         type: "CoveredCall",
         contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 1,
         contractPrice: 4.5,
         entryPrice: 352,
         status: "open",
         portfolioId: portfolio.id,
+        stockLotId: msftLot.id,
       },
       // Closed CC on AMZN
       {
@@ -163,6 +208,8 @@ async function main() {
         expirationDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // expired 2 weeks ago
         type: "CoveredCall",
         contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 0,
         contractPrice: 2.8,
         entryPrice: 142,
         status: "closed",
@@ -171,6 +218,7 @@ async function main() {
         closedAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000),
         portfolioId: portfolio.id,
         percentPL: -15.67,
+        stockLotId: amznLot.id,
       },
     ],
   });
