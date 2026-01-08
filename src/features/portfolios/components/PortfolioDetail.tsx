@@ -1,5 +1,6 @@
 "use client";
 import { Card, CardContent } from "@/components/ui/card";
+import { StocksSection } from "@/features/stocks/components/StocksSection";
 import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
 import { OpenTradesTable } from "@/features/trades/components/TradeTables/OpenTradesTable";
 // dynamic import for faster initial render
@@ -267,6 +268,11 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
             </motion.div>
           ))}
       </motion.div>
+
+      {/* Stocks section */}
+
+      <StocksSection portfolioId={portfolio.id} />
+
 
       {/* Open positions */}
       <motion.div
