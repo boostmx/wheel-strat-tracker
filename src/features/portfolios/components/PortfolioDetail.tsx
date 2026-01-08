@@ -68,11 +68,12 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const starting = Number(portfolio.startingCapital ?? 0);
   const addl = Number(portfolio.additionalCapital ?? 0);
 
-  // Total Capital = Capital Base (starting + additional) + Total Profit
+  // Total Capital = Current Capital from API (preferred) OR (Capital Base + Total Profit)
   const totalCapital =
-    (metrics?.capitalBase != null
-      ? Number(metrics.capitalBase)
-      : starting + addl) + (metrics?.totalProfit != null ? Number(metrics.totalProfit) : 0);
+    metrics?.currentCapital != null
+      ? Number(metrics.currentCapital)
+      : (metrics?.capitalBase != null ? Number(metrics.capitalBase) : starting + addl) +
+        (metrics?.totalProfit != null ? Number(metrics.totalProfit) : 0);
 
   // Defer mounting closed trades until scrolled near
   const { ref: closedSentinelRef, inView: showClosed } = useInViewOnce();
@@ -172,11 +173,11 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Total Capital: {formatCompactCurrency(totalCapital)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Starting: {formatCompactCurrency(starting)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Additional: {formatCompactCurrency(addl)}
+                Used: {metrics?.capitalUsed != null ? formatCompactCurrency(metrics.capitalUsed) : "—"}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Profits: {metrics?.totalProfit != null ? formatCompactCurrency(metrics.totalProfit) : "—"}

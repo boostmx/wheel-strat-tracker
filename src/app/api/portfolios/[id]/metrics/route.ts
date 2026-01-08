@@ -112,20 +112,38 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
 
+    const openStockLots = await prisma.stockLot.findMany({
+      where: {
+        status: "OPEN",
+        portfolio: { id: portfolioId, userId },
+      },
+      select: {
+        shares: true,
+        avgCost: true,
+      },
+    });
+
     const openTradesCount = openTrades.length;
 
-    // Capital used = total CSP collateral locked or premium paid etc.
-    const capitalUsed = openTrades.reduce((sum, t) => {
+    const capitalUsedOptions = openTrades.reduce((sum, t) => {
       return (
         sum +
         capitalUsedForTrade({
           type: t.type,
           strikePrice: t.strikePrice,
           contractsOpen: t.contractsOpen,
-          contractPrice: (t as { contractPrice?: number | null }).contractPrice,
+          contractPrice: t.contractPrice,
         })
       );
     }, 0);
+
+    const capitalUsedStocks = openStockLots.reduce((sum, lot) => {
+      const shares = Number(lot.shares ?? 0);
+      const avgCost = Number(lot.avgCost ?? 0);
+      return sum + shares * avgCost;
+    }, 0);
+
+    const capitalUsed = capitalUsedOptions + capitalUsedStocks;
 
     // Biggest position by CSP collateral
     const biggestPosition =
@@ -158,6 +176,8 @@ export async function GET(
     return NextResponse.json({
       openTradesCount,
       capitalUsed,
+      capitalUsedOptions,
+      capitalUsedStocks,
       biggestPosition, // null or { id, ticker, strikePrice, contracts, locked, expirationDate }
       nextExpirations, // array (<= limit)
     });

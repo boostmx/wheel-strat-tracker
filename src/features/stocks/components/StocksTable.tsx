@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import type { StocksListResponse, StockLot } from "@/types";
 import { Card } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 
 type Props = {
   portfolioId: string;
@@ -29,6 +30,7 @@ const fetcher = async (url: string): Promise<StocksListResponse> => {
 };
 
 export function StocksTable({ portfolioId }: Props) {
+  const router = useRouter();
   const key = `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`;
   const { data, error, isLoading } = useSWR<StocksListResponse>(key, fetcher);
 
@@ -63,7 +65,19 @@ export function StocksTable({ portfolioId }: Props) {
                   const basis = avg * r.shares;
 
                   return (
-                    <tr key={r.id} className="border-b border-border/40 hover:bg-muted/30">
+                    <tr
+                      key={r.id}
+                      className="border-b border-border/40 hover:bg-muted/30 cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/portfolios/${portfolioId}/stocks/${r.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(`/portfolios/${portfolioId}/stocks/${r.id}`);
+                        }
+                      }}
+                    >
                       <td className="py-3 px-3 font-medium tracking-wide">{r.ticker}</td>
                       <td className="py-3 px-3">{r.shares}</td>
                       <td className="py-3 px-3">{formatCurrency(avg)}</td>
