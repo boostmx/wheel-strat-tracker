@@ -60,6 +60,7 @@ export type StockLot = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  trades: Trade[];
 };
 
 export type StocksListResponse = {

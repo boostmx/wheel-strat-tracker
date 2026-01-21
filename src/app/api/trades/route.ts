@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     contracts,
     contractPrice,
     entryPrice,
+    stockLotId,
   } = body;
 
   if (
@@ -42,10 +43,52 @@ export async function POST(req: Request) {
     );
   }
 
+  const normalizedType = String(type).toLowerCase();
+
+  if (normalizedType === "coveredcall" || normalizedType === "covered call" || normalizedType === "cc") {
+    if (!stockLotId) {
+      return NextResponse.json(
+        { error: "Covered calls must be linked to an underlying stock lot" },
+        { status: 400 },
+      );
+    }
+
+    const stockLot = await db.stockLot.findFirst({
+      where: {
+        id: stockLotId,
+        portfolioId,
+        status: "OPEN",
+      },
+    });
+
+    if (!stockLot) {
+      return NextResponse.json(
+        { error: "Invalid or closed stock lot for covered call" },
+        { status: 400 },
+      );
+    }
+
+    if (stockLot.ticker.toUpperCase() !== ticker.toUpperCase()) {
+      return NextResponse.json(
+        { error: "Covered call ticker must match stock lot ticker" },
+        { status: 400 },
+      );
+    }
+
+    const requiredShares = Number(contracts) * 100;
+    if (stockLot.shares < requiredShares) {
+      return NextResponse.json(
+        { error: "Not enough shares in stock lot for covered call" },
+        { status: 400 },
+      );
+    }
+  }
+
   try {
     const trade = await db.trade.create({
       data: {
         portfolioId,
+        stockLotId: stockLotId ?? null,
         ticker: ticker.toUpperCase(),
         strikePrice,
         expirationDate: new Date(expirationDate),

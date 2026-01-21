@@ -4,32 +4,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-type Trade = {
-  id: string;
-  ticker: string;
-  type: string;
-  strikePrice: number;
-  expirationDate: string;
-  contracts: number;
-  contractsOpen: number;
-  status: string;
-  contractPrice: number;
-  closingPrice: number | null;
-  premiumCaptured: number | null;
-  createdAt: string;
-};
-
-type StockLot = {
-  id: string;
-  portfolioId: string;
-  ticker: string;
-  shares: number;
-  avgCost: string | number;
-  notes: string | null;
-  status: "OPEN" | "CLOSED";
-  trades: Trade[];
-};
+import { StockLot} from "@/types";
 
 type StockResponse = { stockLot: StockLot };
 

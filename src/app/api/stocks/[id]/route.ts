@@ -26,7 +26,7 @@ export async function GET(
 
     return NextResponse.json({ stockLot });
   } catch (err) {
-    console.error("GET /api/stock-lots/[id] failed", err);
+    console.error("GET /api/stocks/[id] failed", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

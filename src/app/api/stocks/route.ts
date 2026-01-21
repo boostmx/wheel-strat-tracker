@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ stockLots });
   } catch (err) {
-    console.error("GET /api/stock-lots failed", err);
+    console.error("GET /api/stocks failed", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ stockLot: created }, { status: 201 });
   } catch (err) {
-    console.error("POST /api/stock-lots failed", err);
+    console.error("POST /api/stocks failed", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
