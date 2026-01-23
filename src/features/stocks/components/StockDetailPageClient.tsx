@@ -1,10 +1,12 @@
 "use client";
 
+import * as React from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StockLot} from "@/types";
+import { StockLot } from "@/types";
+import { CloseStockLotModal } from "./CloseStockModal";
 
 type StockResponse = { stockLot: StockLot };
 
@@ -22,11 +24,23 @@ function money(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 }
 
+function safeNumber(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatMoney(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  return money(n);
+}
+
 export default function StockDetailPageClient(props: {
   portfolioId: string;
   stockId: string;
 }) {
   const { portfolioId, stockId } = props;
+
+  const [closeOpen, setCloseOpen] = React.useState<boolean>(false);
 
   const { data, error, isLoading } = useSWR<StockResponse>(
     `/api/stocks/${stockId}`,
@@ -53,15 +67,23 @@ export default function StockDetailPageClient(props: {
           </div>
           <h1 className="text-3xl font-semibold tracking-tight mt-2">{s.ticker}</h1>
           <p className="text-sm text-muted-foreground">
-            Shares: {s.shares} • Avg Cost: {money(avg)} • Cost Basis: {money(basis)}
+            Shares: {s.shares} • Avg Cost: {money(avg)} • Cost Basis: {money(basis)} • Status: {s.status}
+            {s.status === "CLOSED" ? (
+              <> • Realized P/L: {formatMoney(safeNumber(s.realizedPnl))}</>
+            ) : null}
           </p>
           {s.notes ? <p className="text-sm text-muted-foreground mt-2">{s.notes}</p> : null}
         </div>
 
-        {/* placeholder for future actions */}
-        <Button variant="secondary" disabled>
-          Sell Covered Call (soon)
-        </Button>
+        <div className="flex items-center gap-2">
+          {s.status === "OPEN" ? (
+            <Button onClick={() => setCloseOpen(true)}>Close Stock Lot</Button>
+          ) : null}
+
+          <Button variant="secondary" disabled>
+            Sell Covered Call (soon)
+          </Button>
+        </div>
       </div>
 
       <Card className="p-4">
@@ -101,6 +123,18 @@ export default function StockDetailPageClient(props: {
           </div>
         )}
       </Card>
+
+      {s.status === "OPEN" ? (
+        <CloseStockLotModal
+          open={closeOpen}
+          onOpenChange={setCloseOpen}
+          stockId={stockId}
+          portfolioId={portfolioId}
+          ticker={s.ticker}
+          shares={safeNumber(s.shares)}
+          avgCost={toNumber(s.avgCost)}
+        />
+      ) : null}
     </div>
   );
 }

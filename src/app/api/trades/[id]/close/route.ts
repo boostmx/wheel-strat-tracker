@@ -1,4 +1,5 @@
 import { prisma } from "@/server/prisma";
+import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
@@ -17,7 +18,7 @@ type CloseTradePayload = {
 
 //helpers to interpret trade types
 const isShortOption = (type: string): boolean =>
-  type === "Cash Secured Put" || type === "Covered Call";
+  type === "CashSecuredPut" || type === "CoveredCall";
 
 const isLongOption = (type: string): boolean =>
   type === "Put" || type === "Call";
@@ -64,6 +65,8 @@ export async function PATCH(
     where: { id, portfolio: { userId } },
   });
   if (!trade) return new Response("Trade not found", { status: 404 });
+  const isCoveredCall = trade.type === "CoveredCall";
+  const stockLotId = trade.stockLotId ?? null;
 
   if (trade.status !== "open") {
     return new Response("Trade is not open", { status: 400 });
@@ -118,16 +121,46 @@ export async function PATCH(
     // FULL CLOSE: accumulate P&L and mark closed
     const newPremiumCaptured = (trade.premiumCaptured ?? 0) + realizedNow;
 
-    await prisma.trade.update({
-      where: { id },
-      data: {
-        status: "closed",
-        closedAt: new Date(),
-        closingPrice, // last close price
-        contractsOpen: 0,
-        premiumCaptured: newPremiumCaptured,
-        percentPL, // last-leg % (kept for display)
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.trade.update({
+        where: { id },
+        data: {
+          status: "closed",
+          closedAt: new Date(),
+          closingPrice, // last close price
+          contractsOpen: 0,
+          premiumCaptured: newPremiumCaptured,
+          percentPL, // last-leg % (kept for display)
+        },
+      });
+
+      if (isCoveredCall && stockLotId) {
+        // apply THIS close leg's realized premium to the underlying stock lot
+        const realized = Number(realizedNow);
+        if (Number.isFinite(realized) && realized !== 0) {
+          const lot = await tx.stockLot.findUnique({
+            where: { id: stockLotId },
+            select: { shares: true, avgCost: true },
+          });
+
+          if (lot) {
+            const sharesInt = Number(lot.shares);
+            if (Number.isFinite(sharesInt) && sharesInt > 0) {
+              const shares = new Prisma.Decimal(sharesInt);
+              const avgCost = new Prisma.Decimal(lot.avgCost);
+              const totalBasis = avgCost.mul(shares);
+              const newTotalBasis = totalBasis.sub(new Prisma.Decimal(realized));
+              const newAvgCost = newTotalBasis.div(shares);
+              const safeAvgCost = Prisma.Decimal.max(newAvgCost, new Prisma.Decimal(0));
+
+              await tx.stockLot.update({
+                where: { id: stockLotId },
+                data: { avgCost: safeAvgCost },
+              });
+            }
+          }
+        }
+      }
     });
 
     return new Response(JSON.stringify({ realizedNow, feesTotal }), {
@@ -136,34 +169,62 @@ export async function PATCH(
     });
   } else {
     // PARTIAL CLOSE:
-    // 1) reduce original (still open) trade's contracts
-    await prisma.trade.update({
-      where: { id },
-      data: {
-        contractsOpen: remaining,
-      },
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.trade.update({
+        where: { id },
+        data: {
+          contractsOpen: remaining,
+        },
+      });
 
-    // 2) create a new CLOSED trade row to record realized P&L for this leg
-    await prisma.trade.create({
-      data: {
-        ticker: trade.ticker,
-        strikePrice: trade.strikePrice,
-        expirationDate: trade.expirationDate,
-        createdAt: trade.createdAt,
-        type: trade.type,
-        contracts: contractsToClose,
-        contractsInitial: contractsToClose,
-        contractsOpen: 0,
-        contractPrice: openPrice,
-        entryPrice: trade.entryPrice, // retained for display only
-        portfolioId: trade.portfolioId,
-        status: "closed",
-        closingPrice,
-        premiumCaptured: realizedNow,
-        percentPL,
-        closedAt: new Date(),
-      },
+      await tx.trade.create({
+        data: {
+          ticker: trade.ticker,
+          strikePrice: trade.strikePrice,
+          expirationDate: trade.expirationDate,
+          createdAt: trade.createdAt,
+          type: trade.type,
+          contracts: contractsToClose,
+          contractsInitial: contractsToClose,
+          contractsOpen: 0,
+          contractPrice: openPrice,
+          entryPrice: trade.entryPrice, // retained for display only
+          portfolioId: trade.portfolioId,
+          stockLotId: trade.stockLotId ?? null,
+          status: "closed",
+          closingPrice,
+          premiumCaptured: realizedNow,
+          percentPL,
+          closedAt: new Date(),
+        },
+      });
+
+      if (isCoveredCall && stockLotId) {
+        const realized = Number(realizedNow);
+        if (Number.isFinite(realized) && realized !== 0) {
+          const lot = await tx.stockLot.findUnique({
+            where: { id: stockLotId },
+            select: { shares: true, avgCost: true },
+          });
+
+          if (lot) {
+            const sharesInt = Number(lot.shares);
+            if (Number.isFinite(sharesInt) && sharesInt > 0) {
+              const shares = new Prisma.Decimal(sharesInt);
+              const avgCost = new Prisma.Decimal(lot.avgCost);
+              const totalBasis = avgCost.mul(shares);
+              const newTotalBasis = totalBasis.sub(new Prisma.Decimal(realized));
+              const newAvgCost = newTotalBasis.div(shares);
+              const safeAvgCost = Prisma.Decimal.max(newAvgCost, new Prisma.Decimal(0));
+
+              await tx.stockLot.update({
+                where: { id: stockLotId },
+                data: { avgCost: safeAvgCost },
+              });
+            }
+          }
+        }
+      }
     });
 
     return new Response(JSON.stringify({ realizedNow, feesTotal, remaining }), {
