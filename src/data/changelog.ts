@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-01-23",
+    version: "v1.1.0",
+    highlights: [
+      "New stock lot feature! This will track stock lots with CC positions for more accurate metrics for PnL and capital usage.",
+    ],
+  },
+  {
     date: "2025-10-01",
     version: "v1.0.4",
     highlights: [
