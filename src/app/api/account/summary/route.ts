@@ -183,7 +183,7 @@ export async function GET() {
   // 2) Per-portfolio snapshots (parallelized)
   const perPortfolioEntries = await Promise.all(
     portfolios.map(async (p) => {
-      const [openTrades, closedAll, closedMTD, closedYTD, closed90] =
+      const [openTrades, closedAll, closedMTD, closedYTD, closed90, openStockLots] =
         await Promise.all([
           prisma.trade.findMany({
             where: { portfolioId: p.id, status: "open" },
@@ -258,21 +258,34 @@ export async function GET() {
               closedAt: true,
             },
           }),
+          prisma.stockLot.findMany({
+            where: { portfolioId: p.id, status: "OPEN" },
+            select: {
+              shares: true,
+              avgCost: true,
+            },
+          }),
         ]);
 
-      // Capital in use: CSP collateral + long option premium at risk (CC = 0)
+      // Capital in use: CSP collateral + long option premium at risk (CC = 0) + open stock lots
       const cspOpen = openTrades.filter((t) => isCSP(t.type));
-      const capitalInUse = openTrades.reduce((sum, t) => {
+      const capitalInUseOptions = openTrades.reduce((sum, t) => {
         return (
           sum +
           capitalUsedForTrade({
             type: t.type,
             strikePrice: t.strikePrice,
             contractsOpen: t.contractsOpen,
-            contractPrice: (t as { contractPrice?: number | null }).contractPrice,
+            contractPrice: t.contractPrice,
           })
         );
       }, 0);
+      const capitalInUseStocks = openStockLots.reduce((sum, lot) => {
+        const shares = Number(lot.shares ?? 0);
+        const avgCost = Number(lot.avgCost ?? 0);
+        return sum + shares * avgCost;
+      }, 0);
+      const capitalInUse = capitalInUseOptions + capitalInUseStocks;
 
       // Biggest CSP by collateral
       const biggestRaw = cspOpen
@@ -539,6 +552,8 @@ export async function GET() {
           totalProfitAll,
           openCount: openTrades.length,
           capitalInUse,
+          capitalInUseOptions,
+          capitalInUseStocks,
           cashAvailable,
           biggest,
           topTickers,

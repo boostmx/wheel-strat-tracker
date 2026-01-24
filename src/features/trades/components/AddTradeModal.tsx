@@ -1,8 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import useSWR, { mutate } from "swr";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { mutate } from "swr";
+type StockLotStatus = "OPEN" | "CLOSED";
+
+type StockLot = {
+  id: string;
+  ticker: string;
+  shares: number;
+  avgCost: string | number;
+  status: StockLotStatus;
+};
+
+type StocksListResponse = {
+  stockLots: StockLot[];
+};
+
+async function fetchStocks(url: string): Promise<StocksListResponse> {
+  const res = await fetch(url, { method: "GET" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Request failed (${res.status})`);
+  }
+  return (await res.json()) as StocksListResponse;
+}
+
+function toNumber(v: string | number): number {
+  return typeof v === "number" ? v : Number(v);
+}
+
+function formatAvgCost(v: string | number): string {
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toFixed(2);
+}
 
 import {
   Dialog,
@@ -47,6 +79,26 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
 
   const [type, setType] = useState("CashSecuredPut");
 
+  const [stockLotId, setStockLotId] = useState<string>("");
+
+  function handleTypeChange(nextType: string) {
+    setType(nextType);
+    if (nextType !== "CoveredCall") {
+      setStockLotId("");
+    }
+  }
+
+  const { data: stocksData } = useSWR<StocksListResponse>(
+    open ? `/api/stocks?portfolioId=${portfolioId}&status=open` : null,
+    fetchStocks,
+  );
+
+  const openStockLots = stocksData?.stockLots ?? [];
+  const tickerUpper = ticker.trim().toUpperCase();
+  const matchingStockLots = tickerUpper
+    ? openStockLots.filter((l) => l.ticker.toUpperCase() === tickerUpper)
+    : openStockLots;
+
   const [contracts, setContracts] = useState(1);
   const [contractPrice, setContractPrice] = useState({ formatted: "", raw: 0 });
   const [entryPrice, setEntryPrice] = useState({ formatted: "", raw: 0 });
@@ -54,6 +106,17 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!expirationDate) {
+      toast.error("Please select an expiration date.");
+      return;
+    }
+
+    if (type === "CoveredCall" && !stockLotId) {
+      toast.error("Please select an underlying stock lot for covered calls.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -63,22 +126,17 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
           portfolioId,
           ticker,
           strikePrice: strikePrice.raw,
-          expirationDate: expirationDate?.toISOString(),
+          expirationDate: expirationDate.toISOString(),
           type,
           contracts: Number(contracts),
           contractPrice: contractPrice.raw,
           entryPrice: entryPrice.raw,
+          stockLotId: type === "CoveredCall" ? stockLotId : undefined,
         }),
         headers: {
           "Content-Type": "application/json",
         },
       });
-
-      if (!expirationDate) {
-        toast.error("Please select an expiration date.");
-        setIsLoading(false);
-        return;
-      }
 
       if (!res.ok) {
         const err = await res.json();
@@ -93,6 +151,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
       setContracts(1);
       setContractPrice({ formatted: "", raw: 0 });
       setEntryPrice({ formatted: "", raw: 0 });
+      setStockLotId("");
       mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
       mutate(`/api/portfolios/${portfolioId}/detail-metrics`);
     } catch (err) {
@@ -176,7 +235,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
               id="type"
               className="w-full border rounded px-3 py-2 text-sm"
               value={type}
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => handleTypeChange(e.target.value)}
               required
             >
               {tradeTypeOptions.map((option) => (
@@ -186,6 +245,32 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
               ))}
             </select>
           </div>
+
+          {type === "CoveredCall" ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="stockLotId">Underlying Stock Lot</Label>
+              <select
+                id="stockLotId"
+                className="w-full border rounded px-3 py-2 text-sm"
+                value={stockLotId}
+                onChange={(e) => setStockLotId(e.target.value)}
+                required
+              >
+                <option value="">Select a stock lot…</option>
+                {matchingStockLots.map((lot) => (
+                  <option key={lot.id} value={lot.id}>
+                    {lot.ticker} — {lot.shares} sh @ ${formatAvgCost(lot.avgCost)}
+                  </option>
+                ))}
+              </select>
+
+              {tickerUpper && matchingStockLots.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No OPEN stock lots found for this ticker. Add a stock position first.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="space-y-1.5">
             <Label htmlFor="contracts"># of Contracts</Label>

@@ -43,3 +43,38 @@ export interface Metrics {
   realizedMTD?: number | null;
   realizedYTD?: number | null;
 }
+
+export type StockLotStatus = "OPEN" | "CLOSED";
+
+export type StockLot = {
+  id: string;
+  portfolioId: string;
+  ticker: string;
+  shares: number;
+  avgCost: string | number; // Prisma Decimal often serializes as string
+  status: StockLotStatus;
+  openedAt: string;
+  closedAt: string | null;
+  closePrice: string | number | null;
+  realizedPnl: string | number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  trades: Trade[];
+};
+
+export type StocksListResponse = {
+  stockLots: StockLot[];
+};
+
+export type CreateStockBody = {
+  portfolioId: string;
+  ticker: string;
+  shares: number;
+  avgCost: number;
+  notes?: string | null;
+};
+
+export type CreateStockResponse = {
+  stockLot: StockLot;
+};

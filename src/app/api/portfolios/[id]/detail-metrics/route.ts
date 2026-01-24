@@ -89,7 +89,7 @@ export async function GET(
     const capitalBase = starting + additional;
 
     // 2) open + closed trades (narrow selects)
-    const [openTrades, closedTrades] = await Promise.all([
+    const [openTrades, closedTrades, openStockLots] = await Promise.all([
       prisma.trade.findMany({
         where: {
           status: "open",
@@ -121,10 +121,20 @@ export async function GET(
         },
         orderBy: { closedAt: "desc" },
       }),
+      prisma.stockLot.findMany({
+        where: {
+          status: "OPEN",
+          portfolio: { id: portfolioId, userId },
+        },
+        select: {
+          shares: true,
+          avgCost: true,
+        },
+      }),
     ]);
 
     // 3) capital used from CSPs (collateral tied up)
-    const capitalUsed = openTrades.reduce((sum, t) => {
+    const capitalUsedOptions = openTrades.reduce((sum, t) => {
       return (
         sum +
         capitalUsedForTrade({
@@ -135,6 +145,15 @@ export async function GET(
         })
       );
     }, 0);
+
+    const capitalUsedStocks = openStockLots.reduce((sum, lot) => {
+      const shares = Number(lot.shares ?? 0);
+      const avgCost = Number(lot.avgCost ?? 0);
+      return sum + shares * avgCost;
+    }, 0);
+
+    const capitalUsed = capitalUsedOptions + capitalUsedStocks;
+
     // 4) open premium (potential/at-entry premium outstanding)
     const potentialPremium = openTrades.reduce((sum, t) => {
       return sum + (isCSP(t.type) || isCC(t.type)
@@ -217,6 +236,9 @@ export async function GET(
       currentCapital,
       cashAvailable,
       percentCapitalDeployed,
+      capitalUsed,
+      capitalUsedOptions,
+      capitalUsedStocks,
 
       // realized P&L
       totalProfit,
