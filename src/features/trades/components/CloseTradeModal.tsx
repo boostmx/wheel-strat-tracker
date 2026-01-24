@@ -169,6 +169,15 @@ export function CloseTradeModal({
         mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=open`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`),
+        // stocks can change when:
+        // - CSP is closed as assignment (creates a new stock lot)
+        // - CC is closed (updates underlying lot avg cost)
+        mutate(
+          `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`,
+        ),
+        mutate(
+          `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`,
+        ),
         // If you also use an overview metrics endpoint, add it here:
         mutate(`/api/portfolios/${portfolioId}/metrics`),
       ]);
