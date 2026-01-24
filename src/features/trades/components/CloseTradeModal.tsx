@@ -54,6 +54,7 @@ export function CloseTradeModal({
   const [submitting, setSubmitting] = useState(false);
 
   const [fullClose, setFullClose] = useState(true);
+  const [assigned, setAssigned] = useState(false);
   const [contractsToClose, setContractsToClose] = useState(contracts);
   const [closingPrice, setClosingPrice] = useState({ formatted: "", raw: 0 });
 
@@ -64,6 +65,7 @@ export function CloseTradeModal({
   useEffect(() => {
     if (isOpen) {
       setFullClose(true);
+      setAssigned(false);
       setContractsToClose(contracts);
       setClosingPrice({ formatted: "", raw: 0 });
       setSubmitting(false);
@@ -71,6 +73,19 @@ export function CloseTradeModal({
       setPriceTouched(false);
     }
   }, [isOpen, contracts]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!assigned) return;
+
+    // Assignment requires full close and a 0.00 closing price
+    setFullClose(true);
+    setContractsToClose(contracts);
+    setClosingPrice({ formatted: "0.00", raw: 0 });
+
+    // avoid showing validation errors in assignment flow
+    setPriceTouched(false);
+  }, [assigned, isOpen, contracts]);
 
   // Fetch trade for fallback display fields when props are missing
   const { data: tradeData } = useSWR<Trade>(
@@ -90,6 +105,8 @@ export function CloseTradeModal({
 
   const displayType = humanize(type ?? tradeData?.type ?? "");
 
+  const isCSP = (type ?? tradeData?.type) === "CashSecuredPut";
+
   const displayAvgPrice = tradeData?.contractPrice; // average price per contract (fallback)
   const displayExpiration =
     expirationDate ??
@@ -102,7 +119,7 @@ export function CloseTradeModal({
   const contractsValid =
     isPositiveInt(effectiveContracts) &&
     Number(effectiveContracts) <= contracts;
-  const priceValid = Number(closingPrice.raw) > 0;
+  const priceValid = assigned ? Number(closingPrice.raw) >= 0 : Number(closingPrice.raw) > 0;
   const canSubmit = contractsValid && priceValid;
 
   const contractsErr = !contractsValid
@@ -113,7 +130,11 @@ export function CloseTradeModal({
         : ""
     : "";
 
-  const priceErr = !priceValid ? "Enter a valid closing price." : "";
+  const priceErr = !priceValid
+    ? assigned
+      ? "Closing price must be 0.00 for assignment."
+      : "Enter a valid closing price."
+    : "";
 
   const handleSubmit = async () => {
     if (!canSubmit) {
@@ -131,9 +152,10 @@ export function CloseTradeModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          closingContracts: Number(effectiveContracts),
-          closingContractPrice: Number(closingPrice.raw),
-          fullClose,
+          closingContracts: Number(assigned ? contracts : effectiveContracts),
+          closingContractPrice: Number(assigned ? 0 : closingPrice.raw),
+          fullClose: assigned ? true : fullClose,
+          assignment: assigned ? true : undefined,
         }),
       });
 
@@ -219,7 +241,7 @@ export function CloseTradeModal({
               type="text"
               inputMode="numeric"
               className="h-11 text-base [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              disabled={!!fullClose}
+              disabled={!!fullClose || assigned}
               aria-invalid={contractsTouched && !contractsValid}
               aria-describedby="contracts-help"
               value={
@@ -271,10 +293,12 @@ export function CloseTradeModal({
               <CurrencyInput
                 value={closingPrice}
                 onChange={(v) => {
+                  if (assigned) return;
                   setPriceTouched(true);
                   setClosingPrice(v);
                 }}
-                placeholder="e.g., 0.20"
+                placeholder={assigned ? "0.00" : "e.g., 0.20"}
+                disabled={assigned}
               />
             </div>
 
@@ -287,7 +311,9 @@ export function CloseTradeModal({
             >
               {priceTouched && !priceValid
                 ? priceErr
-                : "Enter per‑contract price"}
+                : assigned
+                  ? "Assignment closes at 0.00"
+                  : "Enter per‑contract price"}
             </p>
           </div>
 
@@ -303,10 +329,32 @@ export function CloseTradeModal({
           </div>
         </div>
 
-        <div className="mt-1">
+        <div className="mt-2 space-y-2">
+          {isCSP ? (
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={assigned}
+                onCheckedChange={(v) => {
+                  const isChecked = !!v;
+                  setAssigned(isChecked);
+                  // assignment implies full close
+                  if (isChecked) {
+                    setFullClose(true);
+                    setContractsToClose(contracts);
+                    setClosingPrice({ formatted: "0.00", raw: 0 });
+                  }
+                }}
+              />
+              <span className="text-xs text-muted-foreground">
+                Assigned (create stock position)
+              </span>
+            </label>
+          ) : null}
+
           <label className="flex items-center gap-2">
             <Checkbox
               checked={fullClose}
+              disabled={assigned}
               onCheckedChange={(v) => {
                 const isChecked = !!v;
                 setFullClose(isChecked);
@@ -318,6 +366,12 @@ export function CloseTradeModal({
               Close full position
             </span>
           </label>
+
+          {assigned ? (
+            <p className="text-xs text-muted-foreground">
+              This will fully close the CSP at 100% premium capture and create a stock lot at the strike price.
+            </p>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
