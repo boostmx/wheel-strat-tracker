@@ -23,7 +23,7 @@ export function StocksSection({ portfolioId }: Props) {
           </p>
         </div>
 
-        <Button onClick={() => setOpen(true)} variant="secondary" className="gap-2">
+        <Button onClick={() => setOpen(true)} variant="outline" className="gap-2">
           <Plus className="h-4 w-4" />
           Add Stock
         </Button>
