@@ -5,10 +5,28 @@ import useSWR from "swr";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StockLot } from "@/types";
+import { Badge } from "@/components/ui/badge";
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+
+import type { StockLot } from "@/types";
 import { CloseStockLotModal } from "./CloseStockModal";
+import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
 
 type StockResponse = { stockLot: StockLot };
+
+type CoveredCallRow = {
+  id: string;
+  expirationDate: string | Date;
+  strikePrice: number;
+  contracts: number;
+  status: string;
+  premiumCaptured: number | null;
+};
 
 const fetcher = async (url: string): Promise<StockResponse> => {
   const res = await fetch(url);
@@ -20,19 +38,90 @@ function toNumber(v: string | number): number {
   return typeof v === "number" ? v : Number(v);
 }
 
-function money(n: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-}
-
 function safeNumber(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function money(n: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(n);
 }
 
 function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return "—";
   return money(n);
 }
+
+function formatStrike(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+function StatusBadge(props: { status: string }) {
+  const s = (props.status ?? "").toUpperCase();
+  const isOpen = s === "OPEN";
+  const label = isOpen ? "Open" : "Closed";
+
+  return (
+    <Badge
+      variant="secondary"
+      className={
+        isOpen
+          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+          : "bg-muted text-muted-foreground border border-border/60"
+      }
+    >
+      {label}
+    </Badge>
+  );
+}
+
+const coveredCallColumns: ColumnDef<CoveredCallRow>[] = [
+  {
+    accessorKey: "expirationDate",
+    header: "Exp",
+    cell: ({ row }) => {
+      const d = row.original.expirationDate;
+      return (
+        <span className="font-medium">{new Date(d).toLocaleDateString()}</span>
+      );
+    },
+  },
+  {
+    accessorKey: "strikePrice",
+    header: "Strike",
+    cell: ({ row }) => formatStrike(safeNumber(row.original.strikePrice)),
+  },
+  {
+    accessorKey: "contracts",
+    header: "Contracts",
+    cell: ({ row }) => safeNumber(row.original.contracts),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => <StatusBadge status={String(row.original.status)} />,
+  },
+  {
+    accessorKey: "premiumCaptured",
+    header: () => <div className="text-right">Premium Captured</div>,
+    cell: ({ row }) => (
+      <div className="text-right tabular-nums">
+        {typeof row.original.premiumCaptured === "number"
+          ? money(row.original.premiumCaptured)
+          : "—"}
+      </div>
+    ),
+  },
+];
 
 export default function StockDetailPageClient(props: {
   portfolioId: string;
@@ -47,84 +136,182 @@ export default function StockDetailPageClient(props: {
     fetcher,
   );
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
-  if (error || !data) return <div className="p-6 text-sm text-destructive">Failed to load stock.</div>;
+  // IMPORTANT: hooks must run in the same order on every render.
+  // So we compute memo/table using safe fallbacks BEFORE any early returns.
+  const stockLot = data?.stockLot;
 
-  const s = data.stockLot;
+  const coveredCalls: CoveredCallRow[] = React.useMemo(() => {
+    const trades = stockLot?.trades ?? [];
+    return trades
+      .filter((t) => t.type === "CoveredCall")
+      .map((t) => ({
+        id: t.id,
+        expirationDate: t.expirationDate,
+        strikePrice: safeNumber(t.strikePrice),
+        contracts: safeNumber(t.contracts),
+        status: String(t.status),
+        premiumCaptured:
+          typeof t.premiumCaptured === "number" ? t.premiumCaptured : null,
+      }));
+  }, [stockLot?.trades]);
+
+  const table = useReactTable({
+    data: coveredCalls,
+    columns: coveredCallColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  if (isLoading) {
+    return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+  }
+
+  if (error || !stockLot) {
+    return (
+      <div className="p-6 text-sm text-destructive">Failed to load stock.</div>
+    );
+  }
+
+  const s = stockLot;
   const avg = toNumber(s.avgCost);
-  const basis = avg * s.shares;
-
-  const coveredCalls = (s.trades ?? []).filter((t) => t.type === "CoveredCall");
+  const basis = avg * safeNumber(s.shares);
+  const sharesForContracts = Math.floor(safeNumber(s.shares) / 100);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-sm text-muted-foreground">
             <Link href={`/portfolios/${portfolioId}`} className="hover:underline">
               ← Back to Portfolio
             </Link>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight mt-2">{s.ticker}</h1>
-          <p className="text-sm text-muted-foreground">
-            Shares: {s.shares} • Avg Cost: {money(avg)} • Cost Basis: {money(basis)} • Status: {s.status}
-            {s.status === "CLOSED" ? (
-              <> • Realized P/L: {formatMoney(safeNumber(s.realizedPnl))}</>
+
+          <h1 className="text-3xl font-semibold tracking-tight mt-2">
+            {s.ticker}
+          </h1>
+
+          <div className="text-sm text-foreground space-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Shares: {safeNumber(s.shares)}</span>
+              <span className="text-border/60">•</span>
+              <span>Avg Cost: {money(avg)}</span>
+              <span className="text-border/60">•</span>
+              <span>Cost Basis: {money(basis)}</span>
+              <span className="text-border/60">•</span>
+              <span className="inline-flex items-center gap-2">
+                Status: <StatusBadge status={String(s.status)} />
+              </span>
+            </div>
+
+            {String(s.status).toUpperCase() === "CLOSED" ? (
+              <div>
+                Realized P/L:{" "}
+                <span className="font-medium">
+                  {formatMoney(safeNumber(s.realizedPnl))}
+                </span>
+              </div>
             ) : null}
-          </p>
-          {s.notes ? <p className="text-sm text-muted-foreground mt-2">{s.notes}</p> : null}
+          </div>
+
+          {s.notes ? (
+            <p className="text-sm text-muted-foreground mt-2">{s.notes}</p>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
-          {s.status === "OPEN" ? (
-            <Button onClick={() => setCloseOpen(true)}>Close Stock Lot</Button>
-          ) : null}
+          {String(s.status).toUpperCase() === "OPEN" ? (
+            <>
+              {sharesForContracts >= 1 ? (
+                <AddTradeModal
+                  portfolioId={portfolioId}
+                  trigger={<Button variant="outline">Sell Covered Call</Button>}
+                  prefill={{
+                    ticker: s.ticker,
+                    type: "CoveredCall",
+                    stockLotId: s.id,
+                    contracts: Math.max(1, sharesForContracts),
+                  }}
+                  lockPrefill
+                />
+              ) : null}
 
-          <Button variant="secondary" disabled>
-            Sell Covered Call (soon)
-          </Button>
+              <Button onClick={() => setCloseOpen(true)}>Close Stock Lot</Button>
+            </>
+          ) : null}
         </div>
       </div>
 
       <Card className="p-4">
         <h2 className="text-lg font-semibold">Covered Calls</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Only trades linked to this stock lot (via stockLotId).
+          Covered calls sold against this stock lot.
         </p>
 
-        {coveredCalls.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No covered calls linked yet.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-muted-foreground">
-                <tr className="border-b border-border/60">
-                  <th className="py-3 px-3 text-left font-medium">Exp</th>
-                  <th className="py-3 px-3 text-left font-medium">Strike</th>
-                  <th className="py-3 px-3 text-left font-medium">Contracts</th>
-                  <th className="py-3 px-3 text-left font-medium">Status</th>
-                  <th className="py-3 px-3 text-left font-medium">Premium Captured</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id} className="border-b border-border/60">
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className={
+                        "h-10 px-2 text-left align-middle font-medium text-muted-foreground " +
+                        (header.column.id === "premiumCaptured" ? "text-right" : "") +
+                        (header.column.id === "expirationDate" ? " w-[140px]" : "")
+                      }
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </th>
+                  ))}
                 </tr>
-              </thead>
-              <tbody>
-                {coveredCalls.map((t) => (
-                  <tr key={t.id} className="border-b border-border/40 hover:bg-muted/30">
-                    <td className="py-3 px-3">{new Date(t.expirationDate).toLocaleDateString()}</td>
-                    <td className="py-3 px-3">{t.strikePrice}</td>
-                    <td className="py-3 px-3">{t.contracts}</td>
-                    <td className="py-3 px-3">{t.status}</td>
-                    <td className="py-3 px-3">
-                      {typeof t.premiumCaptured === "number" ? money(t.premiumCaptured) : "—"}
-                    </td>
+              ))}
+            </thead>
+
+            <tbody>
+              {table.getRowModel().rows.length === 0 ? (
+                <tr className="border-b border-border/60">
+                  <td
+                    colSpan={coveredCallColumns.length}
+                    className="h-24 px-2 text-center text-sm text-muted-foreground"
+                  >
+                    No covered calls linked yet.
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-border/60 hover:bg-muted/30"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={
+                          "p-2 align-middle " +
+                          (cell.column.id === "premiumCaptured" ? "text-right" : "")
+                        }
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
-      {s.status === "OPEN" ? (
+      {String(s.status).toUpperCase() === "OPEN" ? (
         <CloseStockLotModal
           open={closeOpen}
           onOpenChange={setCloseOpen}

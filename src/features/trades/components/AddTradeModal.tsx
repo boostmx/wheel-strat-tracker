@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
 import { CurrencyInput } from "@/components/ui/currency-input";
 type StockLotStatus = "OPEN" | "CLOSED";
@@ -58,14 +58,35 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+type TradeTypeValue = "CashSecuredPut" | "CoveredCall" | "Put" | "Call";
+
+type AddTradePrefill = {
+  ticker?: string;
+  type?: TradeTypeValue;
+  stockLotId?: string;
+  contracts?: number;
+};
+
+type AddTradeModalProps = {
+  portfolioId: string;
+  trigger?: React.ReactNode;
+  prefill?: AddTradePrefill;
+  lockPrefill?: boolean;
+};
+
 /**
  * Add Trade Modal Component
  * @param param0 - The portfolio ID to which the trade will be added
  * @returns
  */
-export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
+export function AddTradeModal({
+  portfolioId,
+  trigger,
+  prefill,
+  lockPrefill = false,
+}: AddTradeModalProps) {
   const [open, setOpen] = useState(false);
-  const [ticker, setTicker] = useState("");
+  const [ticker, setTicker] = useState<string>(prefill?.ticker ?? "");
   const [strikePrice, setStrikePrice] = useState({ formatted: "", raw: 0 });
   const [expirationDate, setExpirationDate] = useState<Date | undefined>();
 
@@ -77,16 +98,11 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
     { label: "Call", value: "Call" },
   ];
 
-  const [type, setType] = useState("CashSecuredPut");
+  const [type, setType] = useState<TradeTypeValue>(
+    prefill?.type ?? "CashSecuredPut",
+  );
 
-  const [stockLotId, setStockLotId] = useState<string>("");
-
-  function handleTypeChange(nextType: string) {
-    setType(nextType);
-    if (nextType !== "CoveredCall") {
-      setStockLotId("");
-    }
-  }
+  const [stockLotId, setStockLotId] = useState<string>(prefill?.stockLotId ?? "");
 
   const { data: stocksData } = useSWR<StocksListResponse>(
     open ? `/api/stocks?portfolioId=${portfolioId}&status=open` : null,
@@ -94,15 +110,50 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
   );
 
   const openStockLots = stocksData?.stockLots ?? [];
-  const tickerUpper = ticker.trim().toUpperCase();
+  const tickerUpper = (prefill?.ticker ?? ticker).trim().toUpperCase();
   const matchingStockLots = tickerUpper
     ? openStockLots.filter((l) => l.ticker.toUpperCase() === tickerUpper)
     : openStockLots;
 
-  const [contracts, setContracts] = useState(1);
+  const [contracts, setContracts] = useState<number>(prefill?.contracts ?? 1);
   const [contractPrice, setContractPrice] = useState({ formatted: "", raw: 0 });
   const [entryPrice, setEntryPrice] = useState({ formatted: "", raw: 0 });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Apply prefill when opening so Stock Detail can launch a pre-configured Covered Call.
+  // When closing, reset to the default (non-prefilled) state.
+  useEffect(() => {
+    if (open) {
+      if (prefill?.ticker != null) setTicker(prefill.ticker.toUpperCase());
+      if (prefill?.type != null) {
+        setType(prefill.type);
+        if (prefill.type !== "CoveredCall") setStockLotId("");
+      }
+      if (prefill?.stockLotId != null) setStockLotId(prefill.stockLotId);
+      if (prefill?.contracts != null) setContracts(prefill.contracts);
+      return;
+    }
+
+    // modal closed -> reset to clean defaults (original behavior)
+    setTicker("");
+    setStrikePrice({ formatted: "", raw: 0 });
+    setExpirationDate(undefined);
+    setType("CashSecuredPut");
+    setStockLotId("");
+    setContracts(1);
+    setContractPrice({ formatted: "", raw: 0 });
+    setEntryPrice({ formatted: "", raw: 0 });
+    setIsLoading(false);
+  }, [open, prefill]);
+
+  function handleTypeChange(nextType: string) {
+    if (lockPrefill && prefill?.type) return;
+    const casted = nextType as TradeTypeValue;
+    setType(casted);
+    if (casted !== "CoveredCall") {
+      setStockLotId("");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -145,13 +196,6 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
 
       toast.success("Trade added successfully!");
       setOpen(false);
-      setTicker("");
-      setStrikePrice({ formatted: "", raw: 0 });
-      setExpirationDate(undefined);
-      setContracts(1);
-      setContractPrice({ formatted: "", raw: 0 });
-      setEntryPrice({ formatted: "", raw: 0 });
-      setStockLotId("");
       mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
       mutate(`/api/portfolios/${portfolioId}/detail-metrics`);
     } catch (err) {
@@ -165,7 +209,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">+ Add Trade</Button>
+        {trigger ?? <Button variant="outline">+ Add Trade</Button>}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -178,7 +222,11 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
               id="ticker"
               placeholder="e.g. META"
               value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              disabled={lockPrefill && !!prefill?.ticker}
+              onChange={(e) => {
+                if (lockPrefill && prefill?.ticker) return;
+                setTicker(e.target.value.toUpperCase());
+              }}
               required
             />
           </div>
@@ -236,6 +284,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
               className="w-full border rounded px-3 py-2 text-sm"
               value={type}
               onChange={(e) => handleTypeChange(e.target.value)}
+              disabled={lockPrefill && !!prefill?.type}
               required
             >
               {tradeTypeOptions.map((option) => (
@@ -254,6 +303,7 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={stockLotId}
                 onChange={(e) => setStockLotId(e.target.value)}
+                disabled={lockPrefill && !!prefill?.stockLotId}
                 required
               >
                 <option value="">Select a stock lot…</option>
@@ -281,7 +331,9 @@ export function AddTradeModal({ portfolioId }: { portfolioId: string }) {
               min={1}
               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               value={contracts === 0 ? "" : contracts.toString()}
+              disabled={lockPrefill && !!prefill?.contracts}
               onChange={(e) => {
+                if (lockPrefill && prefill?.contracts != null) return;
                 const val = e.target.value;
                 // Only allow digits, no leading zeros unless it's '0' by itself
                 if (/^(0|[1-9][0-9]*)?$/.test(val)) {
