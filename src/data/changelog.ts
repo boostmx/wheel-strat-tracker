@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-01-26",
+    version: "v1.1.1",
+    highlights: [
+      "Cleaned up the UI a bit for stock lot details page.",
+      "Added the ability to sell covered calls from stock details page with pre-filled data."
+    ],
+  },
+  {
     date: "2026-01-23",
     version: "v1.1.0",
     highlights: [
