@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-01-29",
+    version: "v1.1.2",
+    highlights: [
+      "Fixed stock lot section's dark mode to be consistent with the rest of the app.",
+      "Set default sort order for open trades to be which ones are expiring soonest.",
+      "Other minor updates and bug fixes.",
+    ],
+  },
+  {
     date: "2026-01-26",
     version: "v1.1.1",
     highlights: [
