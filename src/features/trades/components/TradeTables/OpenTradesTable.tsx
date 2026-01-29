@@ -186,7 +186,10 @@ export function OpenTradesTable({
   portfolioId: string;
 }) {
   const router = useRouter();
-  const [sorting, setSorting] = useState<SortingState>([]);
+  // Default sort: soonest expiration first
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "expirationDate", desc: false },
+  ]);
   const [selectedTrade, setSelectedTrade] = useState<{
     id: string;
     strikePrice: number;
@@ -197,7 +200,7 @@ export function OpenTradesTable({
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Pagination & Filters
-  const [timeframe, setTimeframe] = useState<Timeframe>("year");
+  const [timeframe, setTimeframe] = useState<Timeframe>("all");
   const [pageSize, setPageSize] = useState<number>(10);
   const [pageIndex, setPageIndex] = useState<number>(0);
 
@@ -226,6 +229,9 @@ export function OpenTradesTable({
     data: filteredTrades,
     columns,
     state: { sorting },
+    initialState: {
+      sorting: [{ id: "expirationDate", desc: false }],
+    },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -463,13 +469,26 @@ export function OpenTradesTable({
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-4 py-2 font-semibold cursor-pointer select-none dark:text-gray-200"
-                      onClick={header.column.getToggleSortingHandler()}
+                      className={
+                        header.column.getCanSort()
+                          ? "px-4 py-2 font-semibold cursor-pointer select-none dark:text-gray-200"
+                          : "px-4 py-2 font-semibold select-none dark:text-gray-200"
+                      }
+                      onClick={
+                        header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
                     >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                      <div className="flex items-center gap-1">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {header.column.getIsSorted() === "asc" && "▲"}
+                            {header.column.getIsSorted() === "desc" && "▼"}
+                          </span>
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>

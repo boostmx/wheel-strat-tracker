@@ -1,3 +1,4 @@
+import ProtectedPage from "@/features/auth/components/ProtectedPage";
 import StockDetailPageClient from "@/features/stocks/components/StockDetailPageClient";
 
 export default async function Page(props: {
@@ -7,5 +8,10 @@ export default async function Page(props: {
   const portfolioId = params.portfolioId;
   const stockId = params.stockId;
 
-  return <StockDetailPageClient portfolioId={portfolioId} stockId={stockId} />;
+  return (
+    <ProtectedPage>
+      <StockDetailPageClient portfolioId={portfolioId} stockId={stockId} />;    
+    </ProtectedPage>
+  
+  )
 }

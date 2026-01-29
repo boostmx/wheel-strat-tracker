@@ -37,7 +37,7 @@ export function StocksTable({ portfolioId }: Props) {
   const rows: StockLot[] = data?.stockLots ?? [];
 
   return (
-    <Card className="mt-4 overflow-hidden border-border/60 bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/40">
+    <Card className="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
       <div className="p-4">
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Loading stocks…</div>
