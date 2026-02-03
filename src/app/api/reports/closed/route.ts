@@ -181,6 +181,11 @@ export async function GET(req: NextRequest) {
     holdingDays: number;
     contractsClosed: number; // derived for convenience in CSV/UI
     sharesClosed: number; // derived for convenience in CSV/UI
+
+    // UI/CSV parity fields
+    totalPL: number; // premiumCaptured + sharePL
+    investedCapital: number; // stock lots: entryPrice*shares, trades: strike*100*contracts
+    pctPLOnTotal: number; // totalPL / investedCapital
   };
 
   const allRows: ReportSourceRow[] = [
@@ -206,7 +211,6 @@ export async function GET(req: NextRequest) {
 
   const computeSharesClosed = (
     row: Record<string, unknown>,
-    contractsClosed: number,
   ): number => {
     // If the Trade row includes share-lot fields, prefer those.
     // Otherwise, fall back to options convention: 100 shares per contract.
@@ -220,14 +224,16 @@ export async function GET(req: NextRequest) {
       return Math.max(0, sharesInitial - open);
     }
 
-    return Math.max(0, contractsClosed * 100);
+    // For option trades, we do not want to display a synthetic share count.
+    // Shares are only meaningful for stock lots.
+    return 0;
   };
 
   const enriched: ReportRow[] = allRows.map((r) => {
     const contractsInitial = (r.contractsInitial ?? r.contracts ?? 0);
     const contractsOpen = r.contractsOpen ?? 0;
     const contractsClosed = Math.max(0, contractsInitial - contractsOpen);
-    const sharesClosed = computeSharesClosed(r as Record<string, unknown>, contractsClosed);
+    const sharesClosed = computeSharesClosed(r as Record<string, unknown>);
 
     const contractPrice = r.contractPrice ?? 0;
     const premiumReceived = contractPrice * 100 * contractsInitial;
@@ -255,6 +261,35 @@ export async function GET(req: NextRequest) {
           )
         : 0;
 
+    // Stock-lot P/L: prefer realizedPnl, else fall back to (stockExitPrice - entryPrice) * sharesClosed
+    const realizedPnl = getOptionalNumber(r, "realizedPnl");
+    const stockExitPrice = getOptionalNumber(r, "stockExitPrice") ?? getOptionalNumber(r, "closePrice");
+    const entryPrice = typeof r.entryPrice === "number" && Number.isFinite(r.entryPrice) ? r.entryPrice : null;
+
+    const sharePL =
+      typeof realizedPnl === "number"
+        ? realizedPnl
+        : sharesClosed > 0 && entryPrice != null && typeof stockExitPrice === "number"
+          ? (stockExitPrice - entryPrice) * sharesClosed
+          : 0;
+
+    const totalPL = premiumCaptured + sharePL;
+
+    // Invested capital:
+    // - Stock lots: entryPrice * sharesClosed
+    // - Option trades: strikePrice * 100 * contractsInitial (fallback to entryPrice notional)
+    const notionalPerShare =
+      typeof r.strikePrice === "number" && Number.isFinite(r.strikePrice)
+        ? r.strikePrice
+        : entryPrice ?? 0;
+
+    const investedCapital =
+      sharesClosed > 0 && entryPrice != null
+        ? Math.abs(entryPrice * sharesClosed)
+        : Math.abs(notionalPerShare * 100 * contractsInitial);
+
+    const pctPLOnTotal = investedCapital > 0 ? totalPL / investedCapital : 0;
+
     return {
       ...r,
       premiumReceived,
@@ -264,25 +299,11 @@ export async function GET(req: NextRequest) {
       holdingDays,
       contractsClosed,
       sharesClosed,
+      totalPL,
+      investedCapital,
+      pctPLOnTotal,
     };
   });
-
-  // Prefer DB values with sensible fallbacks for CSV parity with UI
-  const pickPremiumCaptured = (r: ReportRow) =>
-    typeof r.premiumCaptured === "number" && Number.isFinite(r.premiumCaptured)
-      ? r.premiumCaptured
-      : typeof r.premiumCapturedComputed === "number" &&
-          Number.isFinite(r.premiumCapturedComputed)
-        ? r.premiumCapturedComputed
-        : 0;
-
-  const pickPercentPL = (r: ReportRow) =>
-    typeof r.percentPL === "number" && Number.isFinite(r.percentPL)
-      ? r.percentPL
-      : typeof r.pctPLOnPremium === "number" &&
-          Number.isFinite(r.pctPLOnPremium)
-        ? r.pctPLOnPremium
-        : 0;
 
   // Sort chronologically by Date Closed asc (fallback to createdAt)
   const enrichedSorted = [...enriched].sort((a, b) => {
@@ -303,7 +324,7 @@ export async function GET(req: NextRequest) {
       "expirationDate",
       "contractsInitial",
       "sharesClosed",
-      "premiumCaptured",
+      "pl",
       "percentPL",
       "notes",
     ];
@@ -335,8 +356,8 @@ export async function GET(req: NextRequest) {
           : new Date(r.expirationDate).toISOString(),
         String(contractsInitial),
         String(r.sharesClosed ?? 0),
-        String(pickPremiumCaptured(r)),
-        String(pickPercentPL(r)),
+        String(r.totalPL ?? 0),
+        String((r.pctPLOnTotal ?? 0) * 100),
         r.notes ?? "",
       ].map((v) => csvEscape(v));
 

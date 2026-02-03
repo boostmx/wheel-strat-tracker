@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-02-03",
+    version: "v1.1.3",
+    highlights: [
+      "Reports now include closed stock lots alongside option trades for a complete picture.",
+      "CSV exports now match what you see in the Reports table, including stock profits and total returns.",
+      "Other minor reporting polish and consistency fixes.",
+    ],
+  },
+  {
     date: "2026-01-29",
     version: "v1.1.2",
     highlights: [
