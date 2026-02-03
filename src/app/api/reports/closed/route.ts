@@ -122,15 +122,17 @@ export async function GET(req: NextRequest) {
       createdAt: s.openedAt,
       closedAt: s.closedAt as Date,
 
-      // Decimal -> number
-      entryPrice: Number(s.avgCost),
-      stockExitPrice: s.closePrice == null ? 0 : Number(s.closePrice),
+      // Decimal -> number (Prisma Decimal is not always safely coercible with Number())
+      entryPrice: Number.parseFloat(String(s.avgCost)),
+      stockExitPrice:
+        s.closePrice == null ? 0 : Number.parseFloat(String(s.closePrice)),
 
       // StockLot has a single shares count when closed.
       sharesInitial: s.shares,
       sharesOpen: 0,
 
-      realizedPnl: s.realizedPnl == null ? null : Number(s.realizedPnl),
+      realizedPnl:
+        s.realizedPnl == null ? null : Number.parseFloat(String(s.realizedPnl)),
 
       // Normalize into Trade-like shape so we can reuse the report pipeline.
       type: "STOCK_LOT",
@@ -275,18 +277,14 @@ export async function GET(req: NextRequest) {
 
     const totalPL = premiumCaptured + sharePL;
 
-    // Invested capital:
-    // - Stock lots: entryPrice * sharesClosed
-    // - Option trades: strikePrice * 100 * contractsInitial (fallback to entryPrice notional)
-    const notionalPerShare =
-      typeof r.strikePrice === "number" && Number.isFinite(r.strikePrice)
-        ? r.strikePrice
-        : entryPrice ?? 0;
+    // Invested capital for reporting % returns:
+    // - Stock lots: use cost basis (avgCost * shares)
+    // - Option trades: use total premium received (so 25%/30% style returns stay meaningful)
+    const stockCostBasis =
+      sharesClosed > 0 && entryPrice != null ? Math.abs(entryPrice * sharesClosed) : 0;
 
     const investedCapital =
-      sharesClosed > 0 && entryPrice != null
-        ? Math.abs(entryPrice * sharesClosed)
-        : Math.abs(notionalPerShare * 100 * contractsInitial);
+      stockCostBasis > 0 ? stockCostBasis : Math.abs(premiumReceived);
 
     const pctPLOnTotal = investedCapital > 0 ? totalPL / investedCapital : 0;
 
@@ -356,8 +354,14 @@ export async function GET(req: NextRequest) {
           : new Date(r.expirationDate).toISOString(),
         String(contractsInitial),
         String(r.sharesClosed ?? 0),
-        String(r.totalPL ?? 0),
-        String((r.pctPLOnTotal ?? 0) * 100),
+        String(
+          r.type === "STOCK_LOT"
+            ? (getOptionalNumber(r, "realizedPnl") ?? 0)
+            : (typeof r.premiumCaptured === "number" && Number.isFinite(r.premiumCaptured)
+                ? r.premiumCaptured
+                : 0),
+        ),
+        String((typeof r.percentPL === "number" && Number.isFinite(r.percentPL) ? r.percentPL : 0) * 100),
         r.notes ?? "",
       ].map((v) => csvEscape(v));
 

@@ -357,52 +357,40 @@ function Header(props: {
   );
 }
 
-function calcInvestedCapital(r: ReportRow): number {
+
+function calcPercentPLPosition(r: ReportRow): number {
+  // Trades: prefer DB/API percentPL (matches ClosedTradesTable)
+  // Normalize: some rows store 25 for 25% (already percent), others store 0.25.
+  if (typeof r.percentPL === "number" && Number.isFinite(r.percentPL)) {
+    const v = r.percentPL;
+    // If magnitude suggests this is already a percent value, convert to decimal.
+    // (e.g. 25 -> 0.25, -12.5 -> -0.125)
+    return Math.abs(v) > 1 ? v / 100 : v;
+  }
+
+  // Stock lots: compute return on cost basis, normalize if percent field is ever added
   const shares =
     typeof r.sharesClosed === "number" && Number.isFinite(r.sharesClosed)
       ? r.sharesClosed
       : 0;
-
-  if (shares > 0) {
-    const entry =
-      typeof r.entryPrice === "number" && Number.isFinite(r.entryPrice)
-        ? r.entryPrice
-        : null;
-    return entry == null ? 0 : Math.abs(entry * shares);
-  }
-
-  const contracts =
-    typeof (r.contractsInitial ?? r.contracts) === "number" &&
-    Number.isFinite(Number(r.contractsInitial ?? r.contracts))
-      ? Number(r.contractsInitial ?? r.contracts)
-      : 0;
-
-  if (contracts <= 0) return 0;
-
-  const strike =
-    typeof r.strikePrice === "number" && Number.isFinite(r.strikePrice)
-      ? r.strikePrice
-      : null;
 
   const entry =
     typeof r.entryPrice === "number" && Number.isFinite(r.entryPrice)
       ? r.entryPrice
       : null;
 
-  const notionalPerShare = strike ?? entry ?? 0;
-  return Math.abs(notionalPerShare * 100 * contracts);
-}
+  if (shares <= 0 || entry == null) return 0;
 
-function calcPercentPLOnTotal(r: ReportRow): number {
-  const invested = calcInvestedCapital(r);
-  if (invested <= 0) return 0;
-  return calcTotalPL(r) / invested;
+  const basis = Math.abs(entry * shares);
+  if (basis <= 0) return 0;
+
+  return calcSharePL(r) / basis;
 }
 
 function Stats({ rows }: { rows: ReportRow[] }) {
   const totalOverallPL = rows.reduce((s, r) => s + calcTotalPL(r), 0);
   const avgPct = rows.length
-    ? rows.reduce((s, r) => s + calcPercentPLOnTotal(r), 0) / rows.length
+    ? rows.reduce((s, r) => s + calcPercentPLPosition(r), 0) / rows.length
     : 0;
   const stockLotsCount = rows.filter((r) => r.type === "STOCK_LOT").length;
 
@@ -507,7 +495,7 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
       },
       {
         header: "% P/L",
-        accessorFn: (r) => calcPercentPLOnTotal(r) * 100,
+        accessorFn: (r) => calcPercentPLPosition(r) * 100,
         cell: ({ getValue }) => {
           const n = Number(getValue());
           const text = `${n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -539,7 +527,7 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       calcTotalPL,
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      calcPercentPLOnTotal,
+      calcPercentPLPosition,
     ],
   );
 
