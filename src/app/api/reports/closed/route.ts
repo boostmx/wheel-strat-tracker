@@ -2,7 +2,6 @@ import { prisma } from "@/server/db";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/server/auth/auth";
 import { getClosedTradesInRange } from "@/features/reports/hooks/getClosedTradesRange";
-import type { Trade } from "@/types";
 
 function parseDateOrFallback(value: string | null, fallback: Date): Date {
   if (!value) return fallback;
@@ -56,29 +55,182 @@ export async function GET(req: NextRequest) {
       }),
     ),
   );
-  const rows = results.flat();
+  const tradeRows = results.flat();
 
-  const toDate = (iso: string | null | undefined): Date | null => {
-    if (!iso) return null;
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? null : d;
+  // Also include closed stock lots (share closes) in the same date range.
+  // These are normalized into the report row shape so the UI can show Share P/L.
+  const closedStockLots = await prisma.stockLot.findMany({
+    where: {
+      portfolioId: { in: portfolioIds },
+      portfolio: { userId: session.user.id },
+      status: "CLOSED",
+      closedAt: { gte: start, lte: end },
+    },
+    select: {
+      id: true,
+      portfolioId: true,
+      ticker: true,
+      openedAt: true,
+      closedAt: true,
+      shares: true,
+      avgCost: true,
+      closePrice: true,
+      realizedPnl: true,
+      notes: true,
+    },
+    orderBy: { closedAt: "desc" },
+  });
+
+  type NormalizedStockLotRow = {
+    id: string;
+    portfolioId: string;
+    ticker: string;
+    createdAt: Date;
+    closedAt: Date;
+
+    // For Share P/L calculations in the UI
+    entryPrice: number;
+    stockExitPrice: number;
+
+    // Used by the API to derive sharesClosed
+    sharesInitial: number;
+    sharesOpen: number;
+
+    // Optional convenience fields
+    realizedPnl: number | null;
+
+    // Fill trade-ish fields with safe defaults.
+    type: string;
+    strikePrice: number;
+    expirationDate: Date;
+    contractPrice: number;
+    contracts: number;
+    contractsInitial: number;
+    contractsOpen: number;
+    closingPrice: number | null;
+    premiumCaptured: number | null;
+    percentPL: number | null;
+    notes: string | null;
   };
 
-  type ReportRow = Trade & {
+  const normalizedStockLotRows: NormalizedStockLotRow[] = closedStockLots
+    .filter((s) => s.closedAt)
+    .map((s) => ({
+      id: s.id,
+      portfolioId: s.portfolioId,
+      ticker: s.ticker,
+      createdAt: s.openedAt,
+      closedAt: s.closedAt as Date,
+
+      // Decimal -> number
+      entryPrice: Number(s.avgCost),
+      stockExitPrice: s.closePrice == null ? 0 : Number(s.closePrice),
+
+      // StockLot has a single shares count when closed.
+      sharesInitial: s.shares,
+      sharesOpen: 0,
+
+      realizedPnl: s.realizedPnl == null ? null : Number(s.realizedPnl),
+
+      // Normalize into Trade-like shape so we can reuse the report pipeline.
+      type: "STOCK_LOT",
+      strikePrice: 0,
+      expirationDate: (s.closedAt as Date),
+      contractPrice: 0,
+      contracts: 0,
+      contractsInitial: 0,
+      contractsOpen: 0,
+      closingPrice: null,
+      premiumCaptured: 0,
+      percentPL: null,
+      notes: s.notes ?? null,
+    }));
+
+  type ReportSourceRow = Record<string, unknown> & {
+    id: string;
+    portfolioId: string;
+    ticker: string;
+
+    // Dates
+    createdAt: Date | string;
+    closedAt?: Date | string | null;
+    expirationDate: Date | string;
+
+    // Trade-ish fields (optional for stock lots)
+    type?: string;
+    strikePrice?: number;
+    entryPrice?: number | null;
+
+    contractPrice?: number;
+    contracts?: number;
+    contractsInitial?: number;
+    contractsOpen?: number;
+
+    closingPrice?: number | null;
+    premiumCaptured?: number | null;
+    percentPL?: number | null;
+
+    notes?: string | null;
+  };
+
+  type ReportRow = ReportSourceRow & {
     premiumReceived: number;
     premiumPaidToClose: number;
     premiumCapturedComputed: number; // computed fallback if premiumCaptured is null
     pctPLOnPremium: number; // computed from received/captured
     holdingDays: number;
     contractsClosed: number; // derived for convenience in CSV/UI
+    sharesClosed: number; // derived for convenience in CSV/UI
   };
 
-  const enriched: ReportRow[] = rows.map((r) => {
-    const contractsInitial = r.contractsInitial ?? r.contracts;
+  const allRows: ReportSourceRow[] = [
+    ...(tradeRows as unknown as ReportSourceRow[]),
+    ...(normalizedStockLotRows as unknown as ReportSourceRow[]),
+  ];
+
+  const toDate = (value: Date | string | null | undefined): Date | null => {
+    if (!value) return null;
+    const d = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  const getOptionalNumber = (
+    obj: unknown,
+    key: string,
+  ): number | null => {
+    if (!obj || typeof obj !== "object") return null;
+    const rec = obj as Record<string, unknown>;
+    const v = rec[key];
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  };
+
+  const computeSharesClosed = (
+    row: Record<string, unknown>,
+    contractsClosed: number,
+  ): number => {
+    // If the Trade row includes share-lot fields, prefer those.
+    // Otherwise, fall back to options convention: 100 shares per contract.
+    const sharesInitial =
+      getOptionalNumber(row, "sharesInitial") ?? getOptionalNumber(row, "shares");
+    const sharesOpen =
+      getOptionalNumber(row, "sharesOpen") ?? getOptionalNumber(row, "sharesRemaining");
+
+    if (typeof sharesInitial === "number") {
+      const open = typeof sharesOpen === "number" ? sharesOpen : 0;
+      return Math.max(0, sharesInitial - open);
+    }
+
+    return Math.max(0, contractsClosed * 100);
+  };
+
+  const enriched: ReportRow[] = allRows.map((r) => {
+    const contractsInitial = (r.contractsInitial ?? r.contracts ?? 0);
     const contractsOpen = r.contractsOpen ?? 0;
     const contractsClosed = Math.max(0, contractsInitial - contractsOpen);
+    const sharesClosed = computeSharesClosed(r as Record<string, unknown>, contractsClosed);
 
-    const premiumReceived = r.contractPrice * 100 * contractsInitial;
+    const contractPrice = r.contractPrice ?? 0;
+    const premiumReceived = contractPrice * 100 * contractsInitial;
     const exitPerContract = r.closingPrice ?? 0;
     const premiumPaidToClose = exitPerContract * 100 * contractsClosed;
 
@@ -111,6 +263,7 @@ export async function GET(req: NextRequest) {
       pctPLOnPremium,
       holdingDays,
       contractsClosed,
+      sharesClosed,
     };
   });
 
@@ -149,6 +302,7 @@ export async function GET(req: NextRequest) {
       "type",
       "expirationDate",
       "contractsInitial",
+      "sharesClosed",
       "premiumCaptured",
       "percentPL",
       "notes",
@@ -180,6 +334,7 @@ export async function GET(req: NextRequest) {
           ? r.expirationDate
           : new Date(r.expirationDate).toISOString(),
         String(contractsInitial),
+        String(r.sharesClosed ?? 0),
         String(pickPremiumCaptured(r)),
         String(pickPercentPL(r)),
         r.notes ?? "",
