@@ -361,7 +361,28 @@ export async function GET(req: NextRequest) {
                 ? r.premiumCaptured
                 : 0),
         ),
-        String((typeof r.percentPL === "number" && Number.isFinite(r.percentPL) ? r.percentPL : 0) * 100),
+        String(
+          r.type === "STOCK_LOT"
+            ? (() => {
+                const realized = getOptionalNumber(r, "realizedPnl") ?? 0;
+                const shares =
+                  typeof r.sharesClosed === "number" &&
+                  Number.isFinite(r.sharesClosed)
+                    ? r.sharesClosed
+                    : 0;
+                const entry =
+                  typeof r.entryPrice === "number" &&
+                  Number.isFinite(r.entryPrice)
+                    ? r.entryPrice
+                    : 0;
+                const basis = Math.abs(entry * shares);
+                const pct = basis > 0 ? realized / basis : 0;
+                return pct * 100;
+              })()
+            : (typeof r.percentPL === "number" && Number.isFinite(r.percentPL)
+                ? r.percentPL
+                : 0),
+        ),
         r.notes ?? "",
       ].map((v) => csvEscape(v));
 
