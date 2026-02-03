@@ -44,8 +44,10 @@ type ReportRow = Trade & {
   holdingDays: number;
   contractsClosed: number;
   sharesClosed: number;
-  // Additional stock-lot derived fields from API
-  // (add more here if API returns them)
+
+  // Stock-lot fields (present on STOCK_LOT rows)
+  stockExitPrice?: number;
+  realizedPnl?: number | null;
 };
 
 type ReportsApiResponse = {
@@ -72,18 +74,6 @@ function calcPremiumCaptured(r: ReportRow): number {
     ? r.premiumCapturedComputed
     : 0;
 }
-function getPercentPL(r: ReportRow): number {
-  if (typeof r.percentPL === "number" && Number.isFinite(r.percentPL)) {
-    return r.percentPL;
-  }
-  if (
-    typeof r.pctPLOnPremium === "number" &&
-    Number.isFinite(r.pctPLOnPremium)
-  ) {
-    return r.pctPLOnPremium;
-  }
-  return 0;
-}
 
 const getOptionalNumber = (
   obj: unknown,
@@ -107,15 +97,22 @@ function getShareExitPrice(r: ReportRow): number | null {
 }
 
 function calcSharePL(r: ReportRow): number {
-  const shares = typeof r.sharesClosed === "number" && Number.isFinite(r.sharesClosed)
-    ? r.sharesClosed
-    : 0;
+  if (typeof r.realizedPnl === "number" && Number.isFinite(r.realizedPnl)) {
+    return r.realizedPnl;
+  }
+
+  const shares =
+    typeof r.sharesClosed === "number" && Number.isFinite(r.sharesClosed)
+      ? r.sharesClosed
+      : 0;
 
   if (shares <= 0) return 0;
 
-  const entry = typeof r.entryPrice === "number" && Number.isFinite(r.entryPrice)
-    ? r.entryPrice
-    : null;
+  const entry =
+    typeof r.entryPrice === "number" && Number.isFinite(r.entryPrice)
+      ? r.entryPrice
+      : null;
+
   const exit = getShareExitPrice(r);
 
   if (entry == null || exit == null) return 0;
@@ -360,31 +357,58 @@ function Header(props: {
   );
 }
 
+function calcInvestedCapital(r: ReportRow): number {
+  const shares =
+    typeof r.sharesClosed === "number" && Number.isFinite(r.sharesClosed)
+      ? r.sharesClosed
+      : 0;
+
+  if (shares > 0) {
+    const entry =
+      typeof r.entryPrice === "number" && Number.isFinite(r.entryPrice)
+        ? r.entryPrice
+        : null;
+    return entry == null ? 0 : Math.abs(entry * shares);
+  }
+
+  const contracts =
+    typeof (r.contractsInitial ?? r.contracts) === "number" &&
+    Number.isFinite(Number(r.contractsInitial ?? r.contracts))
+      ? Number(r.contractsInitial ?? r.contracts)
+      : 0;
+
+  if (contracts <= 0) return 0;
+
+  const strike =
+    typeof r.strikePrice === "number" && Number.isFinite(r.strikePrice)
+      ? r.strikePrice
+      : null;
+
+  const entry =
+    typeof r.entryPrice === "number" && Number.isFinite(r.entryPrice)
+      ? r.entryPrice
+      : null;
+
+  const notionalPerShare = strike ?? entry ?? 0;
+  return Math.abs(notionalPerShare * 100 * contracts);
+}
+
+function calcPercentPLOnTotal(r: ReportRow): number {
+  const invested = calcInvestedCapital(r);
+  if (invested <= 0) return 0;
+  return calcTotalPL(r) / invested;
+}
+
 function Stats({ rows }: { rows: ReportRow[] }) {
-  const totalPremiumCaptured = rows.reduce((s, r) => s + calcPremiumCaptured(r), 0);
-  const totalSharePL = rows.reduce((s, r) => s + calcSharePL(r), 0);
-  const totalOverallPL = totalPremiumCaptured + totalSharePL;
+  const totalOverallPL = rows.reduce((s, r) => s + calcTotalPL(r), 0);
   const avgPct = rows.length
-    ? rows.reduce((s, r) => s + getPercentPL(r), 0) / rows.length
+    ? rows.reduce((s, r) => s + calcPercentPLOnTotal(r), 0) / rows.length
     : 0;
+  const stockLotsCount = rows.filter((r) => r.type === "STOCK_LOT").length;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-      <Stat label="Closed Trades" value={rows.length.toString()} />
-      <Stat
-        label="Premium Captured"
-        value={totalPremiumCaptured.toLocaleString(undefined, {
-          style: "currency",
-          currency: "USD",
-        })}
-      />
-      <Stat
-        label="Share P/L"
-        value={totalSharePL.toLocaleString(undefined, {
-          style: "currency",
-          currency: "USD",
-        })}
-      />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <Stat label="Closed Items" value={rows.length.toString()} />
       <Stat
         label="Total P/L"
         value={totalOverallPL.toLocaleString(undefined, {
@@ -393,9 +417,13 @@ function Stats({ rows }: { rows: ReportRow[] }) {
         })}
       />
       <Stat
-        label="% P/L on Premium (avg)"
-        value={`${avgPct.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
+        label="% P/L (avg)"
+        value={`${(avgPct * 100).toLocaleString(undefined, {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })}%`}
       />
+      <Stat label="Stock Lots Included" value={stockLotsCount.toString()} />
     </div>
   );
 }
@@ -471,29 +499,15 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
         ),
       },
       {
-        header: "Share P/L",
-        accessorFn: (r) => calcSharePL(r),
-        cell: ({ getValue }) => (
-          <span className="tabular-nums">{fmtUSD(Number(getValue()))}</span>
-        ),
-      },
-      {
-        header: "Total P/L",
+        header: "P/L",
         accessorFn: (r) => calcTotalPL(r),
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmtUSD(Number(getValue()))}</span>
         ),
       },
       {
-        header: "Prem Captured",
-        accessorFn: (r) => calcPremiumCaptured(r),
-        cell: ({ getValue }) => (
-          <span className="tabular-nums">{fmtUSD(Number(getValue()))}</span>
-        ),
-      },
-      {
         header: "% P/L",
-        accessorFn: (r) => getPercentPL(r),
+        accessorFn: (r) => calcPercentPLOnTotal(r) * 100,
         cell: ({ getValue }) => {
           const n = Number(getValue());
           const text = `${n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -522,15 +536,10 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
       },
     ],
     [
-      // These helpers are defined in-module, but we list them explicitly to satisfy hooks linting.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      calcPremiumCaptured,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      getPercentPL,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      calcSharePL,
       // eslint-disable-next-line react-hooks/exhaustive-deps
       calcTotalPL,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      calcPercentPLOnTotal,
     ],
   );
 
