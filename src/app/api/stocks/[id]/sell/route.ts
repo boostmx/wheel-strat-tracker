@@ -42,7 +42,7 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       const lot = await tx.stockLot.findFirst({
         where: { id: stockLotId, portfolio: { userId } },
-        select: { id: true, shares: true, avgCost: true, status: true },
+        select: { id: true, shares: true, avgCost: true, status: true, realizedPnl: true },
       });
 
       if (!lot) throw new Error("StockLot not found");
@@ -73,6 +73,9 @@ export async function POST(
         .sub(avgCost.mul(new Prisma.Decimal(sharesSold)))
         .sub(new Prisma.Decimal(fees));
 
+      const existingRealized = lot.realizedPnl ?? new Prisma.Decimal(0);
+      const cumulativeRealized = existingRealized.add(realized);
+
       const sale = await tx.stockLotSale.create({
         data: {
           stockLotId,
@@ -96,11 +99,12 @@ export async function POST(
               status: "CLOSED",
               closedAt: new Date(),
               closePrice: new Prisma.Decimal(salePrice),
+              realizedPnl: cumulativeRealized,
             }
-          : { shares: newShares },
+          : { shares: newShares, realizedPnl: cumulativeRealized },
       });
 
-      return { sale, reservedShares, availableToSell, newShares };
+      return { sale, reservedShares, availableToSell, newShares, cumulativeRealized: cumulativeRealized.toFixed(2) };
     });
 
     return NextResponse.json(result, { status: 200 });

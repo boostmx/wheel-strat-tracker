@@ -45,37 +45,74 @@ export function CloseStockLotModal({
   avgCost,
 }: CloseStockLotModalProps) {
   const [closePrice, setClosePrice] = React.useState<string>("");
+  const [sharesToSell, setSharesToSell] = React.useState<string>(String(shares));
+  const [notes, setNotes] = React.useState<string>("");
   const [isClosing, setIsClosing] = React.useState<boolean>(false);
 
-  const closePriceNum = Number(closePrice);
-  const validClosePrice = Number.isFinite(closePriceNum) && closePriceNum > 0;
+  React.useEffect(() => {
+    if (open) {
+      setSharesToSell(String(shares));
+    } else {
+      setClosePrice("");
+      setSharesToSell(String(shares));
+      setNotes("");
+    }
+  }, [open, shares]);
 
-  const proceeds = validClosePrice ? closePriceNum * shares : NaN;
-  const costBasis = avgCost * shares;
-  const estPL = validClosePrice ? (closePriceNum - avgCost) * shares : NaN;
+  const closePriceNum = Number(closePrice);
+  const sharesToSellNum = Math.trunc(Number(sharesToSell));
+  const notesTrimmed = notes.trim();
+
+  const validSharesToSell =
+    sharesToSell !== "" &&
+    Number.isInteger(sharesToSellNum) &&
+    sharesToSellNum > 0 &&
+    sharesToSellNum <= shares;
+  const validSalePrice = Number.isFinite(closePriceNum) && closePriceNum > 0;
+
+  const canSubmit = validSharesToSell && validSalePrice && !isClosing;
+
+  const proceeds = validSalePrice && validSharesToSell ? closePriceNum * sharesToSellNum : NaN;
+  const costBasis = avgCost * (validSharesToSell ? sharesToSellNum : 0);
+  const estPL = validSalePrice && validSharesToSell ? (closePriceNum - avgCost) * sharesToSellNum : NaN;
+  const remainingShares = validSharesToSell ? shares - sharesToSellNum : NaN;
 
   async function handleClose() {
-    if (!validClosePrice) {
-      toast.error("Please enter a valid close price.");
+    if (!validSharesToSell) {
+      toast.error("Please enter a valid number of shares to sell.");
+      return;
+    }
+    if (!validSalePrice) {
+      toast.error("Please enter a valid sale price.");
       return;
     }
 
     setIsClosing(true);
     try {
-      const res = await fetch(`/api/stocks/${encodeURIComponent(stockId)}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/stocks/${encodeURIComponent(stockId)}/sell`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closePrice: closePriceNum }),
+        body: JSON.stringify({
+          sharesSold: sharesToSellNum,
+          salePrice: closePriceNum,
+          notes: notesTrimmed ? notesTrimmed : undefined,
+        }),
       });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(text || `Failed to close stock lot (${res.status})`);
+        throw new Error(text || `Failed to sell shares (${res.status})`);
       }
 
-      toast.success(`Closed ${ticker} stock lot.`);
+      if (sharesToSellNum === shares) {
+        toast.success(`Sold ${sharesToSellNum} ${ticker} shares and closed the lot.`);
+      } else {
+        toast.success(`Sold ${sharesToSellNum} ${ticker} shares.`);
+      }
       onOpenChange(false);
       setClosePrice("");
+      setSharesToSell(String(shares));
+      setNotes("");
 
       await Promise.all([
         mutate(`/api/stocks/${stockId}`),
@@ -85,10 +122,12 @@ export function CloseStockLotModal({
         mutate(
           `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`,
         ),
+        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
+        mutate(`/api/portfolios/${portfolioId}/metrics`),
       ]);
     } catch (err) {
       const msg =
-        err instanceof Error ? err.message : "Failed to close stock lot";
+        err instanceof Error ? err.message : "Failed to sell shares";
       toast.error(msg);
     } finally {
       setIsClosing(false);
@@ -100,15 +139,19 @@ export function CloseStockLotModal({
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
-        if (!next) setClosePrice("");
+        if (!next) {
+          setClosePrice("");
+          setSharesToSell(String(shares));
+          setNotes("");
+        }
       }}
     >
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Close Stock Lot</DialogTitle>
+          <DialogTitle>Sell Shares</DialogTitle>
           <DialogDescription>
-            This closes the entire lot and computes realized share P/L using your
-            current average cost.
+            This will sell shares from the lot and compute realized share P/L using your
+            current average cost. If you sell all shares, the lot will close.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,16 +172,54 @@ export function CloseStockLotModal({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="closePrice">Close Price (per share)</Label>
+            <Label htmlFor="sharesToSell">Shares to Sell</Label>
+            <Input
+              id="sharesToSell"
+              type="text"
+              inputMode="numeric"
+              value={sharesToSell}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^(0|[1-9][0-9]*)?$/.test(val)) {
+                  if (val === "") {
+                    setSharesToSell(val);
+                  } else {
+                    const numVal = Number(val);
+                    if (numVal <= shares) {
+                      setSharesToSell(val);
+                    }
+                  }
+                }
+              }}
+              placeholder={`Max: ${shares}`}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="closePrice">Sale Price (per share)</Label>
             <Input
               id="closePrice"
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
               inputMode="decimal"
               value={closePrice}
-              onChange={(e) => setClosePrice(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^\d*(\.\d{0,2})?$/.test(val)) {
+                  setClosePrice(val);
+                }
+              }}
               placeholder="e.g. 155.25"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="notes">Notes (optional)</Label>
+            <Input
+              id="notes"
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add notes"
             />
           </div>
 
@@ -165,6 +246,21 @@ export function CloseStockLotModal({
             </div>
           </div>
 
+          <div className="rounded-md border p-3 text-sm space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Shares Selling</span>
+              <span className="font-medium">
+                {validSharesToSell ? sharesToSellNum : "—"}
+              </span>
+            </div>
+            {validSharesToSell && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Remaining Shares</span>
+                <span className="font-medium">{remainingShares}</span>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
@@ -175,9 +271,9 @@ export function CloseStockLotModal({
             </Button>
             <Button
               onClick={handleClose}
-              disabled={!validClosePrice || isClosing}
+              disabled={!canSubmit}
             >
-              {isClosing ? "Closing…" : "Close Stock Lot"}
+              {isClosing ? "Selling…" : "Sell Shares"}
             </Button>
           </div>
         </div>

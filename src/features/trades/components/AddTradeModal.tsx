@@ -331,9 +331,7 @@ export function AddTradeModal({
               min={1}
               className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               value={contracts === 0 ? "" : contracts.toString()}
-              disabled={lockPrefill && !!prefill?.contracts}
               onChange={(e) => {
-                if (lockPrefill && prefill?.contracts != null) return;
                 const val = e.target.value;
                 // Only allow digits, no leading zeros unless it's '0' by itself
                 if (/^(0|[1-9][0-9]*)?$/.test(val)) {
