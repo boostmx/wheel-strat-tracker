@@ -103,11 +103,38 @@ model StockLot {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  sales StockLotSale[]
+
   @@index([portfolioId, ticker])
   @@index([portfolioId, status])
+}
+
+model StockLotSale {
+  id         String           @id @default(cuid())
+  stockLotId String
+  stockLot   StockLot         @relation(fields: [stockLotId], references: [id], onDelete: Cascade)
+
+  soldAt      DateTime        @default(now())
+  sharesSold  Int
+  salePrice   Decimal         @db.Decimal(18, 6) // per-share sale price
+  fees        Decimal?        @db.Decimal(18, 2)
+  realizedPnl Decimal         @db.Decimal(18, 2)
+
+  source StockLotSaleSource   @default(manual)
+  notes  String?
+
+  createdAt DateTime          @default(now())
+
+  @@index([stockLotId, soldAt])
 }
 
 enum StockLotStatus {
   OPEN
   CLOSED
 }
+
+enum StockLotSaleSource {
+  manual
+  assignment
+}
+

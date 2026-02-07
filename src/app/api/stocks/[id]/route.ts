@@ -35,6 +35,9 @@ export async function GET(
         trades: {
           orderBy: { createdAt: "desc" },
         },
+        sales: {
+          orderBy: { soldAt: "desc" },
+        }
       },
     });
 
