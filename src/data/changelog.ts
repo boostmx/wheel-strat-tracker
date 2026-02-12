@@ -6,11 +6,12 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
-    date: "2026-02-11",
+    date: "2026-02-12",
     version: "v1.1.4",
     highlights: [
       "Report page polish update: sortable headers, cleaner columns, and filters added for type and ticker symbol.",
-      "Mobile responsiveness for reports page and other improvements"
+      "Mobile responsiveness for reports page and other improvements",
+      "Fixed assigned note to display ticker info and not the ID of the trade.",
     ],
   },
   {

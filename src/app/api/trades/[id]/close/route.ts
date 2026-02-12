@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
+import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 
 type CloseTradePayload = {
   closingContracts?: number;
@@ -137,7 +138,7 @@ export async function PATCH(
           ticker: trade.ticker,
           shares,
           avgCost: new Prisma.Decimal(netBasis),
-          notes: `Assigned from CSP trade ${trade.id} (net basis)`,
+          notes: `Assigned from CSP trade: ${trade.ticker} $${trade.strikePrice} ${formatDateOnlyUTC(trade.expirationDate)}`,
           status: "OPEN",
         },
         select: { id: true },
