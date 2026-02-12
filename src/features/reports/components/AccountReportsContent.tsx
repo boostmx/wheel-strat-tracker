@@ -9,7 +9,9 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   useReactTable,
   getCoreRowModel,
+  getSortedRowModel,
   flexRender,
+  type SortingState,
 } from "@tanstack/react-table";
 import { CalendarIcon } from "lucide-react";
 import {
@@ -75,10 +77,7 @@ function calcPremiumCaptured(r: ReportRow): number {
     : 0;
 }
 
-const getOptionalNumber = (
-  obj: unknown,
-  key: string,
-): number | null => {
+const getOptionalNumber = (obj: unknown, key: string): number | null => {
   if (!obj || typeof obj !== "object") return null;
   const rec = obj as Record<string, unknown>;
   const v = rec[key];
@@ -125,7 +124,9 @@ function calcTotalPL(r: ReportRow): number {
 }
 
 export function AccountsReportContent() {
-  const [start, setStart] = useState<Date>(() => startOfDay(startOfMonth(new Date())));
+  const [start, setStart] = useState<Date>(() =>
+    startOfDay(startOfMonth(new Date())),
+  );
   const [end, setEnd] = useState<Date>(() => new Date());
 
   const [mounted, setMounted] = useState(false);
@@ -133,7 +134,11 @@ export function AccountsReportContent() {
     setMounted(true);
   }, []);
 
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>("all");
+  const [selectedPortfolioId, setSelectedPortfolioId] =
+    useState<string>("all");
+  const [selectedTicker, setSelectedTicker] = useState<string>("all");
+  const [selectedType, setSelectedType] = useState<string>("all");
+
   const {
     data: portfolios,
     error: portfoliosError,
@@ -150,11 +155,64 @@ export function AccountsReportContent() {
     return p.toString();
   }, [selectedPortfolioId, start, end]);
 
-  const { data, error, isLoading } = useSWR(
-    `/api/reports/closed?${qs}`,
-    fetcher,
-    { revalidateOnFocus: false },
-  );
+  const { data, error, isLoading } = useSWR(`/api/reports/closed?${qs}`, fetcher, {
+    revalidateOnFocus: false,
+  });
+
+  const availableTickers = useMemo(() => {
+    const rows = data?.rows ?? [];
+    const uniq = new Set<string>();
+    for (const r of rows) {
+      if (typeof r.ticker === "string" && r.ticker.trim().length > 0) {
+        uniq.add(r.ticker.trim().toUpperCase());
+      }
+    }
+    return Array.from(uniq).sort((a, b) => a.localeCompare(b));
+  }, [data?.rows]);
+
+  const availableTypes = useMemo(() => {
+    const rows = data?.rows ?? [];
+    const uniq = new Set<string>();
+    for (const r of rows) {
+      if (typeof r.type === "string" && r.type.trim().length > 0) {
+        uniq.add(r.type.trim());
+      }
+    }
+    return Array.from(uniq).sort((a, b) => a.localeCompare(b));
+  }, [data?.rows]);
+
+  const filteredRows = useMemo(() => {
+    const rows = data?.rows ?? [];
+
+    const t =
+      selectedTicker && selectedTicker !== "all"
+        ? selectedTicker.trim().toUpperCase()
+        : null;
+
+    const ty = selectedType && selectedType !== "all" ? selectedType.trim() : null;
+
+    if (!t && !ty) return rows;
+
+    return rows.filter((r) => {
+      const okTicker = t ? (r.ticker ?? "").toUpperCase() === t : true;
+      const okType = ty ? (r.type ?? "") === ty : true;
+      return okTicker && okType;
+    });
+  }, [data?.rows, selectedTicker, selectedType]);
+
+  useEffect(() => {
+    if (!data) return;
+
+    if (selectedTicker !== "all") {
+      const norm = selectedTicker.trim().toUpperCase();
+      if (!availableTickers.includes(norm)) setSelectedTicker("all");
+    }
+
+    if (selectedType !== "all") {
+      const norm = selectedType.trim();
+      if (!availableTypes.includes(norm)) setSelectedType("all");
+    }
+  }, [availableTickers, availableTypes, data, selectedTicker, selectedType]);
 
   const csvUrl = useMemo(() => {
     const p = new URLSearchParams();
@@ -175,13 +233,18 @@ export function AccountsReportContent() {
           setStart(from);
           setEnd(to);
         }}
-        csvHref={csvUrl}
         selectedPortfolioId={selectedPortfolioId}
         setSelectedPortfolioId={setSelectedPortfolioId}
         portfolios={portfolios}
         portfoliosError={portfoliosError}
         portfoliosLoading={portfoliosLoading}
         mounted={mounted}
+        selectedTicker={selectedTicker}
+        setSelectedTicker={setSelectedTicker}
+        tickers={availableTickers}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
+        types={availableTypes}
       />
 
       {isLoading && <div>Loading…</div>}
@@ -192,8 +255,17 @@ export function AccountsReportContent() {
       {data && (
         <div className="rounded-2xl border border-border bg-card text-card-foreground p-4 md:p-6 shadow-sm">
           <div className="space-y-6">
-            <Stats rows={data.rows} />
-            <ReportTable rows={data.rows} />
+            <Stats rows={filteredRows} />
+            <ReportTable
+              rows={filteredRows}
+              csvHref={csvUrl}
+              selectedTicker={selectedTicker}
+              setSelectedTicker={setSelectedTicker}
+              tickers={availableTickers}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
+              types={availableTypes}
+            />
           </div>
         </div>
       )}
@@ -205,25 +277,31 @@ function Header(props: {
   start: Date;
   end: Date;
   onApply: (range: { from: Date; to: Date }) => void;
-  csvHref: string;
   selectedPortfolioId: string;
   setSelectedPortfolioId: (id: string) => void;
   portfolios?: PortfolioBasic[];
   portfoliosError?: unknown;
   portfoliosLoading: boolean;
   mounted: boolean;
+  selectedTicker: string;
+  setSelectedTicker: (ticker: string) => void;
+  tickers: string[];
+  selectedType: string;
+  setSelectedType: (type: string) => void;
+  types: string[];
 }) {
   const {
     start,
     end,
     onApply,
-    csvHref,
     selectedPortfolioId,
     setSelectedPortfolioId,
     portfolios,
     portfoliosError,
     portfoliosLoading,
     mounted,
+    selectedTicker,
+    selectedType,
   } = props;
 
   const [fromLocal, setFromLocal] = useState<Date>(start);
@@ -239,136 +317,141 @@ function Header(props: {
   }, [start, end]);
 
   return (
-    <div className="flex items-end justify-between gap-4 flex-wrap">
+    <div className="space-y-4">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Reports</h1>
         <p className="text-sm text-muted-foreground">
-          {selectedPortfolioId === "all"
-            ? "All portfolios"
-            : "Selected portfolio"}{" "}
-          · Closed trades from {mounted ? format(start, "MMM d, yyyy") : "—"} to{" "}
+          {selectedPortfolioId === "all" ? "All portfolios" : "Selected portfolio"}
+          {selectedType !== "all" ? ` · ${selectedType}` : ""}
+          {selectedTicker !== "all" ? ` · ${selectedTicker}` : ""} · Closed trades
+          from{" "}
+          {mounted ? format(start, "MMM d, yyyy") : "—"} to{" "}
           {mounted ? format(end, "MMM d, yyyy") : "—"}
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground" htmlFor="fromDate">
-            From
-          </label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="fromDate"
-                variant="outline"
-                className="justify-start font-normal text-foreground"
+      <div className="rounded-2xl border border-border bg-card text-card-foreground p-4 shadow-sm">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-nowrap sm:items-center sm:gap-4">
+          {/* From / To */}
+          <div className="col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            {/* From */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <label
+                className="text-sm text-muted-foreground shrink-0"
+                htmlFor="fromDate"
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {mounted && fromLocal ? format(fromLocal, "MMM d, yyyy") : "—"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={fromLocal}
-                month={fromMonth}
-                onMonthChange={setFromMonth}
-                onSelect={(d) => d && setFromLocal(startOfDay(d))}
-                disabled={{ after: new Date() }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground" htmlFor="toDate">
-            To
-          </label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="toDate"
-                variant="outline"
-                className="justify-start font-normal text-foreground"
+                From
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="fromDate"
+                    variant="outline"
+                    className="w-full sm:w-[12rem] justify-start font-normal text-foreground"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {mounted && fromLocal
+                      ? format(fromLocal, "MMM d, yyyy")
+                      : "—"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={fromLocal}
+                    month={fromMonth}
+                    onMonthChange={setFromMonth}
+                    onSelect={(d) => d && setFromLocal(startOfDay(d))}
+                    disabled={{ after: new Date() }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* To */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <label
+                className="text-sm text-muted-foreground shrink-0"
+                htmlFor="toDate"
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {mounted && toLocal ? format(toLocal, "MMM d, yyyy") : "—"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={toLocal}
-                month={toMonth}
-                onMonthChange={setToMonth}
-                onSelect={(d) => d && setToLocal(endOfDay(d))}
-                disabled={{ after: new Date() }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+                To
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="toDate"
+                    variant="outline"
+                    className="w-full sm:w-[12rem] justify-start font-normal text-foreground"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {mounted && toLocal ? format(toLocal, "MMM d, yyyy") : "—"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={toLocal}
+                    month={toMonth}
+                    onMonthChange={setToMonth}
+                    onSelect={(d) => d && setToLocal(endOfDay(d))}
+                    disabled={{ after: new Date() }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          {/* Apply */}
+          <div className="col-span-2 sm:col-span-1">
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => {
+                if (fromLocal && toLocal) {
+                  const from = startOfDay(fromLocal);
+                  const to = endOfDay(toLocal);
+                  if (isAfter(from, to)) return;
+                  onApply({ from, to });
+                }
+              }}
+              disabled={
+                !fromLocal ||
+                !toLocal ||
+                isAfter(startOfDay(fromLocal), endOfDay(toLocal))
+              }
+            >
+              Apply
+            </Button>
+          </div>
+          {/* Portfolio */}
+          <div className="col-span-2 sm:col-span-1 flex justify-end gap-2 sm:ml-auto">
+            <select
+              id="portfolio"
+              className="border border-input bg-background text-foreground rounded-md px-2 py-1 w-full sm:w-[16rem]"
+              value={selectedPortfolioId}
+              onChange={(e) => setSelectedPortfolioId(e.target.value)}
+              disabled={portfoliosLoading || !!portfoliosError}
+            >
+              <option value="all">All portfolios</option>
+              {(portfolios ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <Button
-          onClick={() => {
-            if (fromLocal && toLocal) {
-              const from = startOfDay(fromLocal);
-              const to = endOfDay(toLocal);
-              // prevent invalid range (end before start)
-              if (isAfter(from, to)) return;
-              onApply({ from, to });
-            }
-          }}
-          disabled={
-            !fromLocal ||
-            !toLocal ||
-            isAfter(startOfDay(fromLocal), endOfDay(toLocal))
-          }
-        >
-          Apply
-        </Button>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-muted-foreground" htmlFor="portfolio">
-            Portfolio
-          </label>
-          <select
-            id="portfolio"
-            className="border border-input bg-background text-foreground rounded-md px-2 py-1 min-w-[12rem]"
-            value={selectedPortfolioId}
-            onChange={(e) => setSelectedPortfolioId(e.target.value)}
-            disabled={portfoliosLoading || !!portfoliosError}
-          >
-            <option value="all">All portfolios</option>
-            {(portfolios ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {mounted ? (
-          <a href={csvHref}>
-            <Button>Export CSV</Button>
-          </a>
-        ) : (
-          <Button disabled>Export CSV</Button>
-        )}
       </div>
     </div>
   );
 }
 
-
 function calcPercentPLPosition(r: ReportRow): number {
-  // Trades: prefer DB/API percentPL (matches ClosedTradesTable)
-  // Normalize: some rows store 25 for 25% (already percent), others store 0.25.
   if (typeof r.percentPL === "number" && Number.isFinite(r.percentPL)) {
     const v = r.percentPL;
-    // If magnitude suggests this is already a percent value, convert to decimal.
-    // (e.g. 25 -> 0.25, -12.5 -> -0.125)
     return Math.abs(v) > 1 ? v / 100 : v;
   }
 
-  // Stock lots: compute return on cost basis, normalize if percent field is ever added
   const shares =
     typeof r.sharesClosed === "number" && Number.isFinite(r.sharesClosed)
       ? r.sharesClosed
@@ -425,14 +508,38 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReportTable({ rows }: { rows: ReportRow[] }) {
+function ReportTable(props: {
+  rows: ReportRow[];
+  csvHref: string;
+  selectedTicker: string;
+  setSelectedTicker: (ticker: string) => void;
+  tickers: string[];
+  selectedType: string;
+  setSelectedType: (type: string) => void;
+  types: string[];
+}) {
+  const {
+    rows,
+    csvHref,
+    selectedTicker,
+    setSelectedTicker,
+    tickers,
+    selectedType,
+    setSelectedType,
+    types,
+  } = props;
+
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
       const aTime = new Date(a.closedAt ?? a.createdAt).getTime();
       const bTime = new Date(b.closedAt ?? b.createdAt).getTime();
-      return aTime - bTime; // ascending
+      return aTime - bTime;
     });
   }, [rows]);
+
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "dateClosed", desc: true },
+  ]);
 
   const columns: ColumnDef<ReportRow, unknown>[] = useMemo(
     () => [
@@ -442,6 +549,7 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
         cell: ({ getValue }) => fmtDate(String(getValue())),
       },
       {
+        id: "dateClosed",
         header: "Date Closed",
         accessorFn: (r) => r.closedAt ?? "",
         cell: ({ getValue }) => {
@@ -449,7 +557,12 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
           return v ? fmtDate(String(v)) : "—";
         },
       },
-      { header: "Ticker", accessorKey: "ticker" },
+      {
+        id: "ticker",
+        header: "Ticker",
+        accessorFn: (r) => r.ticker ?? "",
+        enableSorting: true,
+      },
       {
         header: "Strike",
         accessorKey: "strikePrice",
@@ -469,7 +582,12 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
           );
         },
       },
-      { header: "Type", accessorKey: "type" },
+      {
+        id: "type",
+        header: "Type",
+        accessorFn: (r) => r.type,
+        enableSorting: true,
+      },
       {
         header: "Exp",
         accessorFn: (r) => r.expirationDate,
@@ -483,12 +601,16 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
         header: "Shares Closed",
         accessorFn: (r) => r.sharesClosed ?? 0,
         cell: ({ getValue }) => (
-          <span className="tabular-nums">{Number(getValue()).toLocaleString()}</span>
+          <span className="tabular-nums">
+            {Number(getValue()).toLocaleString()}
+          </span>
         ),
       },
       {
+        id: "pl",
         header: "P/L",
         accessorFn: (r) => calcTotalPL(r),
+        enableSorting: true,
         cell: ({ getValue }) => (
           <span className="tabular-nums">{fmtUSD(Number(getValue()))}</span>
         ),
@@ -498,7 +620,10 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
         accessorFn: (r) => calcPercentPLPosition(r) * 100,
         cell: ({ getValue }) => {
           const n = Number(getValue());
-          const text = `${n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+          const text = `${n.toLocaleString(undefined, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          })}%`;
           const cls =
             n > 0
               ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
@@ -523,64 +648,132 @@ function ReportTable({ rows }: { rows: ReportRow[] }) {
         },
       },
     ],
-    [
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      calcTotalPL,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      calcPercentPLPosition,
-    ],
+    [],
   );
 
   const table = useReactTable({
     data: sortedRows,
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-muted">
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} className="[&>th]:px-3 [&>th]:py-2 text-left">
-              {hg.headers.map((header) => (
-                <th key={header.id}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground" htmlFor="type-inline">
+              Type
+            </label>
+            <select
+              id="type-inline"
+              className="border border-input bg-background text-foreground rounded-md px-2 py-1 w-full sm:w-auto sm:min-w-[10rem]"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              disabled={types.length === 0}
+            >
+              <option value="all">All types</option>
+              {types.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground" htmlFor="ticker-inline">
+              Ticker
+            </label>
+            <select
+              id="ticker-inline"
+              className="border border-input bg-background text-foreground rounded-md px-2 py-1 w-full sm:w-auto sm:min-w-[10rem]"
+              value={selectedTicker}
+              onChange={(e) => setSelectedTicker(e.target.value)}
+              disabled={tickers.length === 0}
+            >
+              <option value="all">All tickers</option>
+              {tickers.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <a href={csvHref} className="block">
+            <Button className="w-full sm:w-auto">Export CSV</Button>
+          </a>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted">
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="[&>th]:px-3 [&>th]:py-2 text-left">
+                {hg.headers.map((header) => (
+                  <th key={header.id}>
+                    {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 hover:underline"
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                        <span className="text-muted-foreground">
+                          {header.column.getIsSorted() === "asc"
+                            ? "▲"
+                            : header.column.getIsSorted() === "desc"
+                              ? "▼"
+                              : ""}
+                        </span>
+                      </button>
+                    ) : (
+                      flexRender(
                         header.column.columnDef.header,
                         header.getContext(),
-                      )}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr
-              key={row.id}
-              className="border-t border-border hover:bg-muted/50 transition-colors [&>td]:px-3 [&>td]:py-2"
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr>
-              <td
-                colSpan={columns.length}
-                className="text-center text-muted-foreground py-8"
+                      )
+                    )}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr
+                key={row.id}
+                className="border-t border-border hover:bg-muted/50 transition-colors [&>td]:px-3 [&>td]:py-2"
               >
-                No closed trades in this range.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="text-center text-muted-foreground py-8"
+                >
+                  No closed trades in this range.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
