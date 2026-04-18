@@ -55,6 +55,7 @@ export function CloseTradeModal({
 
   const [fullClose, setFullClose] = useState(true);
   const [assigned, setAssigned] = useState(false);
+  const [expiredWorthless, setExpiredWorthless] = useState(false);
   const [contractsToClose, setContractsToClose] = useState(contracts);
   const [closingPrice, setClosingPrice] = useState({ formatted: "", raw: 0 });
 
@@ -66,6 +67,7 @@ export function CloseTradeModal({
     if (isOpen) {
       setFullClose(true);
       setAssigned(false);
+      setExpiredWorthless(false);
       setContractsToClose(contracts);
       setClosingPrice({ formatted: "", raw: 0 });
       setSubmitting(false);
@@ -74,18 +76,15 @@ export function CloseTradeModal({
     }
   }, [isOpen, contracts]);
 
+  // Assignment or expired worthless: force full close at 0.00
   useEffect(() => {
     if (!isOpen) return;
-    if (!assigned) return;
-
-    // Assignment requires full close and a 0.00 closing price
+    if (!assigned && !expiredWorthless) return;
     setFullClose(true);
     setContractsToClose(contracts);
     setClosingPrice({ formatted: "0.00", raw: 0 });
-
-    // avoid showing validation errors in assignment flow
     setPriceTouched(false);
-  }, [assigned, isOpen, contracts]);
+  }, [assigned, expiredWorthless, isOpen, contracts]);
 
   // Fetch trade for fallback display fields when props are missing
   const { data: tradeData } = useSWR<Trade>(
@@ -105,7 +104,10 @@ export function CloseTradeModal({
 
   const displayType = humanize(type ?? tradeData?.type ?? "");
 
-  const isCSP = (type ?? tradeData?.type) === "CashSecuredPut";
+  const tradeType = type ?? tradeData?.type;
+  const isCSP = tradeType === "CashSecuredPut";
+  const isCC = tradeType === "CoveredCall";
+  const isShortOption = isCSP || isCC;
 
   const displayAvgPrice = tradeData?.contractPrice; // average price per contract (fallback)
   const displayExpiration =
@@ -119,7 +121,8 @@ export function CloseTradeModal({
   const contractsValid =
     isPositiveInt(effectiveContracts) &&
     Number(effectiveContracts) <= contracts;
-  const priceValid = assigned ? Number(closingPrice.raw) >= 0 : Number(closingPrice.raw) > 0;
+  const forcedZero = assigned || expiredWorthless;
+  const priceValid = forcedZero ? Number(closingPrice.raw) >= 0 : Number(closingPrice.raw) > 0;
   const canSubmit = contractsValid && priceValid;
 
   const contractsErr = !contractsValid
@@ -131,8 +134,8 @@ export function CloseTradeModal({
     : "";
 
   const priceErr = !priceValid
-    ? assigned
-      ? "Closing price must be 0.00 for assignment."
+    ? forcedZero
+      ? "Closing price must be 0.00."
       : "Enter a valid closing price."
     : "";
 
@@ -152,10 +155,11 @@ export function CloseTradeModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          closingContracts: Number(assigned ? contracts : effectiveContracts),
-          closingContractPrice: Number(assigned ? 0 : closingPrice.raw),
-          fullClose: assigned ? true : fullClose,
+          closingContracts: Number(forcedZero ? contracts : effectiveContracts),
+          closingContractPrice: Number(forcedZero ? 0 : closingPrice.raw),
+          fullClose: forcedZero ? true : fullClose,
           assignment: assigned ? true : undefined,
+          closeReason: assigned ? "assigned" : expiredWorthless ? "expiredWorthless" : "manual",
         }),
       });
 
@@ -302,12 +306,12 @@ export function CloseTradeModal({
               <CurrencyInput
                 value={closingPrice}
                 onChange={(v) => {
-                  if (assigned) return;
+                  if (forcedZero) return;
                   setPriceTouched(true);
                   setClosingPrice(v);
                 }}
-                placeholder={assigned ? "0.00" : "e.g., 0.20"}
-                disabled={assigned}
+                placeholder={forcedZero ? "0.00" : "e.g., 0.20"}
+                disabled={forcedZero}
               />
             </div>
 
@@ -320,8 +324,8 @@ export function CloseTradeModal({
             >
               {priceTouched && !priceValid
                 ? priceErr
-                : assigned
-                  ? "Assignment closes at 0.00"
+                : forcedZero
+                  ? "Closes at 0.00"
                   : "Enter per‑contract price"}
             </p>
           </div>
@@ -339,31 +343,61 @@ export function CloseTradeModal({
         </div>
 
         <div className="mt-2 space-y-2">
-          {isCSP ? (
+          {isShortOption && (
             <label className="flex items-center gap-2">
               <Checkbox
-                checked={assigned}
+                checked={expiredWorthless}
+                disabled={assigned}
                 onCheckedChange={(v) => {
-                  const isChecked = !!v;
-                  setAssigned(isChecked);
-                  // assignment implies full close
-                  if (isChecked) {
-                    setFullClose(true);
-                    setContractsToClose(contracts);
-                    setClosingPrice({ formatted: "0.00", raw: 0 });
-                  }
+                  const checked = !!v;
+                  setExpiredWorthless(checked);
+                  if (checked) setAssigned(false);
                 }}
               />
               <span className="text-xs text-muted-foreground">
-                Assigned (create stock position)
+                Expired worthless (full premium captured)
               </span>
             </label>
-          ) : null}
+          )}
+
+          {isCSP && (
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={assigned}
+                disabled={expiredWorthless}
+                onCheckedChange={(v) => {
+                  const checked = !!v;
+                  setAssigned(checked);
+                  if (checked) setExpiredWorthless(false);
+                }}
+              />
+              <span className="text-xs text-muted-foreground">
+                Assigned (stock put to you — creates a stock lot)
+              </span>
+            </label>
+          )}
+
+          {isCC && (
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={assigned}
+                disabled={expiredWorthless}
+                onCheckedChange={(v) => {
+                  const checked = !!v;
+                  setAssigned(checked);
+                  if (checked) setExpiredWorthless(false);
+                }}
+              />
+              <span className="text-xs text-muted-foreground">
+                Assigned (stock called away — closes the stock lot)
+              </span>
+            </label>
+          )}
 
           <label className="flex items-center gap-2">
             <Checkbox
               checked={fullClose}
-              disabled={assigned}
+              disabled={forcedZero}
               onCheckedChange={(v) => {
                 const isChecked = !!v;
                 setFullClose(isChecked);
@@ -376,11 +410,16 @@ export function CloseTradeModal({
             </span>
           </label>
 
-          {assigned ? (
+          {assigned && isCSP && (
             <p className="text-xs text-muted-foreground">
-              This will fully close the CSP at 100% premium capture and create a stock lot at the strike price.
+              Closes the CSP at 100% premium capture and opens a stock lot at the net basis (strike − premium).
             </p>
-          ) : null}
+          )}
+          {assigned && isCC && (
+            <p className="text-xs text-muted-foreground">
+              Closes the covered call and marks the linked stock lot as sold at the strike price.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

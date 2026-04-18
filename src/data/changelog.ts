@@ -7,10 +7,17 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-18",
-    version: "v1.1.5",
+    version: "v1.2.0",
     highlights: [
       "Open trades now show an Allocation column so you can see at a glance how much of your total portfolio each position is tying up.",
       "The info tooltip on each trade also shows the allocation percentage alongside capital in use.",
+      "Closing a position now lets you mark it as Expired Worthless or Assigned — no more entering 0.00 manually. Expired worthless captures 100% of the premium automatically.",
+      "Covered calls can now be closed as assigned, which marks the linked stock lot as sold at the strike price in one step.",
+      "A new Close Reason field is recorded on every trade (Manual, Expired Worthless, or Assigned) and is now a filterable column in Reports.",
+      "Win Rate and Avg Days in Trade are now shown on the account summary dashboard.",
+      "Open trades table now has a DTE (days to expiration) column, color-coded red when under 7 days and amber under 21.",
+      "DTE and allocation % now appear on mobile trade cards too.",
+      "Fixed a security issue where stock lot endpoints did not verify portfolio ownership.",
     ],
   },
   {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/server/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
+import { capitalUsedForTrade } from "@/lib/tradeMetrics";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -29,22 +30,6 @@ const isLongCall = (type: string | null | undefined) => {
 
 const collateralFor = (strike?: number | null, contracts?: number | null) =>
   Number(strike ?? 0) * 100 * Number(contracts ?? 0);
-
-// Helper: computes capital used for a trade (CSP = collateral, CC = 0, Long = premium at risk)
-const capitalUsedForTrade = (row: {
-  type?: string | null;
-  strikePrice?: number | null;
-  contractsOpen?: number | null;
-  contractPrice?: number | null;
-}) => {
-  const contracts = Math.max(0, Number(row.contractsOpen ?? 0));
-  const strike = Math.max(0, Number(row.strikePrice ?? 0));
-  const px = Math.max(0, Number(row.contractPrice ?? 0));
-  if (isCSP(row.type)) return strike * 100 * contracts; // CSP collateral
-  if (isCC(row.type)) return 0; // CC uses shares (no extra cash tracked here)
-  if (isLongPut(row.type) || isLongCall(row.type)) return px * 100 * contracts; // premium at risk
-  return 0;
-};
 
 const startOfMonthUTC = () => {
   const d = new Date();
@@ -208,6 +193,7 @@ export async function GET() {
               premiumCaptured: true,
               createdAt: true,
               closedAt: true,
+              closeReason: true,
             },
           }),
           prisma.trade.findMany({
@@ -398,6 +384,23 @@ export async function GET() {
       const realizedMTD = sumRealized(closedMTD);
       const realizedYTD = sumRealized(closedYTD);
 
+      // Win rate: trades where realized P&L > 0
+      const winCount = closedAll.filter((t) => realizedFor({
+        type: t.type, contracts: Number(t.contracts),
+        contractPrice: Number(t.contractPrice),
+        closingPrice: t.closingPrice == null ? null : Number(t.closingPrice),
+        premiumCaptured: t.premiumCaptured == null ? null : Number(t.premiumCaptured),
+      }) > 0).length;
+      const winRate = closedAll.length > 0 ? (winCount / closedAll.length) * 100 : null;
+
+      // Avg days in closed trades
+      const closedWithDates = closedAll.filter((t) => t.closedAt && t.createdAt);
+      const avgDaysInTrade = closedWithDates.length > 0
+        ? closedWithDates.reduce((sum, t) => {
+            return sum + Math.max(0, (new Date(t.closedAt!).getTime() - new Date(t.createdAt).getTime()) / DAY_MS);
+          }, 0) / closedWithDates.length
+        : null;
+
       // Per-portfolio realized premium by ticker
       const perPremiumMap = new Map<string, number>();
       for (const row of closedAll) {
@@ -560,6 +563,9 @@ export async function GET() {
           nextExpiration,
           expiringSoonCount,
           openAvgDays,
+          winRate,
+          avgDaysInTrade,
+          closedTradeCount: closedAll.length,
           realizedMTD,
           realizedYTD,
           // per-portfolio visuals data

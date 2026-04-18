@@ -19,6 +19,7 @@ export interface Trade {
   status: "open" | "closed";
   totalContracts?: number;
   createdAt: string;
+  closeReason?: "manual" | "expiredWorthless" | "assigned" | null;
 }
 
 export interface Portfolio {

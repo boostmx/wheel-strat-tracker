@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth/auth";
 
 type StockLotStatusQuery = "open" | "closed";
 
@@ -12,11 +14,14 @@ function parseStatus(value: string | null): Prisma.StockLotWhereInput["status"] 
   return undefined;
 }
 
-// TODO (auth): enforce portfolio ownership once you plug in session
-// async function assertPortfolioAccess(_portfolioId: string): Promise<void> { ... }
-
 export async function GET(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const url = new URL(req.url);
     const portfolioId = url.searchParams.get("portfolioId");
     const status = parseStatus(url.searchParams.get("status"));
@@ -25,7 +30,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing portfolioId" }, { status: 400 });
     }
 
-    // await assertPortfolioAccess(portfolioId);
+    const portfolio = await prisma.portfolio.findFirst({
+      where: { id: portfolioId, userId },
+      select: { id: true },
+    });
+    if (!portfolio) {
+      return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+    }
 
     const stockLots = await prisma.stockLot.findMany({
       where: {
@@ -65,6 +76,12 @@ function isCreateBody(value: unknown): value is CreateStockLotBody {
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const bodyUnknown: unknown = await req.json();
 
     if (!isCreateBody(bodyUnknown)) {
@@ -88,7 +105,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "avgCost must be a positive number" }, { status: 400 });
     }
 
-    // await assertPortfolioAccess(portfolioId);
+    const portfolio = await prisma.portfolio.findFirst({
+      where: { id: portfolioId, userId },
+      select: { id: true },
+    });
+    if (!portfolio) {
+      return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+    }
 
     const created = await prisma.stockLot.create({
       data: {

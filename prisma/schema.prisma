@@ -56,9 +56,14 @@ model Trade {
   notes            String?
   contractsInitial Int
   contractsOpen    Int
+  closeReason      CloseReason?
   portfolio        Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   stockLot         StockLot?   @relation(fields: [stockLotId], references: [id])
   stockLotId       String?
+
+  @@index([status, portfolioId])
+  @@index([expirationDate, portfolioId])
+  @@index([ticker, portfolioId])
 }
 
 enum TradeType {

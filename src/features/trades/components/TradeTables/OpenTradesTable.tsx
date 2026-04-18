@@ -496,6 +496,24 @@ export function OpenTradesTable({
                     <span className="text-muted-foreground">Contracts</span>{" "}
                     {t.contractsOpen ?? t.contracts ?? 0}
                   </div>
+                  <div>
+                    <span className="text-muted-foreground">DTE</span>{" "}
+                    {(() => {
+                      const exp = new Date(t.expirationDate);
+                      const now = new Date();
+                      const dte = Math.max(0, Math.ceil((Date.UTC(exp.getUTCFullYear(), exp.getUTCMonth(), exp.getUTCDate()) - Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) / 86_400_000));
+                      return <span className={dte <= 7 ? "text-rose-600 font-semibold" : dte <= 21 ? "text-amber-600" : ""}>{dte}d</span>;
+                    })()}
+                  </div>
+                  {totalCapital != null && totalCapital > 0 && (() => {
+                    const pct = calcAllocationPct(t, totalCapital);
+                    return pct != null ? (
+                      <div>
+                        <span className="text-muted-foreground">Allocation</span>{" "}
+                        {pct.toFixed(1)}%
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               </button>
             );

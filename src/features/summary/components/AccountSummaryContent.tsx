@@ -44,6 +44,9 @@ type SummaryPortfolio = {
   } | null;
   expiringSoonCount: number;
   openAvgDays: number | null;
+  winRate: number | null;
+  avgDaysInTrade: number | null;
+  closedTradeCount: number;
   realizedMTD: number;
   realizedYTD: number;
   exposures: ExposureEntry[];
@@ -261,6 +264,15 @@ export default function AccountSummaryContent() {
       0,
     );
 
+    // Aggregate win rate and avg days across all portfolios (weighted by closed count)
+    const totalClosed = portfolios.reduce((s, p) => s + (p.closedTradeCount ?? 0), 0);
+    const winRate = totalClosed > 0
+      ? portfolios.reduce((s, p) => s + ((p.winRate ?? 0) / 100) * (p.closedTradeCount ?? 0), 0) / totalClosed * 100
+      : null;
+    const avgDaysInTrade = totalClosed > 0
+      ? portfolios.reduce((s, p) => s + (p.avgDaysInTrade ?? 0) * (p.closedTradeCount ?? 0), 0) / totalClosed
+      : null;
+
     const nextExpiration = data.nextExpiration; // may include topTicker
 
     // Top exposures: already as percentages from API
@@ -300,6 +312,8 @@ export default function AccountSummaryContent() {
       totalRealizedYTD,
       totalExpiringSoon,
       nextExpiration,
+      winRate,
+      avgDaysInTrade,
       exposures: data.exposures ?? [],
       premiumByTicker,
       topExposures,
@@ -340,6 +354,8 @@ export default function AccountSummaryContent() {
     const totalRealizedYTD = p.realizedYTD;
     const totalExpiringSoon = p.expiringSoonCount;
     const nextExpiration = p.nextExpiration ? { ...p.nextExpiration } : null;
+    const winRate = p.winRate ?? null;
+    const avgDaysInTrade = p.avgDaysInTrade ?? null;
 
     return {
       accountStarting,
@@ -355,6 +371,8 @@ export default function AccountSummaryContent() {
       totalRealizedYTD,
       totalExpiringSoon,
       nextExpiration,
+      winRate,
+      avgDaysInTrade,
     };
   }
 
@@ -722,7 +740,7 @@ export default function AccountSummaryContent() {
           </div>
 
           {/* Ops row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             <div>
               <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Open Trades
@@ -751,6 +769,22 @@ export default function AccountSummaryContent() {
               </p>
               <p className="mt-1 text-3xl font-semibold text-rose-800 dark:text-rose-100">
                 {view.totalExpiringSoon}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Win Rate
+              </p>
+              <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">
+                {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Avg Days in Trade
+              </p>
+              <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">
+                {view.avgDaysInTrade != null ? view.avgDaysInTrade.toFixed(1) : "—"}
               </p>
             </div>
           </div>
