@@ -136,6 +136,7 @@ export function AccountsReportContent() {
     useState<string>("all");
   const [selectedTicker, setSelectedTicker] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [selectedCloseReason, setSelectedCloseReason] = useState<string>("all");
 
   const {
     data: portfolios,
@@ -181,31 +182,24 @@ export function AccountsReportContent() {
 
   const filteredRows = useMemo(() => {
     const rows = data?.rows ?? [];
-
-    const t =
-      selectedTicker && selectedTicker !== "all"
-        ? selectedTicker.trim().toUpperCase()
-        : null;
-
-    const ty = selectedType && selectedType !== "all" ? selectedType.trim() : null;
-
-    if (!t && !ty) return rows;
-
+    const t = selectedTicker !== "all" ? selectedTicker.trim().toUpperCase() : null;
+    const ty = selectedType !== "all" ? selectedType.trim() : null;
+    const cr = selectedCloseReason !== "all" ? selectedCloseReason.trim() : null;
+    if (!t && !ty && !cr) return rows;
     return rows.filter((r) => {
       const okTicker = t ? (r.ticker ?? "").toUpperCase() === t : true;
       const okType = ty ? (r.type ?? "") === ty : true;
-      return okTicker && okType;
+      const okReason = cr ? ((r as ReportRow & { closeReason?: string }).closeReason ?? "manual") === cr : true;
+      return okTicker && okType && okReason;
     });
-  }, [data?.rows, selectedTicker, selectedType]);
+  }, [data?.rows, selectedTicker, selectedType, selectedCloseReason]);
 
   useEffect(() => {
     if (!data) return;
-
     if (selectedTicker !== "all") {
       const norm = selectedTicker.trim().toUpperCase();
       if (!availableTickers.includes(norm)) setSelectedTicker("all");
     }
-
     if (selectedType !== "all") {
       const norm = selectedType.trim();
       if (!availableTypes.includes(norm)) setSelectedType("all");
@@ -243,6 +237,8 @@ export function AccountsReportContent() {
         selectedType={selectedType}
         setSelectedType={setSelectedType}
         types={availableTypes}
+        selectedCloseReason={selectedCloseReason}
+        setSelectedCloseReason={setSelectedCloseReason}
       />
 
       {isLoading && <div>Loading…</div>}
@@ -263,6 +259,8 @@ export function AccountsReportContent() {
               selectedType={selectedType}
               setSelectedType={setSelectedType}
               types={availableTypes}
+              selectedCloseReason={selectedCloseReason}
+              setSelectedCloseReason={setSelectedCloseReason}
             />
           </div>
         </div>
@@ -287,6 +285,8 @@ function Header(props: {
   selectedType: string;
   setSelectedType: (type: string) => void;
   types: string[];
+  selectedCloseReason: string;
+  setSelectedCloseReason: (r: string) => void;
 }) {
   const {
     start,
@@ -515,6 +515,8 @@ function ReportTable(props: {
   selectedType: string;
   setSelectedType: (type: string) => void;
   types: string[];
+  selectedCloseReason: string;
+  setSelectedCloseReason: (r: string) => void;
 }) {
   const {
     rows,
@@ -525,7 +527,15 @@ function ReportTable(props: {
     selectedType,
     setSelectedType,
     types,
+    selectedCloseReason,
+    setSelectedCloseReason,
   } = props;
+
+  const closeReasonLabels: Record<string, string> = {
+    manual: "Manual",
+    expiredWorthless: "Expired Worthless",
+    assigned: "Assigned",
+  };
 
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
@@ -638,6 +648,12 @@ function ReportTable(props: {
         },
       },
       {
+        id: "closeReason",
+        header: "Close Reason",
+        accessorFn: (r) => (r as ReportRow & { closeReason?: string }).closeReason ?? "manual",
+        cell: ({ getValue }) => closeReasonLabels[String(getValue())] ?? String(getValue()),
+      },
+      {
         header: "Notes",
         accessorKey: "notes",
         cell: ({ getValue }) => {
@@ -646,7 +662,7 @@ function ReportTable(props: {
         },
       },
     ],
-    [],
+    [closeReasonLabels],
   );
 
   const table = useReactTable({
@@ -698,6 +714,23 @@ function ReportTable(props: {
                 <option key={t} value={t}>
                   {t}
                 </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground" htmlFor="reason-inline">
+              Close Reason
+            </label>
+            <select
+              id="reason-inline"
+              className="border border-input bg-background text-foreground rounded-md px-2 py-1 w-full sm:w-auto sm:min-w-[10rem]"
+              value={selectedCloseReason}
+              onChange={(e) => setSelectedCloseReason(e.target.value)}
+            >
+              <option value="all">All reasons</option>
+              {Object.entries(closeReasonLabels).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
               ))}
             </select>
           </div>

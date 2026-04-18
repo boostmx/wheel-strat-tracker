@@ -7,6 +7,14 @@ type TradeWithNewFields = Trade & { contractsOpen?: number | null };
 // Formats enum-ish strings like "CashSecuredPut" -> "Cash Secured Put"
 const formatType = (s: string) => s.replace(/([a-z])([A-Z])/g, "$1 $2");
 
+const calcDTE = (expirationDate: string | Date): number => {
+  const exp = new Date(expirationDate);
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const expUTC = Date.UTC(exp.getUTCFullYear(), exp.getUTCMonth(), exp.getUTCDate());
+  return Math.max(0, Math.ceil((expUTC - todayUTC) / 86_400_000));
+};
+
 export const makeOpenColumns = (): ColumnDef<Trade>[] => [
   {
     accessorKey: "ticker",
@@ -49,12 +57,27 @@ export const makeOpenColumns = (): ColumnDef<Trade>[] => [
       const v = getValue();
       if (!v) return "—";
       try {
-        // Works for both "YYYY-MM-DD" strings and ISO timestamps
         return formatDateOnlyUTC(v as string | Date);
       } catch {
         return "—";
       }
     },
+  },
+  {
+    id: "dte",
+    header: "DTE",
+    accessorFn: (row) => calcDTE(row.expirationDate),
+    cell: ({ getValue }) => {
+      const n = Number(getValue());
+      const cls =
+        n <= 7
+          ? "text-rose-600 dark:text-rose-400 font-semibold"
+          : n <= 21
+            ? "text-amber-600 dark:text-amber-400"
+            : "text-foreground";
+      return <span className={cls}>{n}d</span>;
+    },
+    meta: { align: "right" },
   },
   {
     accessorKey: "contractPrice",

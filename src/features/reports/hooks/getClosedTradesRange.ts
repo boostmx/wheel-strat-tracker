@@ -45,6 +45,7 @@ export async function getClosedTradesInRange(params: {
       notes: true,
       status: true,
       createdAt: true,
+      closeReason: true,
     },
   });
 
@@ -68,5 +69,6 @@ export async function getClosedTradesInRange(params: {
     status: t.status,
     createdAt: t.createdAt.toISOString(),
     totalContracts: t.contractsInitial ?? t.contracts,
+    closeReason: t.closeReason ?? undefined,
   }));
 }

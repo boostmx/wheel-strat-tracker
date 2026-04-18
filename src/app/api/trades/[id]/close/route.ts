@@ -17,6 +17,7 @@ type CloseTradePayload = {
   fullClose?: boolean;
   assignment?: boolean;
   assigned?: boolean;
+  closeReason?: "manual" | "expiredWorthless" | "assigned";
 };
 
 //helpers to interpret trade types
@@ -48,6 +49,7 @@ export async function PATCH(
     .catch(() => ({}) as CloseTradePayload);
 
   const isAssignment = body.assignment === true || body.assigned === true;
+  const closeReason = body.closeReason ?? (isAssignment ? "assigned" : undefined);
 
   // Support both new and legacy payload shapes
   const contractsToCloseRaw = Number(
@@ -78,13 +80,11 @@ export async function PATCH(
   const stockLotId = trade.stockLotId ?? null;
 
   // --- ASSIGNMENT PATH ---
-  // Closing a CSP as "assigned" should:
-  // 1) fully close the CSP at 100% premium capture (net of fees)
-  // 2) create a StockLot at the purchase price (strike)
-  // 3) link the trade to the created StockLot
+  // CSP assigned: stock put to you → create a StockLot at net basis (strike - premium)
+  // CC assigned:  stock called away → close the underlying StockLot
   if (isAssignment) {
-    if (!isCSP(trade.type)) {
-      return new Response("Assignment is only supported for CashSecuredPut", {
+    if (!isCSP(trade.type) && !isCoveredCall) {
+      return new Response("Assignment is only supported for CSP and CoveredCall", {
         status: 400,
       });
     }
@@ -92,15 +92,11 @@ export async function PATCH(
     if (trade.status !== "open") {
       return new Response("Trade is not open", { status: 400 });
     }
-
     if (!Number.isFinite(trade.contractPrice)) {
       return new Response("Trade.contractPrice missing/invalid", { status: 400 });
     }
-
     if (!trade.contractsOpen || trade.contractsOpen < contractsToClose) {
-      return new Response("contractsToClose exceeds open contracts", {
-        status: 400,
-      });
+      return new Response("contractsToClose exceeds open contracts", { status: 400 });
     }
 
     const remainingAssigned = trade.contractsOpen - contractsToClose;
@@ -110,72 +106,110 @@ export async function PATCH(
         ? fullCloseFlagAssigned
         : remainingAssigned <= 0;
 
-    // We only support assignment as a full close (entire CSP position assigned)
     if (!isFullAssigned) {
       return new Response("Assignment requires full close", { status: 400 });
     }
 
-    const openPrice = Number(trade.contractPrice); // premium per share received
+    const openPrice = Number(trade.contractPrice);
     const strike = Number(trade.strikePrice);
     if (!Number.isFinite(strike) || strike <= 0) {
       return new Response("Trade.strikePrice missing/invalid", { status: 400 });
     }
 
     const feesTotal = feesPerContract * contractsToClose + flatFees;
-    // 100% capture means closing at 0.00; realized is premium received minus fees
     const grossAssigned = openPrice * contractsToClose * CONTRACT_MULTIPLIER;
     const realizedAssigned = grossAssigned - feesTotal;
-
     const shares = contractsToClose * CONTRACT_MULTIPLIER;
+    const now = new Date();
 
-    await prisma.$transaction(async (tx) => {
-      const premiumPerShare = openPrice; // CSP credit per share
-      const netBasis = Math.max(0, strike - premiumPerShare);
+    if (isCSP(trade.type)) {
+      // Stock put to you: create a new StockLot at net basis
+      await prisma.$transaction(async (tx) => {
+        const netBasis = Math.max(0, strike - openPrice);
 
-      const createdLot = await tx.stockLot.create({
-        data: {
-          portfolioId: trade.portfolioId,
-          ticker: trade.ticker,
-          shares,
-          avgCost: new Prisma.Decimal(netBasis),
-          notes: `Assigned from CSP trade: ${trade.ticker} $${trade.strikePrice} ${formatDateOnlyUTC(trade.expirationDate)}`,
-          status: "OPEN",
-        },
-        select: { id: true },
+        const createdLot = await tx.stockLot.create({
+          data: {
+            portfolioId: trade.portfolioId,
+            ticker: trade.ticker,
+            shares,
+            avgCost: new Prisma.Decimal(netBasis),
+            notes: `Assigned from CSP trade: ${trade.ticker} $${trade.strikePrice} ${formatDateOnlyUTC(trade.expirationDate)}`,
+            status: "OPEN",
+          },
+          select: { id: true },
+        });
+
+        await tx.trade.update({
+          where: { id },
+          data: {
+            status: "closed",
+            closedAt: now,
+            closingPrice: 0,
+            contractsOpen: 0,
+            premiumCaptured: (trade.premiumCaptured ?? 0) + realizedAssigned,
+            percentPL: 100,
+            closeReason: "assigned",
+            stockLotId: createdLot.id,
+            notes: trade.notes
+              ? `${trade.notes}\nAssigned → created StockLot ${createdLot.id} @ ${strike}`
+              : `Assigned → created StockLot ${createdLot.id} @ ${strike}`,
+          },
+        });
       });
 
-      await tx.trade.update({
-        where: { id },
-        data: {
-          status: "closed",
-          closedAt: new Date(),
-          closingPrice: 0,
-          contractsOpen: 0,
-          // accumulate realized premium for the trade
-          premiumCaptured: (trade.premiumCaptured ?? 0) + realizedAssigned,
-          // assignment close leg is treated as full capture
-          percentPL: 100,
-          stockLotId: createdLot.id,
-          notes: trade.notes
-            ? `${trade.notes}\nAssigned → created StockLot ${createdLot.id} @ ${strike}`
-            : `Assigned → created StockLot ${createdLot.id} @ ${strike}`,
-        },
-      });
-    });
+      return new Response(
+        JSON.stringify({ realizedNow: realizedAssigned, feesTotal, assigned: true, shares, purchasePrice: strike }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    } else {
+      // CC assigned: stock called away → close the underlying StockLot
+      if (!stockLotId) {
+        return new Response("CoveredCall has no linked StockLot to close", { status: 400 });
+      }
 
-    return new Response(
-      JSON.stringify({
-        realizedNow: realizedAssigned,
-        feesTotal,
-        assigned: true,
-        shares,
-        purchasePrice: strike,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+      await prisma.$transaction(async (tx) => {
+        const lot = await tx.stockLot.findUnique({
+          where: { id: stockLotId },
+          select: { shares: true, avgCost: true },
+        });
+
+        await tx.trade.update({
+          where: { id },
+          data: {
+            status: "closed",
+            closedAt: now,
+            closingPrice: 0,
+            contractsOpen: 0,
+            premiumCaptured: (trade.premiumCaptured ?? 0) + realizedAssigned,
+            percentPL: 100,
+            closeReason: "assigned",
+            notes: trade.notes
+              ? `${trade.notes}\nAssigned → stock called away @ $${strike}`
+              : `Assigned → stock called away @ $${strike}`,
+          },
+        });
+
+        // Close the stock lot: shares sold at strike price
+        const lotShares = lot ? Number(lot.shares) : shares;
+        const lotAvgCost = lot ? Number(lot.avgCost) : 0;
+        const stockRealizedPnl = (strike - lotAvgCost) * lotShares;
+
+        await tx.stockLot.update({
+          where: { id: stockLotId },
+          data: {
+            status: "CLOSED",
+            closedAt: now,
+            closePrice: new Prisma.Decimal(strike),
+            realizedPnl: new Prisma.Decimal(stockRealizedPnl),
+          },
+        });
+      });
+
+      return new Response(
+        JSON.stringify({ realizedNow: realizedAssigned, feesTotal, assigned: true, shares, salePrice: strike }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
 
   if (trade.status !== "open") {
@@ -237,10 +271,11 @@ export async function PATCH(
         data: {
           status: "closed",
           closedAt: new Date(),
-          closingPrice, // last close price
+          closingPrice,
           contractsOpen: 0,
           premiumCaptured: newPremiumCaptured,
-          percentPL, // last-leg % (kept for display)
+          percentPL,
+          closeReason: closeReason ?? "manual",
         },
       });
 
@@ -305,6 +340,7 @@ export async function PATCH(
           closingPrice,
           premiumCaptured: realizedNow,
           percentPL,
+          closeReason: closeReason ?? "manual",
           closedAt: new Date(),
         },
       });
