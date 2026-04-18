@@ -58,10 +58,22 @@ const isCashSecuredPut = (type?: string) => {
 const isCoveredCall = (type?: string) =>
   !!type && type.toLowerCase().includes("covered") && type.toLowerCase().includes("call");
 
-const calcCapitalInUse = (t: Trade) =>
-  isCashSecuredPut(t.type)
-    ? t.strikePrice * 100 * (t.contractsOpen ?? t.contracts ?? 0)
-    : 0;
+const calcCapitalInUse = (t: Trade) => {
+  if (isCashSecuredPut(t.type)) {
+    return t.strikePrice * 100 * (t.contractsOpen ?? t.contracts ?? 0);
+  }
+  if (isCoveredCall(t.type) && t.entryPrice != null) {
+    return t.entryPrice * 100 * (t.contractsOpen ?? t.contracts ?? 0);
+  }
+  return 0;
+};
+
+const calcAllocationPct = (t: Trade, totalCapital: number) => {
+  if (totalCapital <= 0) return null;
+  const capital = calcCapitalInUse(t);
+  if (capital <= 0) return null;
+  return (capital / totalCapital) * 100;
+};
 
 const calcOpenPremium = (t: Trade) => {
   // Only relevant for short options: CSP and Covered Calls
@@ -82,12 +94,20 @@ const calcBreakeven = (t: Trade) => {
   return undefined;
 };
 
-const buildTooltipContent = (t: Trade) => (
+const buildTooltipContent = (t: Trade, totalCapital?: number) => {
+  const allocPct = totalCapital != null ? calcAllocationPct(t, totalCapital) : null;
+  return (
   <div className="text-xs space-y-1">
-    {isCashSecuredPut(t.type) && (
+    {calcCapitalInUse(t) > 0 && (
       <div>
         Capital in use:{" "}
         <span className="font-medium">{formatUSD(calcCapitalInUse(t))}</span>
+      </div>
+    )}
+    {allocPct != null && (
+      <div>
+        Portfolio allocation:{" "}
+        <span className="font-medium">{allocPct.toFixed(1)}%</span>
       </div>
     )}
     <div>
@@ -119,7 +139,8 @@ const buildTooltipContent = (t: Trade) => (
       </div>
     )}
   </div>
-);
+  );
+};
 
 type Timeframe = "week" | "month" | "year" | "all";
 
@@ -145,7 +166,7 @@ const getTradeOpenDate = (t: Trade): Date | undefined => {
   return toDate(t.createdAt);
 };
 
-const infoColumn: ColumnDef<Trade> = {
+const makeInfoColumn = (totalCapital?: number): ColumnDef<Trade> => ({
   id: "info",
   header: "",
   enableSorting: false,
@@ -171,19 +192,37 @@ const infoColumn: ColumnDef<Trade> = {
         collisionPadding={8}
         className="max-w-xs"
       >
-        {buildTooltipContent(row.original)}
+        {buildTooltipContent(row.original, totalCapital)}
       </TooltipContent>
     </Tooltip>
   ),
-};
+});
+
+const makeAllocationColumn = (totalCapital: number): ColumnDef<Trade> => ({
+  id: "allocation",
+  header: "Allocation",
+  enableSorting: true,
+  accessorFn: (row) => calcAllocationPct(row, totalCapital) ?? -1,
+  cell: ({ row }) => {
+    const pct = calcAllocationPct(row.original, totalCapital);
+    return pct != null ? (
+      <span>{pct.toFixed(1)}%</span>
+    ) : (
+      <span className="text-muted-foreground">—</span>
+    );
+  },
+  meta: { align: "right" },
+});
 
 // ---------- Component ----------
 export function OpenTradesTable({
   trades,
   portfolioId,
+  totalCapital,
 }: {
   trades: Trade[];
   portfolioId: string;
+  totalCapital?: number;
 }) {
   const router = useRouter();
   // Default sort: soonest expiration first
@@ -222,8 +261,12 @@ export function OpenTradesTable({
 
   const columns = useMemo(() => {
     const base = makeOpenColumns() as ColumnDef<Trade, unknown>[];
-    return [infoColumn, ...base];
-  }, []);
+    const cols: ColumnDef<Trade, unknown>[] = [makeInfoColumn(totalCapital), ...base];
+    if (totalCapital != null && totalCapital > 0) {
+      cols.push(makeAllocationColumn(totalCapital));
+    }
+    return cols;
+  }, [totalCapital]);
 
   const table = useReactTable({
     data: filteredTrades,

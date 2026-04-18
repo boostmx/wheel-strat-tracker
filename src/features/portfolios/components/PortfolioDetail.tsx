@@ -298,7 +298,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         {loadingOpen ? (
           <p>Loading open trades...</p>
         ) : (
-          <OpenTradesTable trades={openTrades} portfolioId={portfolio.id} />
+          <OpenTradesTable trades={openTrades} portfolioId={portfolio.id} totalCapital={totalCapital} />
         )}
       </motion.div>
 
