@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-18",
+    version: "v1.1.5",
+    highlights: [
+      "Open trades now show an Allocation column so you can see at a glance how much of your total portfolio each position is tying up.",
+      "The info tooltip on each trade also shows the allocation percentage alongside capital in use.",
+    ],
+  },
+  {
     date: "2026-02-12",
     version: "v1.1.4",
     highlights: [
