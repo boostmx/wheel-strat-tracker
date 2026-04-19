@@ -6,6 +6,22 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-19",
+    version: "v2.2.0",
+    highlights: [
+      "Portfolio detail page fully redesigned — KPI strip (current capital, cash available, deployed %, total P&L), secondary stats (open premium, avg P&L %, win rate, avg days, YTD), and a clean tabbed workspace for Stock Lots, Open Positions, and Closed.",
+      "Stock Lots is now the first tab in portfolio detail so your largest positions are front and center.",
+      "Dashboard portfolio cards now show full financial KPIs at a glance: current capital, P&L badge with trend icon, capital deployment bar, cash available, open trades count, win rate, and realized MTD.",
+      "P&L chart overhauled with MTD / 90D / YTD tabs, gradient fill, hover crosshair tooltip, and period stats chips.",
+      "Dashboard layout rearranged to a modern financial app feel — P&L chart promoted to the hero position with a compact KPI strip above it.",
+      "Top Exposures card redesigned with a horizontal donut and inline legend. Premium by Ticker shows top 5 by default with an expand toggle.",
+      "Unified table styling across Stock Lots, Open Trades, and Closed Trades — matching gray header, emerald hover rows, consistent padding, and edge-to-edge layout.",
+      "Controls toolbar and pagination in trade tables now have proper breathing room from the card edges.",
+      "Merged the metrics and detail-metrics API routes into one consolidated endpoint, cutting redundant database queries in half.",
+      "Removed the redundant Portfolios at a Glance chips card from the dashboard.",
+    ],
+  },
+  {
     date: "2026-04-18",
     version: "v2.1.0",
     highlights: [
