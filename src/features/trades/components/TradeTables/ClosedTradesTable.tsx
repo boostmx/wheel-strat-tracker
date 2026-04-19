@@ -446,7 +446,7 @@ export function ClosedTradesTable({
   return (
     <div className="w-full">
       {/* Mobile toolbar: Filters + Pagination */}
-      <div className="mb-3 md:hidden flex items-center justify-between">
+      <div className="mb-3 md:hidden px-4 pt-4 flex items-center justify-between">
         <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="sm">
@@ -534,7 +534,7 @@ export function ClosedTradesTable({
       </div>
 
       {/* Controls & Metrics */}
-      <div className="mb-3 hidden md:flex md:flex-row md:items-center md:justify-between">
+      <div className="mb-3 px-4 pt-4 hidden md:flex md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Label htmlFor="timeframe" className="text-sm">
@@ -721,21 +721,34 @@ export function ClosedTradesTable({
         </div>
 
         {/* Desktop table (shown on md+) */}
-        <div className="hidden md:block rounded-xl border overflow-hidden">
+        <div className="hidden md:block">
           <table className="min-w-full text-sm text-left text-gray-700 dark:text-gray-100">
-            <thead className="bg-muted/60">
+            <thead className="bg-gray-100 dark:bg-gray-800">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer select-none"
-                      onClick={header.column.getToggleSortingHandler()}
+                      className={
+                        header.column.getCanSort()
+                          ? "px-4 py-2 font-semibold cursor-pointer select-none dark:text-gray-200"
+                          : "px-4 py-2 font-semibold select-none dark:text-gray-200"
+                      }
+                      onClick={
+                        header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
                     >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                      <div className="flex items-center gap-1">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {header.column.getIsSorted() === "asc" && "▲"}
+                            {header.column.getIsSorted() === "desc" && "▼"}
+                          </span>
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -755,7 +768,7 @@ export function ClosedTradesTable({
                 pageRows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-t hover:bg-accent/40 cursor-pointer"
+                    className="group border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
                     onClick={() => {
                       const r = row.original as ClosedRow;
                       router.push(
@@ -766,7 +779,7 @@ export function ClosedTradesTable({
                     }}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 align-top">
+                      <td key={cell.id} className="px-4 py-2">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),
@@ -782,7 +795,7 @@ export function ClosedTradesTable({
       </div>
 
       {/* Pagination footer */}
-      <div className="mt-3 hidden md:flex items-center justify-between">
+      <div className="mt-3 px-4 pb-4 hidden md:flex items-center justify-between">
         <div className="text-xs text-gray-600 dark:text-gray-400">
           Page {Math.min(pageIndex + 1, pageCount)} of {pageCount} • {totalRows}{" "}
           result{totalRows === 1 ? "" : "s"}

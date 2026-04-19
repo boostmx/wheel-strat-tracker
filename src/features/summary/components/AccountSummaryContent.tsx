@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 type ExposureEntry = { ticker: string; weightPct: number };
 type TickerPremium = { ticker: string; premium: number };
@@ -168,28 +169,27 @@ function HorizontalBars({
   labelKey?: string;
 }) {
   const typed = data as Array<{ [k: string]: number | string }>;
-  const max = Math.max(1, ...typed.map((d) => Number(d[valueKey]) || 0));
+  const max = Math.max(1, ...typed.map((d) => Math.abs(Number(d[valueKey]) || 0)));
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {typed.map((d, i) => {
         const val = Number(d[valueKey]) || 0;
-        const pct = (val / max) * 100;
+        const pct = (Math.abs(val) / max) * 100;
+        const isNeg = val < 0;
         return (
           <div key={`${String(d[labelKey])}-${i}`} className="w-full">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-medium text-foreground">
-                {String(d[labelKey])}
-              </span>
-              <span className="tabular-nums text-muted-foreground">
+              <span className="font-medium text-foreground text-[12px]">{String(d[labelKey])}</span>
+              <span className={`tabular-nums text-[11px] ${isNeg ? "text-red-500" : "text-muted-foreground"}`}>
                 {formatCompactCurrency(val)}
               </span>
             </div>
-            <div className="h-2 bg-muted rounded">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-2 rounded"
+                className="h-1.5 rounded-full transition-all duration-300"
                 style={{
                   width: `${pct}%`,
-                  backgroundColor: `hsl(${(210 + i * 27) % 360} 70% 45%)`,
+                  backgroundColor: isNeg ? "hsl(0 70% 50%)" : `hsl(${(210 + i * 27) % 360} 65% 48%)`,
                 }}
               />
             </div>
@@ -399,6 +399,12 @@ export default function AccountSummaryContent() {
     return source ? [...source] : [];
   }, [selectedPortfolio, agg]);
 
+  const chartMtdSeries = useMemo(() => {
+    return selectedPortfolio
+      ? selectedPortfolio.pnlSeriesMTD
+      : (data?.pnlSeriesMTD ?? []);
+  }, [selectedPortfolio, data]);
+
   const chartYtdSeries = useMemo(() => {
     return selectedPortfolio
       ? selectedPortfolio.pnlSeriesYTD
@@ -411,51 +417,14 @@ export default function AccountSummaryContent() {
       : (data?.pnlSeriesDaily90 ?? []);
   }, [selectedPortfolio, data]);
 
-  // Timeline granularity: daily, weekly (from 90-day daily), monthly (YTD)
-  const [timelineMode, setTimelineMode] = useState<
-    "daily" | "weekly" | "monthly"
-  >("weekly");
-
-  function parseUtcDate(label: string) {
-    // label is 'YYYY-MM-DD' or 'YYYY-MM'
-    if (label.length === 10) return new Date(label + "T00:00:00.000Z");
-    if (label.length === 7) return new Date(label + "-01T00:00:00.000Z");
-    return new Date(label);
-  }
-  function isoWeekKey(d: Date) {
-    // ISO week number
-    const date = new Date(
-      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
-    );
-    // Thursday in current week decides the year
-    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil(
-      ((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-    );
-    return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
-  }
+  const [activeTab, setActiveTab] = useState<"mtd" | "90d" | "ytd">("90d");
+  const [showAllPremium, setShowAllPremium] = useState(false);
 
   const timelineSeries = useMemo(() => {
-    if (timelineMode === "daily") {
-      // last 90 days cumulative by day
-      return chartDaily90Series;
-    }
-    if (timelineMode === "weekly") {
-      // group 90-day daily by ISO week, take the last cumulative point per week
-      const map = new Map<string, number>();
-      chartDaily90Series.forEach((pt) => {
-        const key = isoWeekKey(parseUtcDate(pt.label));
-        map.set(key, pt.realized); // last in week wins
-      });
-      return Array.from(map.entries()).map(([label, realized]) => ({
-        label,
-        realized,
-      }));
-    }
-    // monthly (YTD monthly cumulative)
+    if (activeTab === "mtd") return chartMtdSeries;
+    if (activeTab === "90d") return chartDaily90Series;
     return chartYtdSeries;
-  }, [timelineMode, chartDaily90Series, chartYtdSeries]);
+  }, [activeTab, chartMtdSeries, chartDaily90Series, chartYtdSeries]);
 
   if (isLoading) {
     return <div className="max-w-5xl mx-auto py-16 px-6">Loading...</div>;
@@ -490,451 +459,459 @@ export default function AccountSummaryContent() {
     );
   }
 
-  // Minimal line chart for P&L (with simple axes)
-  function LineChartMini({
+  function PnLChart({
     data,
-    height = 140,
+    height = 280,
   }: {
     data: { label: string; realized: number }[];
     height?: number;
   }) {
+    const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
     if (!data || data.length === 0)
-      return (
-        <div className="text-xs text-muted-foreground">No data</div>
-      );
+      return <div className="text-xs text-muted-foreground py-8 text-center">No data for this period</div>;
 
-    // Layout
-    const margin = { top: 8, right: 8, bottom: 18, left: 48 };
-    const w = 460;
-    const h = height;
-    const innerW = w - margin.left - margin.right;
-    const innerH = h - margin.top - margin.bottom;
+    const margin = { top: 16, right: 16, bottom: 32, left: 58 };
+    const W = 600;
+    const H = height;
+    const iW = W - margin.left - margin.right;
+    const iH = H - margin.top - margin.bottom;
 
-    // Data stats
     const ys = data.map((d) => d.realized);
-    const minY = Math.min(0, ...ys);
-    const maxY = Math.max(0, ...ys);
-    const yRange = Math.max(1, maxY - minY || 1);
+    const rawMin = Math.min(0, ...ys);
+    const rawMax = Math.max(0, ...ys);
+    const pad = (rawMax - rawMin) * 0.12 || 10;
+    const yMin = rawMin - pad;
+    const yMax = rawMax + pad;
+    const yRange = Math.max(1, yMax - yMin);
 
-    // Scales
-    const xScale = (i: number) =>
-      margin.left + (i * innerW) / Math.max(1, data.length - 1);
-    const yScale = (v: number) =>
-      margin.top + innerH - ((v - minY) * innerH) / yRange;
+    const xScale = (i: number) => margin.left + (i * iW) / Math.max(1, data.length - 1);
+    const yScale = (v: number) => margin.top + iH - ((v - yMin) * iH) / yRange;
 
-    // Axis ticks (Y: min, 0 (if within domain), max)
-    const yTicks: number[] = [];
-    yTicks.push(minY);
-    if (minY < 0 && maxY > 0) yTicks.push(0);
-    if (maxY !== minY) yTicks.push(maxY);
+    const finalVal = ys[ys.length - 1] ?? 0;
+    const isPos = finalVal >= 0;
+    const lineColor = isPos ? "#22c55e" : "#ef4444";
+    const gradId = "pnl-grad";
 
-    // Label formatter for compact currency
+    // 5 evenly spaced Y gridlines
+    const yGridVals = Array.from({ length: 5 }, (_, i) => rawMin + ((rawMax - rawMin) / 4) * i);
+    if (!yGridVals.includes(0) && rawMin < 0 && rawMax > 0) yGridVals.push(0);
+
+    // X labels: up to 6, evenly spaced
+    const maxLabels = Math.min(6, data.length);
+    const xIdxs = Array.from({ length: maxLabels }, (_, i) =>
+      Math.round((i * (data.length - 1)) / Math.max(1, maxLabels - 1)),
+    );
+
     const formatMoney = (n: number) =>
-      new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        notation: "compact",
-        maximumFractionDigits: 1,
-      }).format(n);
+      new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(n);
 
-    // X ticks: first, middle, last
-    const xTickIdxs = Array.from(
-      new Set([0, Math.floor((data.length - 1) / 2), data.length - 1]),
-    ).filter((i) => i >= 0);
     const formatX = (s: string) => {
-      // Accept 'YYYY-MM-DD' or 'YYYY-MM'
-      if (s.length === 10) return `${s.slice(5, 7)}/${s.slice(8, 10)}`; // MM/DD
-      if (s.length === 7) return s; // YYYY-MM
+      if (s.length === 10) return `${s.slice(5, 7)}/${s.slice(8, 10)}`;
+      if (s.length === 7) return s.slice(5); // show only MM from YYYY-MM
       return s;
     };
 
-    const linePoints = data
-      .map((d, i) => `${xScale(i)},${yScale(d.realized)}`)
-      .join(" ");
+    const pts = data.map((d, i) => `${xScale(i)},${yScale(d.realized)}`).join(" ");
+    const areaD = [
+      `M ${xScale(0)},${yScale(0)}`,
+      ...data.map((d, i) => `L ${xScale(i)},${yScale(d.realized)}`),
+      `L ${xScale(data.length - 1)},${yScale(0)} Z`,
+    ].join(" ");
+
+    const hovered = hoveredIdx !== null ? data[hoveredIdx] : null;
+    const tooltipX = hoveredIdx !== null ? xScale(hoveredIdx) : 0;
+    const tooltipY = hovered ? yScale(hovered.realized) : 0;
+    const flipTooltip = tooltipX > W * 0.65;
 
     return (
       <svg
-        width={w}
-        height={h}
-        className="w-full"
-        role="img"
-        aria-label="Line chart with axes"
+        width="100%"
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full overflow-visible cursor-crosshair"
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const scaleX = W / rect.width;
+          const mx = (e.clientX - rect.left) * scaleX - margin.left;
+          const idx = Math.round((mx / iW) * (data.length - 1));
+          setHoveredIdx(Math.max(0, Math.min(data.length - 1, idx)));
+        }}
+        onMouseLeave={() => setHoveredIdx(null)}
       >
-        {/* Axes */}
-        <line
-          x1={margin.left}
-          y1={margin.top}
-          x2={margin.left}
-          y2={margin.top + innerH}
-          stroke="currentColor"
-          className="text-gray-300 dark:text-gray-600"
-        />
-        <line
-          x1={margin.left}
-          y1={margin.top + innerH}
-          x2={margin.left + innerW}
-          y2={margin.top + innerH}
-          stroke="currentColor"
-          className="text-gray-300 dark:text-gray-600"
-        />
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
 
-        {/* Y ticks + labels */}
-        {yTicks.map((t, i) => (
-          <g key={`y-${i}`}>
-            <line
-              x1={margin.left - 4}
-              x2={margin.left}
-              y1={yScale(t)}
-              y2={yScale(t)}
-              stroke="currentColor"
-              className="text-gray-400"
-            />
-            <text
-              x={margin.left - 6}
-              y={yScale(t)}
-              textAnchor="end"
-              dominantBaseline="middle"
-              className="fill-muted-foreground text-[10px]"
-            >
-              {formatMoney(t)}
-            </text>
-          </g>
+        {/* Y gridlines + labels */}
+        {yGridVals.map((v, i) => {
+          const y = yScale(v);
+          const isZero = v === 0;
+          return (
+            <g key={i}>
+              <line
+                x1={margin.left} x2={margin.left + iW}
+                y1={y} y2={y}
+                stroke={isZero ? "#9ca3af" : "#e5e7eb"}
+                strokeWidth={isZero ? 1 : 0.5}
+                strokeDasharray={isZero ? "4 4" : undefined}
+                className="dark:[&]:stroke-gray-600"
+              />
+              <text x={margin.left - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize={10} className="fill-muted-foreground">
+                {formatMoney(v)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Area fill */}
+        <path d={areaD} fill={`url(#${gradId})`} />
+
+        {/* Line */}
+        <polyline fill="none" stroke={lineColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" points={pts} />
+
+        {/* X labels */}
+        {xIdxs.map((idx) => (
+          <text key={idx} x={xScale(idx)} y={margin.top + iH + 20} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
+            {formatX(data[idx].label)}
+          </text>
         ))}
 
-        {/* X ticks + labels */}
-        {xTickIdxs.map((idx, i) => (
-          <g key={`x-${i}`}>
-            <line
-              x1={xScale(idx)}
-              x2={xScale(idx)}
-              y1={margin.top + innerH}
-              y2={margin.top + innerH + 4}
-              stroke="currentColor"
-              className="text-gray-400"
-            />
-            <text
-              x={xScale(idx)}
-              y={margin.top + innerH + 10}
-              textAnchor="middle"
-              className="fill-muted-foreground text-[10px]"
-            >
-              {formatX(data[idx].label)}
-            </text>
-          </g>
-        ))}
-
-        {/* Zero line if needed */}
-        {minY < 0 && maxY > 0 && (
-          <line
-            x1={margin.left}
-            x2={margin.left + innerW}
-            y1={yScale(0)}
-            y2={yScale(0)}
-            stroke="currentColor"
-            strokeDasharray="3 3"
-            className="text-gray-400/60"
-          />
+        {/* Endpoint dot (when not hovering) */}
+        {hoveredIdx === null && (
+          <circle cx={xScale(data.length - 1)} cy={yScale(finalVal)} r={4} fill={lineColor} stroke="white" strokeWidth={1.5} />
         )}
 
-        {/* Data line */}
-        <polyline
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          points={linePoints}
-          className="text-primary"
-        />
+        {/* Hover crosshair + tooltip */}
+        {hovered && hoveredIdx !== null && (
+          <g>
+            <line x1={tooltipX} x2={tooltipX} y1={margin.top} y2={margin.top + iH}
+              stroke="#9ca3af" strokeWidth={1} strokeDasharray="4 3" />
+            <circle cx={tooltipX} cy={tooltipY} r={4.5} fill={lineColor} stroke="white" strokeWidth={1.5} />
+            <g transform={`translate(${flipTooltip ? tooltipX - 112 : tooltipX + 8}, ${Math.max(margin.top, tooltipY - 34)})`}>
+              <rect x={0} y={0} width={104} height={42} rx={6}
+                fill="white" stroke="#e5e7eb" strokeWidth={1}
+                className="dark:fill-gray-800 dark:stroke-gray-600"
+                style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.12))" }}
+              />
+              <text x={8} y={15} fontSize={10} className="fill-muted-foreground">{formatX(hovered.label)}</text>
+              <text x={8} y={32} fontSize={13} fontWeight={700} fill={hovered.realized >= 0 ? "#22c55e" : "#ef4444"}>
+                {hovered.realized >= 0 ? "+" : ""}{formatMoney(hovered.realized)}
+              </text>
+            </g>
+          </g>
+        )}
       </svg>
     );
   }
 
+  const pnlStats = (() => {
+    const last = timelineSeries[timelineSeries.length - 1]?.realized ?? 0;
+    const diffs = timelineSeries.map((pt, i) =>
+      i === 0 ? pt.realized : pt.realized - timelineSeries[i - 1].realized,
+    );
+    const best = diffs.length ? Math.max(...diffs) : 0;
+    const worst = diffs.length ? Math.min(...diffs) : 0;
+    const periodLabel = activeTab === "ytd" ? "mo" : "day";
+    return { last, best, worst, periodLabel };
+  })();
+
   return (
-    <div className="max-w-5xl mx-auto py-16 px-6 space-y-10">
+    <div className="max-w-6xl mx-auto py-10 px-6 space-y-5">
+
+      {/* ── Header ── */}
       <motion.div
+        className="flex items-center justify-between gap-4 flex-wrap"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Account Summary
-            </h1>
-            <div className="mt-2 flex items-center gap-3">
-              <label
-                htmlFor="portfolioFilter"
-                className="text-xs text-muted-foreground"
-              >
-                View:
-              </label>
-              <Select
-                value={selectedPortfolioId}
-                onValueChange={setSelectedPortfolioId}
-              >
-                <SelectTrigger className="w-56">
-                  <SelectValue placeholder="Select view" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Accounts</SelectItem>
-                  {agg.perPortfolio.map((pp) => (
-                    <SelectItem key={pp.id} value={pp.id}>
-                      {pp.name || pp.id.slice(0, 6)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="shrink-0 mt-1">
-            <Button asChild size="sm">
-              <Link href="/portfolios">View Portfolios</Link>
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Account Summary</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {selectedPortfolio ? selectedPortfolio.name : "All portfolios"} · as of today
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={selectedPortfolioId} onValueChange={setSelectedPortfolioId}>
+            <SelectTrigger className="w-48 h-8 text-xs">
+              <SelectValue placeholder="All Accounts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Accounts</SelectItem>
+              {agg.perPortfolio.map((pp) => (
+                <SelectItem key={pp.id} value={pp.id}>
+                  {pp.name || pp.id.slice(0, 6)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button asChild size="sm" variant="outline" className="h-8 text-xs">
+            <Link href="/portfolios">Portfolios</Link>
+          </Button>
         </div>
       </motion.div>
 
-      {/* Section A+B: Overview & Operations */}
-      <Card className="rounded-xl">
-        <CardContent className="p-6">
-          <div className="flex items-baseline justify-between mb-6">
-            <h2 className="text-lg font-semibold text-foreground">
-              Overview & Ops
-            </h2>
-            <span
-              className={`text-xs font-medium ${pctColor(view.accountPercentUsed)}`}
-            >{`% Used: ${view.accountPercentUsed.toFixed(1)}%`}</span>
-          </div>
+      {/* ── KPI Strip ── */}
+      <motion.div
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, delay: 0.06 }}
+        style={{ willChange: "opacity, transform" }}
+      >
+        {/* Current Capital */}
+        <div className="rounded-xl border bg-card p-4 space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Current Capital</p>
+          <p className="text-xl font-bold text-foreground tabular-nums">{formatLongCurrency(view.accountCurrentCapital)}</p>
+          <p className="text-[11px] text-muted-foreground">Base {formatCompactCurrency(view.accountBase)}</p>
+        </div>
 
-          {/* Key figures row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Current Capital
-              </p>
-              <p className="mt-1 text-3xl font-semibold text-foreground">
-                {formatLongCurrency(view.accountCurrentCapital)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">{`Base ${formatLongCurrency(view.accountBase)} (Start ${formatLongCurrency(view.accountStarting)} · Addl ${formatLongCurrency(view.accountAdditional)})`}</p>
-              <p className="text-xs text-muted-foreground">{`Realized ${formatCompactCurrency(view.accountProfit)}`}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Capital In Use
-              </p>
-              <p className="mt-1 text-3xl font-semibold text-amber-600 dark:text-amber-400">
-                {formatLongCurrency(view.accountCapitalUsed)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Cash Available
-              </p>
-              <p
-                className={`mt-1 text-3xl font-semibold ${view.accountCashAvailable < 0 ? "text-red-700 dark:text-red-400" : "text-green-800 dark:text-green-100"}`}
-              >
-                {formatLongCurrency(view.accountCashAvailable)}
-              </p>
-            </div>
-          </div>
+        {/* Total P&L */}
+        <div className="rounded-xl border bg-card p-4 space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total P&L</p>
+          <p className={`text-xl font-bold tabular-nums ${moneyColor(view.accountProfit)}`}>
+            {view.accountProfit >= 0 ? "+" : ""}{formatCompactCurrency(view.accountProfit)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}
+          </p>
+        </div>
 
-          {/* Ops row */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Open Trades
-              </p>
-              <p className="mt-1 text-3xl font-semibold text-foreground">
-                {view.totalOpenTrades}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Next Expiration
-              </p>
-              <p className="mt-1 text-base font-medium text-primary">
-                {view.nextExpiration
-                  ? `${formatDateOnlyUTC(view.nextExpiration.date)} · ${view.nextExpiration.contracts} contracts${
-                      view.nextExpiration.topTicker
-                        ? ` · ${view.nextExpiration.topTicker}`
-                        : ""
-                    }`
-                  : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Expiring ≤ 7 Days
-              </p>
-              <p className="mt-1 text-3xl font-semibold text-rose-600 dark:text-rose-400">
-                {view.totalExpiringSoon}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Win Rate
-              </p>
-              <p className="mt-1 text-3xl font-semibold text-foreground">
-                {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Avg Days in Trade
-              </p>
-              <p className="mt-1 text-3xl font-semibold text-foreground">
-                {view.avgDaysInTrade != null ? view.avgDaysInTrade.toFixed(1) : "—"}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Cash Available */}
+        <div className="rounded-xl border bg-card p-4 space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Cash Available</p>
+          <p className={`text-xl font-bold tabular-nums ${view.accountCashAvailable < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+            {formatLongCurrency(view.accountCashAvailable)}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            In use {formatCompactCurrency(view.accountCapitalUsed)}
+          </p>
+        </div>
 
-      {/* Section B: Priority Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* % Deployed */}
+        <div className="rounded-xl border bg-card p-4 space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Deployed</p>
+          <p className={`text-xl font-bold tabular-nums ${pctColor(view.accountPercentUsed)}`}>
+            {view.accountPercentUsed.toFixed(1)}%
+          </p>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+            <div
+              className={`h-full rounded-full ${
+                view.accountPercentUsed >= 85 ? "bg-red-500" : view.accountPercentUsed >= 60 ? "bg-amber-500" : "bg-emerald-500"
+              }`}
+              style={{ width: `${Math.min(view.accountPercentUsed, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Open Trades */}
+        <div className="rounded-xl border bg-card p-4 space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Open Trades</p>
+          <p className="text-xl font-bold text-foreground tabular-nums">{view.totalOpenTrades}</p>
+          {view.totalExpiringSoon > 0 && (
+            <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+              {view.totalExpiringSoon} expiring ≤7d
+            </p>
+          )}
+          {view.totalExpiringSoon === 0 && (
+            <p className="text-[11px] text-muted-foreground">None expiring soon</p>
+          )}
+        </div>
+      </motion.div>
+
+      {/* ── Hero: P&L Chart ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, delay: 0.1 }}
+        style={{ willChange: "opacity, transform" }}
+      >
         <Card className="rounded-xl">
           <CardContent className="p-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Realized P&L</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Cumulative — hover to inspect</p>
+              </div>
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                {(["mtd", "90d", "ytd"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      activeTab === tab
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab === "mtd" ? "MTD" : tab === "90d" ? "90D" : "YTD"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Period stat chips */}
+            <div className="flex flex-wrap gap-4 mb-5 pb-4 border-b border-border/50">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Period Total</p>
+                <p className={`text-lg font-bold tabular-nums ${pnlStats.last >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                  {pnlStats.last >= 0 ? "+" : ""}{formatCompactCurrency(pnlStats.last)}
+                </p>
+              </div>
+              <div className="w-px bg-border" />
+              <div>
+                <p className="text-[11px] text-muted-foreground">Best {pnlStats.periodLabel}</p>
+                <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {pnlStats.best > 0 ? "+" : ""}{formatCompactCurrency(pnlStats.best)}
+                </p>
+              </div>
+              <div className="w-px bg-border" />
+              <div>
+                <p className="text-[11px] text-muted-foreground">Worst {pnlStats.periodLabel}</p>
+                <p className="text-lg font-bold tabular-nums text-red-500">
+                  {formatCompactCurrency(pnlStats.worst)}
+                </p>
+              </div>
+              <div className="w-px bg-border" />
+              <div>
+                <p className="text-[11px] text-muted-foreground">All-time P&L</p>
+                <p className={`text-lg font-bold tabular-nums ${moneyColor(view.accountProfit)}`}>
+                  {view.accountProfit >= 0 ? "+" : ""}{formatCompactCurrency(view.accountProfit)}
+                </p>
+              </div>
+            </div>
+
+            <PnLChart data={timelineSeries} height={300} />
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ── Bottom 3-col: Exposures | Activity | Premium ── */}
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, delay: 0.14 }}
+        style={{ willChange: "opacity, transform" }}
+      >
+        {/* Top Exposures: horizontal donut + inline legend */}
+        <Card className="rounded-xl">
+          <CardContent className="p-5">
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">
-                Top Exposures
-              </h2>
-              <span className="text-xs text-muted-foreground">{`by % collateral (${selectedPortfolio ? "selected" : "all"})`}</span>
+              <h2 className="text-base font-semibold text-foreground">Top Exposures</h2>
+              <span className="text-xs text-muted-foreground">by collateral</span>
             </div>
             {chartExposures.length ? (
-              <div className="flex flex-col items-center gap-4">
-                <DonutChart
-                  data={chartExposures.map((t) => ({
-                    label: t.ticker,
-                    value: t.pct,
-                  }))}
-                  size={220}
-                />
-                <ul className="text-sm grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 w-full">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  <DonutChart
+                    data={chartExposures.map((t) => ({ label: t.ticker, value: t.pct }))}
+                    size={110}
+                  />
+                </div>
+                <ul className="flex-1 min-w-0 space-y-2">
                   {chartExposures.map((t, idx) => (
-                    <li key={t.ticker} className="flex items-center gap-2">
+                    <li key={t.ticker} className="flex items-center gap-1.5 min-w-0">
                       <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{
-                          backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)`,
-                        }}
+                        className="h-2 w-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)` }}
                       />
-                      <span className="font-medium">{t.ticker}</span>
-                      <span className="text-muted-foreground">
-                        {t.pct.toFixed(1)}%
-                      </span>
+                      <span className="text-[12px] font-medium text-foreground w-10 truncate">{t.ticker}</span>
+                      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-1 rounded-full"
+                          style={{
+                            width: `${t.pct.toFixed(0)}%`,
+                            backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-muted-foreground tabular-nums w-9 text-right">{t.pct.toFixed(1)}%</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No exposures to display
-              </p>
+              <p className="text-sm text-muted-foreground">No open CSP positions</p>
             )}
           </CardContent>
         </Card>
 
+        {/* Activity stats 2×2 */}
         <Card className="rounded-xl">
-          <CardContent className="p-6">
+          <CardContent className="p-5">
+            <h2 className="text-base font-semibold text-foreground mb-4">Activity</h2>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Next Expiration</p>
+                <p className="mt-1 text-sm font-semibold text-primary leading-snug">
+                  {view.nextExpiration
+                    ? `${view.nextExpiration.topTicker ? view.nextExpiration.topTicker + " · " : ""}${formatDateOnlyUTC(view.nextExpiration.date)}`
+                    : "—"}
+                </p>
+                {view.nextExpiration && (
+                  <p className="text-[11px] text-muted-foreground">{view.nextExpiration.contracts}c</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Expiring ≤7d</p>
+                <p className={`mt-1 text-2xl font-bold tabular-nums ${view.totalExpiringSoon > 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+                  {view.totalExpiringSoon}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Win Rate</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Avg Days Held</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  {view.avgDaysInTrade != null ? view.avgDaysInTrade.toFixed(1) : "—"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Premium by Ticker */}
+        <Card className="rounded-xl">
+          <CardContent className="p-5">
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">
-                Premium by Ticker (realized)
-              </h2>
-              <span className="text-xs text-muted-foreground">
-                Top earners
-              </span>
+              <h2 className="text-base font-semibold text-foreground">Premium by Ticker</h2>
+              <span className="text-xs text-muted-foreground">realized</span>
             </div>
             {chartPremiumByTicker.length ? (
-              <HorizontalBars
-                data={chartPremiumByTicker.map((p) => ({
-                  label: p.ticker,
-                  value: p.premium,
-                }))}
-              />
+              <>
+                <HorizontalBars
+                  data={(showAllPremium ? chartPremiumByTicker : chartPremiumByTicker.slice(0, 5)).map(
+                    (p) => ({ label: p.ticker, value: p.premium }),
+                  )}
+                />
+                {chartPremiumByTicker.length > 5 && (
+                  <button
+                    onClick={() => setShowAllPremium((v) => !v)}
+                    className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showAllPremium ? (
+                      <><ChevronUp className="h-3 w-3" /> Show less</>
+                    ) : (
+                      <><ChevronDown className="h-3 w-3" /> View all {chartPremiumByTicker.length} tickers</>
+                    )}
+                  </button>
+                )}
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No realized premium yet
-              </p>
+              <p className="text-sm text-muted-foreground">No realized premium yet</p>
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Section C: Realized P&L */}
-      <Card className="rounded-xl">
-        <CardContent className="p-6">
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              Realized P&L
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              Cumulative (select Daily/Weekly/Monthly)
-            </span>
-          </div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm">
-              <span className="text-muted-foreground">
-                Total Realized P&amp;L:&nbsp;
-              </span>
-              <span
-                className={`font-semibold ${moneyColor(view.accountProfit)}`}
-              >
-                {formatCompactCurrency(view.accountProfit)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                Timeline
-              </span>
-              <Select
-                value={timelineMode}
-                onValueChange={(v: "daily" | "weekly" | "monthly") =>
-                  setTimelineMode(v)
-                }
-              >
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="Granularity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="w-full">
-            <LineChartMini data={timelineSeries} height={320} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Per-portfolio chips */}
-      <motion.div
-        className="mt-2"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.42 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        <p className="text-sm text-muted-foreground mb-2">
-          By portfolio (each chip: Portfolio Name · % Used · Open positions ·
-          Expiring ≤7d)
-        </p>
-        <div className="flex flex-wrap gap-2 bg-card p-2 rounded">
-          {agg.perPortfolio.map((pp, i) => (
-            <motion.span
-              key={pp.id}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.02 * i }}
-              className={`text-xs px-2 py-1 rounded border bg-card ${pctColor(pp.pctUsed)}`}
-              title={`% Used is Capital In Use / Current Capital. Open = open positions. Exp ≤7d = contracts expiring in the next 7 days. (% Used ${pp.pctUsed.toFixed(1)} · Open ${pp.open} · Exp ≤7d ${pp.soon})`}
-            >
-              {`${pp.name || pp.id.slice(0, 4) + "…"} · ${pp.pctUsed.toFixed(0)}% used · ${pp.open} open · ${pp.soon} ≤7d`}
-            </motion.span>
-          ))}
-        </div>
       </motion.div>
     </div>
   );

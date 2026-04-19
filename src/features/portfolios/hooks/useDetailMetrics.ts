@@ -8,7 +8,7 @@ const fetcher = (url: string) =>
 
 export function useDetailMetrics(portfolioId?: string) {
   const key = portfolioId
-    ? `/api/portfolios/${portfolioId}/detail-metrics`
+    ? `/api/portfolios/${portfolioId}/metrics`
     : null;
   const { data, error, isLoading, mutate } = useSWR(key, fetcher, {
     dedupingInterval: 10_000,

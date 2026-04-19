@@ -302,7 +302,7 @@ export function OpenTradesTable({
   return (
     <div className="w-full overflow-x-auto">
       {/* Mobile toolbar: Filters + Pagination */}
-      <div className="mb-3 md:hidden flex items-center justify-between">
+      <div className="mb-3 md:hidden px-4 pt-4 flex items-center justify-between">
         <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="sm">
@@ -389,7 +389,7 @@ export function OpenTradesTable({
         </div>
       </div>
       {/* Controls & Metrics */}
-      <div className="mb-3 hidden md:flex md:flex-row md:items-center md:justify-between">
+      <div className="mb-3 px-4 pt-4 hidden md:flex md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Label htmlFor="ot-timeframe" className="text-sm">
@@ -633,7 +633,7 @@ export function OpenTradesTable({
         </TooltipProvider>
       </div>
       {/* Pagination footer */}
-      <div className="mt-3 hidden md:flex items-center justify-between">
+      <div className="mt-3 px-4 pb-4 hidden md:flex items-center justify-between">
         <div className="text-xs text-gray-600 dark:text-gray-400">
           Page {Math.min(pageIndex + 1, pageCount)} of {pageCount} • {totalRows}{" "}
           result{totalRows === 1 ? "" : "s"}

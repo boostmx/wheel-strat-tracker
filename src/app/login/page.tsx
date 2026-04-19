@@ -45,12 +45,12 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <span className="text-lg font-bold tracking-tight">The Wheel Trade Tracker</span>
+          <span className="text-lg font-bold tracking-tight">HLF Wheel Trade Tracker</span>
         </div>
 
         <div className="space-y-5">
           <blockquote className="text-xl font-semibold leading-snug">
-            "Track your premiums,<br />manage your wheel."
+            "Track your wheel trades, profits, and performance without the spreadsheets."
           </blockquote>
           <div className="space-y-2.5">
             {["CSP & Covered Call tracking", "Assignment & expiry workflows", "Portfolio allocation insights"].map((feat) => (
@@ -67,8 +67,8 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-widest">HL Financial Strategies</p>
-          <p className="text-xs text-primary-foreground/40 mt-0.5">Wheel Trade Tracker</p>
+          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-widest">Wheel Trade Tracker</p>
+          <p className="text-xs text-primary-foreground/40 mt-0.5">By HL Financial Strategies</p>
         </div>
       </div>
 
