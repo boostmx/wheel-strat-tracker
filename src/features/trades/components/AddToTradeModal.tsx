@@ -98,7 +98,6 @@ export default function AddToTradeModal({
       // Revalidate keys used around the app
       await Promise.allSettled([
         mutate(`/api/trades/${tradeId}`),
-        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
         mutate(`/api/portfolios/${portfolioId}/metrics`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=open`),
       ]);

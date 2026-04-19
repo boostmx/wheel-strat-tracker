@@ -170,7 +170,6 @@ export function CloseTradeModal({
 
       // Revalidate all dependent data (detail metrics + lists)
       await Promise.allSettled([
-        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=open`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`),
         // stocks can change when:
