@@ -1,54 +1,76 @@
 "use client";
-import { Card, CardContent } from "@/components/ui/card";
-import { StocksSection } from "@/features/stocks/components/StocksSection";
+
 import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
 import { OpenTradesTable } from "@/features/trades/components/TradeTables/OpenTradesTable";
-// dynamic import for faster initial render
+import { StocksTable } from "@/features/stocks/components/StocksTable";
+import { AddStockModal } from "@/features/stocks/components/AddStockModal";
 import dynamic from "next/dynamic";
 const ClosedTradesTable = dynamic(
   () =>
     import("@/features/trades/components/TradeTables/ClosedTradesTable").then(
       (m) => m.ClosedTradesTable,
     ),
-  { ssr: false, loading: () => <p>Loading closed trades…</p> },
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>
+    ),
+  },
 );
 
 import { Portfolio } from "@/types";
 import { useTrades } from "@/features/trades/hooks/useTrades";
-import { MetricsCard } from "@/features/portfolios/components/MetricsCard";
-import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
 import { useDetailMetrics } from "@/features/portfolios/hooks/useDetailMetrics";
+import { motion } from "framer-motion";
+import { useState } from "react";
+import { Settings, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
-//Currency formatting utility for Total Profit display
-function formatCompactCurrency(value: number) {
+function dollars(n: number | null | undefined) {
+  if (n == null || Number.isNaN(n)) return "—";
+  return n.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
+
+function compact(n: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     notation: "compact",
-    maximumFractionDigits: 2,
-  }).format(value);
+    maximumFractionDigits: 1,
+  }).format(n);
 }
 
-// Simple in-view hook to lazily mount closed trades
-function useInViewOnce<T extends HTMLElement = HTMLDivElement>() {
-  const ref = useRef<T | null>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    if (!ref.current || inView) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          obs.disconnect();
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [inView]);
-  return { ref, inView };
+type Tab = "stocks" | "open" | "closed";
+
+function SectionHeader({
+  label,
+  count,
+  action,
+}: {
+  label: string;
+  count?: number;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+          {label}
+        </span>
+        {count != null && (
+          <span className="text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full leading-none">
+            {count}
+          </span>
+        )}
+      </div>
+      {action}
+    </div>
+  );
 }
 
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
@@ -60,277 +82,379 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
     portfolio.id,
     "closed",
   );
+  const { data: m } = useDetailMetrics(portfolio.id);
 
-  // NEW: detail metrics from API
-  const { data: metrics } = useDetailMetrics(portfolio.id);
+  const [activeTab, setActiveTab] = useState<Tab>("stocks");
+  const [addStockOpen, setAddStockOpen] = useState(false);
 
-  // Normalize numeric fields (Decimal/string -> number)
   const starting = Number(portfolio.startingCapital ?? 0);
   const addl = Number(portfolio.additionalCapital ?? 0);
+  const base = starting + addl;
 
-  // Total Capital = Current Capital from API (preferred) OR (Capital Base + Total Profit)
-  const totalCapital =
-    metrics?.currentCapital != null
-      ? Number(metrics.currentCapital)
-      : (metrics?.capitalBase != null ? Number(metrics.capitalBase) : starting + addl) +
-        (metrics?.totalProfit != null ? Number(metrics.totalProfit) : 0);
+  const currentCapital =
+    m?.currentCapital != null
+      ? Number(m.currentCapital)
+      : base + Number(m?.totalProfit ?? 0);
 
-  // Defer mounting closed trades until scrolled near
-  const { ref: closedSentinelRef, inView: showClosed } = useInViewOnce();
+  const cashAvailable =
+    m?.cashAvailable != null ? Number(m.cashAvailable) : null;
+  const capitalUsed = m?.capitalUsed != null ? Number(m.capitalUsed) : null;
+  const pctDeployed =
+    m?.percentCapitalDeployed != null
+      ? Number(m.percentCapitalDeployed)
+      : null;
+  const totalProfit = m?.totalProfit != null ? Number(m.totalProfit) : null;
+  const realizedMTD = m?.realizedMTD != null ? Number(m.realizedMTD) : null;
+  const realizedYTD = m?.realizedYTD != null ? Number(m.realizedYTD) : null;
+  const potentialPremium =
+    m?.potentialPremium != null ? Number(m.potentialPremium) : null;
+  const avgPLPercent =
+    m?.avgPLPercent != null ? Number(m.avgPLPercent) : null;
+  const winRate = m?.winRate != null ? Number(m.winRate) : null;
+  const avgDaysInTrade =
+    m?.avgDaysInTrade != null ? Number(m.avgDaysInTrade) : null;
 
-  // Prepare metric items for display (unchanged API shape)
-  const metricItems = [
-    {
-      key: "openPremium",
-      order: 1,
-      label: "Open Premium",
-      value:
-        metrics?.potentialPremium != null
-          ? formatCompactCurrency(metrics.potentialPremium)
-          : "Loading...",
-      className: "text-teal-600",
-    },
-    {
-      key: "avgPL",
-      order: 2,
-      label: "Avg P/L %",
-      value:
-        metrics?.avgPLPercent != null
-          ? `${metrics.avgPLPercent.toFixed(2)}%`
-          : "Loading...",
-      className:
-        metrics?.avgPLPercent != null && metrics.avgPLPercent >= 0
-          ? "text-green-600"
-          : "text-red-600",
-    },
-    {
-      key: "winRate",
-      order: 3,
-      label: "Win Rate",
-      value:
-        metrics?.winRate != null
-          ? `${(metrics.winRate * 100).toFixed(2)}%`
-          : "Loading...",
-      className:
-        metrics?.winRate != null && metrics.winRate > 0.5
-          ? "text-green-600"
-          : "text-red-600",
-    },
-    {
-      key: "avgDays",
-      order: 4,
-      label: "Avg. Days Held",
-      value:
-        metrics?.avgDaysInTrade != null
-          ? `${metrics.avgDaysInTrade.toFixed(0)}`
-          : "Loading...",
-    },
-  ];
+  const profitPos = totalProfit != null && totalProfit >= 0;
+  const cashNeg = cashAvailable != null && cashAvailable < 0;
+  const barColor =
+    pctDeployed == null
+      ? "bg-emerald-500"
+      : pctDeployed >= 85
+        ? "bg-red-500"
+        : pctDeployed >= 60
+          ? "bg-amber-500"
+          : "bg-emerald-500";
+
+  const tabs: { id: Tab; label: string; shortLabel: string; count?: number }[] =
+    [
+      { id: "stocks", label: "Stock Lots", shortLabel: "Stocks" },
+      {
+        id: "open",
+        label: "Open Positions",
+        shortLabel: "Open",
+        count: openTrades.length,
+      },
+      {
+        id: "closed",
+        label: "Closed",
+        shortLabel: "Closed",
+        count: closedTrades.length,
+      },
+    ];
 
   return (
-    <div className="max-w-4xl mx-auto py-16 px-6 space-y-12">
+    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-4">
+
+      {/* ── Header ── */}
       <motion.div
-        className="flex justify-between items-center"
-        initial={{ opacity: 0, y: 6 }}
+        className="flex items-start justify-between gap-3"
+        initial={{ opacity: 0, y: 5 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 }}
+        transition={{ duration: 0.22 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <h1 className="text-3xl font-bold text-foreground">
-          {portfolio.name || "Unnamed Portfolio"}
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground leading-tight">
+            {portfolio.name || "Unnamed Portfolio"}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Base capital {dollars(base)}
+          </p>
+        </div>
+        <Link href={`/portfolios/${portfolio.id}/settings`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 mt-0.5"
+            title="Portfolio settings"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </Link>
       </motion.div>
 
-      {/* Capital & P/L cards */}
+      {/* ── KPI Strip ── */}
       <motion.div
-        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-        initial={{ opacity: 1 }}
-        animate={{ opacity: 1 }}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, delay: 0.05 }}
+        style={{ willChange: "opacity, transform" }}
       >
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, delay: 0.06 }}
-          whileHover={{ y: -2 }}
-          style={{ willChange: "opacity, transform" }}
-        >
-          <Card className="bg-card shadow-sm rounded-lg h-full">
-            <CardContent className="p-6">
-              <p className="text-base font-medium text-muted-foreground">
-                Capital Available
-              </p>
-              <p
-                className={`text-3xl font-bold ${
-                  metrics?.cashAvailable != null && metrics.cashAvailable < 0
-                    ? "text-red-600"
-                    : "text-green-600"
-                }`}
-              >
-                {metrics?.cashAvailable != null
-                  ? formatCompactCurrency(metrics.cashAvailable)
-                  : "Loading..."}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Total Capital: {formatCompactCurrency(totalCapital)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Starting: {formatCompactCurrency(starting)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Used: {metrics?.capitalUsed != null ? formatCompactCurrency(metrics.capitalUsed) : "—"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Profits: {metrics?.totalProfit != null ? formatCompactCurrency(metrics.totalProfit) : "—"}
-              </p>
-              <p
-                className={`text-sm font-medium ${
-                  metrics?.percentCapitalDeployed != null &&
-                  metrics.percentCapitalDeployed >= 85
-                    ? "text-red-600"
-                    : "text-green-600"
-                }`}
-              >
-                {metrics?.percentCapitalDeployed != null
-                  ? `% Used: ${metrics.percentCapitalDeployed.toFixed(2)}%`
-                  : ""}
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            Current Capital
+          </p>
+          <p className="mt-1 text-xl font-bold text-foreground tabular-nums">
+            {dollars(currentCapital)}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {totalProfit != null
+              ? `${profitPos ? "+" : ""}${compact(totalProfit)} profit`
+              : ""}
+          </p>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, delay: 0.1 }}
-          whileHover={{ y: -2 }}
-          style={{ willChange: "opacity, transform" }}
-        >
-          <Card className="bg-card shadow-sm rounded-lg h-full">
-            <CardContent className="p-6">
-              <p className="text-base font-medium text-muted-foreground">
-                P&L Overview
-              </p>
-              <p
-                className={`text-3xl font-bold ${
-                  metrics?.totalProfit != null && metrics.totalProfit >= 0
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                {metrics?.totalProfit != null
-                  ? formatCompactCurrency(metrics.totalProfit)
-                  : "Loading..."}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                MTD:{" "}
-                {metrics?.realizedMTD != null
-                  ? formatCompactCurrency(metrics.realizedMTD)
-                  : "—"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                YTD:{" "}
-                {metrics?.realizedYTD != null
-                  ? formatCompactCurrency(metrics.realizedYTD)
-                  : "—"}
-              </p>
-              {metrics?.realizedPrevMonth != null && (
-                <p className="text-sm text-muted-foreground">
-                  Prev Mo:{" "}
-                  {formatCompactCurrency(metrics.realizedPrevMonth)}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            Cash Available
+          </p>
+          <p
+            className={`mt-1 text-xl font-bold tabular-nums ${
+              cashNeg
+                ? "text-red-500 dark:text-red-400"
+                : "text-emerald-600 dark:text-emerald-400"
+            }`}
+          >
+            {cashAvailable != null ? dollars(cashAvailable) : "—"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {capitalUsed != null ? `${compact(capitalUsed)} in use` : ""}
+          </p>
+        </div>
 
-      {/* Secondary metrics */}
-      <motion.div
-        className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]"
-        initial={{ opacity: 1 }}
-        animate={{ opacity: 1 }}
-      >
-        {[...metricItems]
-          .sort((a, b) => a.order - b.order)
-          .map((m, i) => (
-            <motion.div
-              key={m.key}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, delay: 0.12 + i * 0.04 }}
-              whileHover={{ y: -2 }}
-              style={{ willChange: "opacity, transform" }}
-            >
-              <MetricsCard
-                label={m.label}
-                value={m.value}
-                className={m.className}
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            Deployed
+          </p>
+          <p
+            className={`mt-1 text-xl font-bold tabular-nums ${
+              pctDeployed == null
+                ? "text-foreground"
+                : pctDeployed >= 85
+                  ? "text-red-500"
+                  : pctDeployed >= 60
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-foreground"
+            }`}
+          >
+            {pctDeployed != null ? `${pctDeployed.toFixed(1)}%` : "—"}
+          </p>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
+            {pctDeployed != null && (
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                style={{ width: `${Math.min(pctDeployed, 100)}%` }}
               />
-            </motion.div>
-          ))}
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            Total P&L
+          </p>
+          <p
+            className={`mt-1 text-xl font-bold tabular-nums ${
+              profitPos
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-red-500 dark:text-red-400"
+            }`}
+          >
+            {totalProfit != null
+              ? `${profitPos ? "+" : ""}${compact(totalProfit)}`
+              : "—"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {realizedMTD != null
+              ? `MTD ${realizedMTD >= 0 ? "+" : ""}${compact(realizedMTD)}`
+              : ""}
+          </p>
+        </div>
       </motion.div>
 
-      {/* Stocks section */}
-
-      <StocksSection portfolioId={portfolio.id} />
-
-
-      {/* Open positions */}
+      {/* ── Secondary stats strip ── */}
       <motion.div
-        className="flex justify-between items-center"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.18 }}
-        style={{ willChange: "opacity, transform" }}
+        className="flex flex-wrap gap-x-5 gap-y-1.5 px-1"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.22, delay: 0.08 }}
       >
-        <h2 className="text-xl font-semibold text-foreground">
-          Open Positions
-        </h2>
-        <AddTradeModal portfolioId={portfolio.id} />
-      </motion.div>
-      <motion.div
-        className="w-full rounded-lg bg-card border p-6 text-sm shadow-sm"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.22 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        {loadingOpen ? (
-          <p>Loading open trades...</p>
-        ) : (
-          <OpenTradesTable trades={openTrades} portfolioId={portfolio.id} totalCapital={totalCapital} />
+        {potentialPremium != null && (
+          <span className="text-xs text-muted-foreground">
+            Open Premium{" "}
+            <span className="font-semibold text-teal-600 dark:text-teal-400">
+              {compact(potentialPremium)}
+            </span>
+          </span>
+        )}
+        {avgPLPercent != null && (
+          <span className="text-xs text-muted-foreground">
+            Avg P/L{" "}
+            <span
+              className={`font-semibold ${
+                avgPLPercent >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-500"
+              }`}
+            >
+              {avgPLPercent.toFixed(1)}%
+            </span>
+          </span>
+        )}
+        {winRate != null && (
+          <span className="text-xs text-muted-foreground">
+            Win Rate{" "}
+            <span
+              className={`font-semibold ${
+                winRate >= 0.5
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600"
+              }`}
+            >
+              {(winRate * 100).toFixed(0)}%
+            </span>
+          </span>
+        )}
+        {avgDaysInTrade != null && (
+          <span className="text-xs text-muted-foreground">
+            Avg Days{" "}
+            <span className="font-semibold text-foreground">
+              {avgDaysInTrade.toFixed(0)}
+            </span>
+          </span>
+        )}
+        {realizedYTD != null && (
+          <span className="text-xs text-muted-foreground">
+            YTD{" "}
+            <span
+              className={`font-semibold ${
+                realizedYTD >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-500"
+              }`}
+            >
+              {realizedYTD >= 0 ? "+" : ""}
+              {compact(realizedYTD)}
+            </span>
+          </span>
         )}
       </motion.div>
 
-      {/* Closed positions (lazy mount when near viewport) */}
-      <div ref={closedSentinelRef} />
-      <motion.h2
-        className="text-xl font-semibold mt-10 text-foreground"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.26 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        Closed Positions
-      </motion.h2>
+      {/* ── Tab bar ── */}
       <motion.div
-        className="w-full rounded-lg bg-card border p-6 text-sm shadow-sm"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.3 }}
-        style={{ willChange: "opacity, transform" }}
+        className="flex items-center justify-between border-b border-border"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, delay: 0.1 }}
       >
-        {showClosed ? (
-          loadingClosed ? (
-            <p>Loading closed trades...</p>
-          ) : (
-            <ClosedTradesTable
-              trades={closedTrades}
-              portfolioId={portfolio.id}
+        <div className="flex items-center -mb-px overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.shortLabel}</span>
+              {tab.count != null && tab.count > 0 && (
+                <span
+                  className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 leading-none ${
+                    activeTab === tab.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── Tab content ── */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18 }}
+        className="min-h-[280px]"
+      >
+
+        {/* ── STOCKS tab ── */}
+        {activeTab === "stocks" && (
+          <div className="pt-2">
+            <SectionHeader
+              label="Stock Lots"
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5"
+                  onClick={() => setAddStockOpen(true)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Stock
+                </Button>
+              }
             />
-          )
-        ) : (
-          <p>Scroll to load closed trades…</p>
+            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+              <StocksTable portfolioId={portfolio.id} />
+            </div>
+            <AddStockModal
+              portfolioId={portfolio.id}
+              open={addStockOpen}
+              onOpenChange={setAddStockOpen}
+            />
+          </div>
+        )}
+
+        {/* ── OPEN tab ── */}
+        {activeTab === "open" && (
+          <div className="pt-2">
+            <SectionHeader
+              label="Options"
+              count={openTrades.length}
+              action={<AddTradeModal portfolioId={portfolio.id} />}
+            />
+            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+              {loadingOpen ? (
+                <div className="p-10 text-center text-sm text-muted-foreground">
+                  Loading positions…
+                </div>
+              ) : openTrades.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 p-12 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No open option positions yet.
+                  </p>
+                  <AddTradeModal portfolioId={portfolio.id} />
+                </div>
+              ) : (
+                <OpenTradesTable
+                  trades={openTrades}
+                  portfolioId={portfolio.id}
+                  totalCapital={currentCapital}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── CLOSED tab ── */}
+        {activeTab === "closed" && (
+          <div className="pt-2">
+            <SectionHeader
+              label="Closed Positions"
+              count={closedTrades.length}
+            />
+            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+              {loadingClosed ? (
+                <div className="p-10 text-center text-sm text-muted-foreground">
+                  Loading closed positions…
+                </div>
+              ) : (
+                <ClosedTradesTable
+                  trades={closedTrades}
+                  portfolioId={portfolio.id}
+                />
+              )}
+            </div>
+          </div>
         )}
       </motion.div>
     </div>

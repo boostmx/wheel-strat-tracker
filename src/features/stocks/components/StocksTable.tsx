@@ -2,7 +2,6 @@
 
 import useSWR from "swr";
 import type { StocksListResponse, StockLot } from "@/types";
-import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -37,7 +36,7 @@ export function StocksTable({ portfolioId }: Props) {
   const rows: StockLot[] = data?.stockLots ?? [];
 
   return (
-    <Card className="mt-4 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+    <div className="overflow-hidden">
       <div className="p-4">
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Loading stocks…</div>
@@ -97,6 +96,6 @@ export function StocksTable({ portfolioId }: Props) {
           </div>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
