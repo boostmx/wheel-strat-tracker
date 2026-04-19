@@ -10,8 +10,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const pathname = usePathname();
 
-  const hideHeaderRoutes = ["/", "/login"];
-  const showHeader = session && !hideHeaderRoutes.includes(pathname);
+  const hideChrome = ["/", "/login", "/signup"];
+  const showHeader = session && !hideChrome.includes(pathname);
+  const showFooter = session && !hideChrome.includes(pathname);
 
   return (
     <SWRConfig
@@ -23,7 +24,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       <div className="min-h-[100dvh] flex flex-col">
         {showHeader && <SiteHeader />}
         <main className="flex-1">{children}</main>
-        <SiteFooter />
+        {showFooter && <SiteFooter />}
       </div>
     </SWRConfig>
   );

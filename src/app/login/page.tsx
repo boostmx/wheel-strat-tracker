@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { VersionBadge } from "@/components/layout/VersionBadge";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
@@ -39,24 +38,21 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left decorative panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary flex-col justify-between p-12 text-primary-foreground">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <span className="text-xl font-bold tracking-tight">Trade Tracker</span>
+      <div className="hidden lg:flex lg:w-2/5 bg-primary flex-col justify-between p-10 text-primary-foreground">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
           </div>
-          <p className="text-primary-foreground/70 text-sm">Wheel Strategy Portfolio Manager</p>
+          <span className="text-lg font-bold tracking-tight">The Wheel Trade Tracker</span>
         </div>
 
-        <div className="space-y-6">
-          <blockquote className="text-2xl font-semibold leading-snug">
+        <div className="space-y-5">
+          <blockquote className="text-xl font-semibold leading-snug">
             "Track your premiums,<br />manage your wheel."
           </blockquote>
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {["CSP & Covered Call tracking", "Assignment & expiry workflows", "Portfolio allocation insights"].map((feat) => (
               <div key={feat} className="flex items-center gap-2 text-sm text-primary-foreground/80">
                 <div className="w-4 h-4 rounded-full bg-primary-foreground/30 flex items-center justify-center flex-shrink-0">
@@ -70,7 +66,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-xs text-primary-foreground/50">developed by HL Financial Strategies</p>
+        <div>
+          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-widest">HL Financial Strategies</p>
+          <p className="text-xs text-primary-foreground/40 mt-0.5">Wheel Trade Tracker</p>
+        </div>
       </div>
 
       {/* Right login panel */}
@@ -87,7 +86,7 @@ export default function LoginPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span className="text-xl font-bold tracking-tight text-primary">Trade Tracker</span>
+            <span className="text-xl font-bold tracking-tight text-primary">Wheel Trade Tracker</span>
           </div>
 
           <div className="mb-8">
@@ -125,19 +124,13 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center space-y-2">
+          <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
               <a href="/signup" className="text-primary hover:underline font-medium">
                 Sign up
               </a>
             </p>
-            <div className="text-xs text-muted-foreground">
-              <VersionBadge /> &middot;{" "}
-              <a href="/changelog" className="text-primary hover:underline">
-                changelog
-              </a>
-            </div>
           </div>
         </div>
       </div>
