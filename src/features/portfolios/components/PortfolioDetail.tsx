@@ -136,7 +136,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         transition={{ duration: 0.28 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-3xl font-bold text-foreground">
           {portfolio.name || "Unnamed Portfolio"}
         </h1>
       </motion.div>
@@ -154,13 +154,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           whileHover={{ y: -2 }}
           style={{ willChange: "opacity, transform" }}
         >
-          <Card className="bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm rounded-lg h-full">
+          <Card className="bg-card shadow-sm rounded-lg h-full">
             <CardContent className="p-6">
-              <p className="text-base font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-base font-medium text-muted-foreground">
                 Capital Available
               </p>
               <p
-                className={`text-3xl font-bold dark:text-gray-300 ${
+                className={`text-3xl font-bold ${
                   metrics?.cashAvailable != null && metrics.cashAvailable < 0
                     ? "text-red-600"
                     : "text-green-600"
@@ -170,16 +170,16 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                   ? formatCompactCurrency(metrics.cashAvailable)
                   : "Loading..."}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Total Capital: {formatCompactCurrency(totalCapital)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Starting: {formatCompactCurrency(starting)}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Used: {metrics?.capitalUsed != null ? formatCompactCurrency(metrics.capitalUsed) : "—"}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Profits: {metrics?.totalProfit != null ? formatCompactCurrency(metrics.totalProfit) : "—"}
               </p>
               <p
@@ -205,13 +205,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           whileHover={{ y: -2 }}
           style={{ willChange: "opacity, transform" }}
         >
-          <Card className="bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm rounded-lg h-full">
+          <Card className="bg-card shadow-sm rounded-lg h-full">
             <CardContent className="p-6">
-              <p className="text-base font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-base font-medium text-muted-foreground">
                 P&L Overview
               </p>
               <p
-                className={`text-3xl font-bold dark:text-gray-300 ${
+                className={`text-3xl font-bold ${
                   metrics?.totalProfit != null && metrics.totalProfit >= 0
                     ? "text-green-600"
                     : "text-red-600"
@@ -221,20 +221,20 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                   ? formatCompactCurrency(metrics.totalProfit)
                   : "Loading..."}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 MTD:{" "}
                 {metrics?.realizedMTD != null
                   ? formatCompactCurrency(metrics.realizedMTD)
                   : "—"}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 YTD:{" "}
                 {metrics?.realizedYTD != null
                   ? formatCompactCurrency(metrics.realizedYTD)
                   : "—"}
               </p>
               {metrics?.realizedPrevMonth != null && (
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Prev Mo:{" "}
                   {formatCompactCurrency(metrics.realizedPrevMonth)}
                 </p>
@@ -283,13 +283,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         transition={{ duration: 0.22, delay: 0.18 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           Open Positions
         </h2>
         <AddTradeModal portfolioId={portfolio.id} />
       </motion.div>
       <motion.div
-        className="w-full rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 text-sm shadow-sm"
+        className="w-full rounded-lg bg-card border p-6 text-sm shadow-sm"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, delay: 0.22 }}
@@ -305,7 +305,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
       {/* Closed positions (lazy mount when near viewport) */}
       <div ref={closedSentinelRef} />
       <motion.h2
-        className="text-xl font-semibold mt-10 text-gray-900 dark:text-gray-100"
+        className="text-xl font-semibold mt-10 text-foreground"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, delay: 0.26 }}
@@ -314,7 +314,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         Closed Positions
       </motion.h2>
       <motion.div
-        className="w-full rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 text-sm shadow-sm"
+        className="w-full rounded-lg bg-card border p-6 text-sm shadow-sm"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, delay: 0.3 }}

@@ -87,7 +87,7 @@ export function SiteHeader() {
             height={32}
           />
           <span className="text-lg font-semibold text-foreground">
-            Trade Tracker
+            Wheel Trade Tracker
           </span>
         </Link>
         <nav className="flex items-center gap-6">
@@ -122,7 +122,7 @@ export function SiteHeader() {
             height={28}
           />
           <span className="text-base font-semibold text-foreground">
-            Trade Tracker
+            Wheel Trade Tracker
           </span>
         </Link>
       </div>

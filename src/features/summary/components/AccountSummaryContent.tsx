@@ -97,14 +97,14 @@ function formatLongCurrency(value: number) {
   }).format(value);
 }
 function pctColor(p: number) {
-  if (p > 85) return "text-red-700";
-  if (p >= 60) return "text-amber-700";
-  return "text-green-700";
+  if (p > 85) return "text-destructive";
+  if (p >= 60) return "text-amber-600 dark:text-amber-400";
+  return "text-emerald-700 dark:text-emerald-400";
 }
 function moneyColor(v: number) {
-  if (v > 0) return "text-green-700 dark:text-green-200";
-  if (v < 0) return "text-red-700 dark:text-red-300";
-  return "text-gray-700 dark:text-gray-300";
+  if (v > 0) return "text-emerald-700 dark:text-emerald-400";
+  if (v < 0) return "text-destructive";
+  return "text-muted-foreground";
 }
 
 // Chart components
@@ -152,8 +152,7 @@ function DonutChart({
         cx={cx}
         cy={cy}
         r={rInner}
-        fill="white"
-        className="dark:fill-gray-900"
+        className="fill-card"
       />
     </svg>
   );
@@ -178,14 +177,14 @@ function HorizontalBars({
         return (
           <div key={`${String(d[labelKey])}-${i}`} className="w-full">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-medium text-gray-700 dark:text-gray-300">
+              <span className="font-medium text-foreground">
                 {String(d[labelKey])}
               </span>
-              <span className="tabular-nums text-gray-600 dark:text-gray-400">
+              <span className="tabular-nums text-muted-foreground">
                 {formatCompactCurrency(val)}
               </span>
             </div>
-            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded">
+            <div className="h-2 bg-muted rounded">
               <div
                 className="h-2 rounded"
                 style={{
@@ -475,10 +474,10 @@ export default function AccountSummaryContent() {
   if (hasNoPortfolios) {
     return (
       <div className="max-w-3xl mx-auto py-24 px-6 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-3xl font-bold text-foreground">
           Welcome!
         </h1>
-        <p className="mt-3 text-gray-600 dark:text-gray-400">
+        <p className="mt-3 text-muted-foreground">
           You don&apos;t have any portfolios yet. Create your first portfolio to
           start tracking trades and premiums and see your account summary here.
         </p>
@@ -501,7 +500,7 @@ export default function AccountSummaryContent() {
   }) {
     if (!data || data.length === 0)
       return (
-        <div className="text-xs text-gray-500 dark:text-gray-400">No data</div>
+        <div className="text-xs text-muted-foreground">No data</div>
       );
 
     // Layout
@@ -595,7 +594,7 @@ export default function AccountSummaryContent() {
               y={yScale(t)}
               textAnchor="end"
               dominantBaseline="middle"
-              className="fill-gray-500 dark:fill-gray-400 text-[10px]"
+              className="fill-muted-foreground text-[10px]"
             >
               {formatMoney(t)}
             </text>
@@ -617,7 +616,7 @@ export default function AccountSummaryContent() {
               x={xScale(idx)}
               y={margin.top + innerH + 10}
               textAnchor="middle"
-              className="fill-gray-500 dark:fill-gray-400 text-[10px]"
+              className="fill-muted-foreground text-[10px]"
             >
               {formatX(data[idx].label)}
             </text>
@@ -643,7 +642,7 @@ export default function AccountSummaryContent() {
           stroke="currentColor"
           strokeWidth={2}
           points={linePoints}
-          className="text-blue-600 dark:text-blue-300"
+          className="text-primary"
         />
       </svg>
     );
@@ -659,13 +658,13 @@ export default function AccountSummaryContent() {
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-3xl font-bold text-foreground">
               Account Summary
             </h1>
             <div className="mt-2 flex items-center gap-3">
               <label
                 htmlFor="portfolioFilter"
-                className="text-xs text-gray-600 dark:text-gray-400"
+                className="text-xs text-muted-foreground"
               >
                 View:
               </label>
@@ -696,10 +695,10 @@ export default function AccountSummaryContent() {
       </motion.div>
 
       {/* Section A+B: Overview & Operations */}
-      <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl">
+      <Card className="rounded-xl">
         <CardContent className="p-6">
           <div className="flex items-baseline justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg font-semibold text-foreground">
               Overview & Ops
             </h2>
             <span
@@ -710,25 +709,25 @@ export default function AccountSummaryContent() {
           {/* Key figures row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Current Capital
               </p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">
+              <p className="mt-1 text-3xl font-semibold text-foreground">
                 {formatLongCurrency(view.accountCurrentCapital)}
               </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{`Base ${formatLongCurrency(view.accountBase)} (Start ${formatLongCurrency(view.accountStarting)} · Addl ${formatLongCurrency(view.accountAdditional)})`}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{`Realized ${formatCompactCurrency(view.accountProfit)}`}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{`Base ${formatLongCurrency(view.accountBase)} (Start ${formatLongCurrency(view.accountStarting)} · Addl ${formatLongCurrency(view.accountAdditional)})`}</p>
+              <p className="text-xs text-muted-foreground">{`Realized ${formatCompactCurrency(view.accountProfit)}`}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Capital In Use
               </p>
-              <p className="mt-1 text-3xl font-semibold text-amber-800 dark:text-amber-100">
+              <p className="mt-1 text-3xl font-semibold text-amber-600 dark:text-amber-400">
                 {formatLongCurrency(view.accountCapitalUsed)}
               </p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Cash Available
               </p>
               <p
@@ -742,18 +741,18 @@ export default function AccountSummaryContent() {
           {/* Ops row */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Open Trades
               </p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">
+              <p className="mt-1 text-3xl font-semibold text-foreground">
                 {view.totalOpenTrades}
               </p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Next Expiration
               </p>
-              <p className="mt-1 text-base font-medium text-blue-900 dark:text-blue-200">
+              <p className="mt-1 text-base font-medium text-primary">
                 {view.nextExpiration
                   ? `${formatDateOnlyUTC(view.nextExpiration.date)} · ${view.nextExpiration.contracts} contracts${
                       view.nextExpiration.topTicker
@@ -764,26 +763,26 @@ export default function AccountSummaryContent() {
               </p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Expiring ≤ 7 Days
               </p>
-              <p className="mt-1 text-3xl font-semibold text-rose-800 dark:text-rose-100">
+              <p className="mt-1 text-3xl font-semibold text-rose-600 dark:text-rose-400">
                 {view.totalExpiringSoon}
               </p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Win Rate
               </p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">
+              <p className="mt-1 text-3xl font-semibold text-foreground">
                 {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
               </p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Avg Days in Trade
               </p>
-              <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">
+              <p className="mt-1 text-3xl font-semibold text-foreground">
                 {view.avgDaysInTrade != null ? view.avgDaysInTrade.toFixed(1) : "—"}
               </p>
             </div>
@@ -793,13 +792,13 @@ export default function AccountSummaryContent() {
 
       {/* Section B: Priority Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl">
+        <Card className="rounded-xl">
           <CardContent className="p-6">
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-lg font-semibold text-foreground">
                 Top Exposures
               </h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{`by % collateral (${selectedPortfolio ? "selected" : "all"})`}</span>
+              <span className="text-xs text-muted-foreground">{`by % collateral (${selectedPortfolio ? "selected" : "all"})`}</span>
             </div>
             {chartExposures.length ? (
               <div className="flex flex-col items-center gap-4">
@@ -820,7 +819,7 @@ export default function AccountSummaryContent() {
                         }}
                       />
                       <span className="font-medium">{t.ticker}</span>
-                      <span className="text-gray-500 dark:text-gray-400">
+                      <span className="text-muted-foreground">
                         {t.pct.toFixed(1)}%
                       </span>
                     </li>
@@ -828,20 +827,20 @@ export default function AccountSummaryContent() {
                 </ul>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 No exposures to display
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl">
+        <Card className="rounded-xl">
           <CardContent className="p-6">
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-lg font-semibold text-foreground">
                 Premium by Ticker (realized)
               </h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 Top earners
               </span>
             </div>
@@ -853,7 +852,7 @@ export default function AccountSummaryContent() {
                 }))}
               />
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 No realized premium yet
               </p>
             )}
@@ -862,19 +861,19 @@ export default function AccountSummaryContent() {
       </div>
 
       {/* Section C: Realized P&L */}
-      <Card className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl">
+      <Card className="rounded-xl">
         <CardContent className="p-6">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg font-semibold text-foreground">
               Realized P&L
             </h2>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-muted-foreground">
               Cumulative (select Daily/Weekly/Monthly)
             </span>
           </div>
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm">
-              <span className="text-gray-600 dark:text-gray-400">
+              <span className="text-muted-foreground">
                 Total Realized P&amp;L:&nbsp;
               </span>
               <span
@@ -884,7 +883,7 @@ export default function AccountSummaryContent() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 Timeline
               </span>
               <Select
@@ -918,18 +917,18 @@ export default function AccountSummaryContent() {
         transition={{ duration: 0.24, delay: 0.42 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        <p className="text-sm text-muted-foreground mb-2">
           By portfolio (each chip: Portfolio Name · % Used · Open positions ·
           Expiring ≤7d)
         </p>
-        <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-800 p-2 rounded">
+        <div className="flex flex-wrap gap-2 bg-card p-2 rounded">
           {agg.perPortfolio.map((pp, i) => (
             <motion.span
               key={pp.id}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: 0.02 * i }}
-              className={`text-xs px-2 py-1 rounded border bg-white dark:bg-gray-800 ${pctColor(pp.pctUsed)} dark:text-gray-100`}
+              className={`text-xs px-2 py-1 rounded border bg-card ${pctColor(pp.pctUsed)}`}
               title={`% Used is Capital In Use / Current Capital. Open = open positions. Exp ≤7d = contracts expiring in the next 7 days. (% Used ${pp.pctUsed.toFixed(1)} · Open ${pp.open} · Exp ≤7d ${pp.soon})`}
             >
               {`${pp.name || pp.id.slice(0, 4) + "…"} · ${pp.pctUsed.toFixed(0)}% used · ${pp.open} open · ${pp.soon} ≤7d`}

@@ -65,19 +65,19 @@ export default function PortfoliosOverviewContent() {
         transition={{ duration: 0.28 }}
         style={{ willChange: "opacity, transform" }}
       >
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-3xl font-bold text-foreground">
           Portfolios Overview
         </h1>
         <CreatePortfolioModal />
       </motion.div>
 
       {isLoading ? (
-        <p className="text-gray-500">Loading portfolios...</p>
+        <p className="text-muted-foreground">Loading portfolios...</p>
       ) : error ? (
         <p className="text-red-500">Failed to load portfolios.</p>
       ) : portfolios.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-6 text-center shadow-sm bg-white dark:bg-gray-900">
-          <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
+        <div className="rounded-lg border p-6 text-center shadow-sm bg-card">
+          <p className="text-muted-foreground mb-4 text-sm">
             You have not created any portfolios yet. Create one to get started!
           </p>
         </div>
