@@ -37,65 +37,63 @@ export function StocksTable({ portfolioId }: Props) {
 
   return (
     <div className="overflow-hidden">
-      <div className="p-4">
-        {isLoading ? (
-          <div className="text-sm text-muted-foreground">Loading stocks…</div>
-        ) : error ? (
-          <div className="text-sm text-destructive">Failed to load stocks.</div>
-        ) : rows.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            No stock positions yet. Add one to start tracking assigned shares.
-          </div>
-        ) : (
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-muted-foreground">
-                <tr className="border-b border-border/60">
-                  <th className="py-3 px-3 text-left font-medium">Ticker</th>
-                  <th className="py-3 px-3 text-left font-medium">Shares</th>
-                  <th className="py-3 px-3 text-left font-medium">Avg Cost</th>
-                  <th className="py-3 px-3 text-left font-medium">Cost Basis</th>
-                  <th className="py-3 px-3 text-left font-medium">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const avg = toNumber(r.avgCost);
-                  const basis = avg * r.shares;
+      {isLoading ? (
+        <div className="px-4 py-4 text-sm text-muted-foreground">Loading stocks…</div>
+      ) : error ? (
+        <div className="px-4 py-4 text-sm text-destructive">Failed to load stocks.</div>
+      ) : rows.length === 0 ? (
+        <div className="px-4 py-4 text-sm text-muted-foreground">
+          No stock positions yet. Add one to start tracking assigned shares.
+        </div>
+      ) : (
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-full text-sm text-left text-gray-700 dark:text-gray-100">
+            <thead className="bg-gray-100 dark:bg-gray-800">
+              <tr>
+                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Ticker</th>
+                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Shares</th>
+                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Avg Cost</th>
+                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Cost Basis</th>
+                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const avg = toNumber(r.avgCost);
+                const basis = avg * r.shares;
 
-                  return (
-                    <tr
-                      key={r.id}
-                      className="border-b border-border/40 hover:bg-muted/30 cursor-pointer"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => router.push(`/portfolios/${portfolioId}/stocks/${r.id}`)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          router.push(`/portfolios/${portfolioId}/stocks/${r.id}`);
-                        }
-                      }}
-                    >
-                      <td className="py-3 px-3 font-medium tracking-wide">{r.ticker}</td>
-                      <td className="py-3 px-3">{r.shares}</td>
-                      <td className="py-3 px-3">{formatCurrency(avg)}</td>
-                      <td className="py-3 px-3">{formatCurrency(basis)}</td>
-                      <td className="py-3 px-3 text-muted-foreground">
-                        {r.notes ? (
-                          <span className="line-clamp-1">{r.notes}</span>
-                        ) : (
-                          <span className="italic">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                return (
+                  <tr
+                    key={r.id}
+                    className="group border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
+                    onClick={() => router.push(`/portfolios/${portfolioId}/stocks/${r.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/portfolios/${portfolioId}/stocks/${r.id}`);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <td className="px-4 py-2 font-semibold tracking-wide">{r.ticker}</td>
+                    <td className="px-4 py-2">{r.shares}</td>
+                    <td className="px-4 py-2">{formatCurrency(avg)}</td>
+                    <td className="px-4 py-2">{formatCurrency(basis)}</td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {r.notes ? (
+                        <span className="line-clamp-1">{r.notes}</span>
+                      ) : (
+                        <span>—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
