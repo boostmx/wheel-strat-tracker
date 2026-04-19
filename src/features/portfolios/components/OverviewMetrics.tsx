@@ -77,7 +77,7 @@ function Metric({
       : tone === "danger"
         ? "text-red-700 dark:text-red-400"
         : tone === "info"
-          ? "text-blue-700 dark:text-blue-300"
+          ? "text-primary"
           : tone === "success"
             ? "text-green-700 dark:text-green-300"
             : "text-foreground";

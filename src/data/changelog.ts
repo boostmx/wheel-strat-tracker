@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-18",
+    version: "v2.1.0",
+    highlights: [
+      "Full visual overhaul — the app has a fresh new look with an Emerald and Amber color palette that feels modern without being overly finance-y.",
+      "Light mode is cleaner and crisper with better contrast between surfaces. Amber is now used as a genuine accent rather than a washed-out tint.",
+      "Dark mode has been completely reworked. Gone is the murky charcoal — it's now a crisp cool slate that makes the emerald primary really pop.",
+      "Login page redesigned with a split-panel layout — branding and feature highlights on the left, clean sign-in form on the right.",
+    ],
+  },
+  {
+    date: "2026-04-18",
     version: "v1.2.0",
     highlights: [
       "Open trades now show an Allocation column so you can see at a glance how much of your total portfolio each position is tying up.",
