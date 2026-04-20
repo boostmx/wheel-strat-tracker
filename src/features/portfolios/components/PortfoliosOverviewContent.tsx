@@ -337,6 +337,13 @@ export default function PortfoliosOverviewContent() {
         <CreatePortfolioModal />
       </motion.div>
 
+      <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+        <span className="font-medium uppercase tracking-wide">Card border</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 flex-shrink-0" />Profitable &amp; healthy</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 flex-shrink-0" />Expiring soon or cash low</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 flex-shrink-0" />Heavily deployed or underwater</span>
+      </div>
+
       {error ? (
         <p className="text-red-500 text-sm">Failed to load portfolios.</p>
       ) : isLoading ? (
