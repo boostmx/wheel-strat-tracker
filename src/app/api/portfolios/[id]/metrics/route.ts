@@ -135,6 +135,17 @@ export async function GET(
         .sort((a, b) => b.locked - a.locked)[0] ?? null;
 
     const nowMs = Date.now();
+    const sevenDaysMs = nowMs + 7 * DAY_MS;
+    const thirtyDaysMs = nowMs + 30 * DAY_MS;
+
+    const expiringInSevenDays = openTrades.filter(
+      (t) => t.expirationDate && t.expirationDate.getTime() > nowMs && t.expirationDate.getTime() <= sevenDaysMs,
+    ).length;
+
+    const expiringInThirtyDays = openTrades.filter(
+      (t) => t.expirationDate && t.expirationDate.getTime() > nowMs && t.expirationDate.getTime() <= thirtyDaysMs,
+    ).length;
+
     const nextExpirations = openTrades
       .filter((t) => t.expirationDate && t.expirationDate.getTime() > nowMs)
       .sort((a, b) => a.expirationDate!.getTime() - b.expirationDate!.getTime())
@@ -223,6 +234,8 @@ export async function GET(
       openTradesCount,
       biggestPosition,
       nextExpirations,
+      expiringInSevenDays,
+      expiringInThirtyDays,
     });
   } catch (err) {
     console.error("GET /api/portfolios/[id]/metrics error", err);

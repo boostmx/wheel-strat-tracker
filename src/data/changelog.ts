@@ -7,6 +7,18 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-19",
+    version: "v2.3.0",
+    highlights: [
+      "Portfolio cards now have a colored left border that gives you an instant health read — green for profitable and healthy, amber when trades are expiring soon or cash is tight, and red when you're heavily deployed or underwater.",
+      "Reports page overhauled with richer insights: win rate with W/L breakdown, best and worst trade, average hold time, and a close reason summary (Expired Worthless, Assigned, Manual) all in a compact layout above the trade table.",
+      "Portfolio cards show MTD P&L, YTD P&L, and average hold days. The deployment bar now displays free cash inline so you can see buying power without clicking in.",
+      "Trades expiring within 7 days now surface a prominent amber alert on the portfolio card.",
+      "Report table cleaned up with better row spacing, uppercase column headers, and long notes now truncate gracefully with the full text on hover.",
+      "Version number on the login page now reads from the changelog automatically.",
+    ],
+  },
+  {
+    date: "2026-04-19",
     version: "v2.2.0",
     highlights: [
       "Portfolio detail page fully redesigned — KPI strip (current capital, cash available, deployed %, total P&L), secondary stats (open premium, avg P&L %, win rate, avg days, YTD), and a clean tabbed workspace for Stock Lots, Open Positions, and Closed.",
