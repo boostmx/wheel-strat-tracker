@@ -60,6 +60,13 @@ const toIsoDayUTC = (d: Date) => {
 const toIsoMonthUTC = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; // YYYY-MM
 
+const toIsoWeekMondayUTC = (d: Date) => {
+  const dt = ensureUtcMidnight(d);
+  const day = dt.getUTCDay();
+  const monday = new Date(dt.getTime() - (day === 0 ? 6 : day - 1) * DAY_MS);
+  return toIsoDayUTC(monday); // YYYY-MM-DD of the Monday
+};
+
 // UTC-safe day math (avoid TZ off-by-one)
 const ensureUtcMidnight = (d: Date | string) => {
   const dt = new Date(d);
@@ -157,6 +164,9 @@ export async function GET() {
   const globalMtdDaily = new Map<string, number>(); // YYYY-MM-DD -> sum of realized
   const globalYtdMonthly = new Map<string, number>(); // YYYY-MM -> sum of realized
   const globalDaily90 = new Map<string, number>(); // last 90 days, YYYY-MM-DD -> realized
+  const globalWeekly52 = new Map<string, number>(); // Monday YYYY-MM-DD -> realized (last 52w)
+  const globalMonthlyAll = new Map<string, number>(); // YYYY-MM -> realized (all time)
+  const globalYearly = new Map<string, number>(); // YYYY -> realized (all time)
 
   // Collector for a true global next-expiration across all portfolios
   const allOpenForNext: Array<{
@@ -173,6 +183,7 @@ export async function GET() {
           prisma.trade.findMany({
             where: { portfolioId: p.id, status: "open" },
             select: {
+              id: true,
               ticker: true,
               type: true,
               strikePrice: true,
@@ -484,6 +495,97 @@ export async function GET() {
         globalYtdMonthly.set(mon, (globalYtdMonthly.get(mon) ?? 0) + val);
       }
 
+      // Build weekly-52, monthly-all-time, and yearly buckets from closedAll (no extra DB query)
+      const fiftyTwoWeeksAgo = new Date(ensureUtcMidnight(now).getTime() - 364 * DAY_MS);
+      const weekly52Bucket = new Map<string, number>();
+      const monthlyAllBucket = new Map<string, number>();
+      const yearlyBucket = new Map<string, number>();
+      for (const r of closedAll) {
+        if (!r.closedAt) continue;
+        const d = new Date(r.closedAt);
+        const val = realizedFor({
+          type: r.type,
+          contracts: Number(r.contracts),
+          contractPrice: Number(r.contractPrice),
+          closingPrice: r.closingPrice == null ? null : Number(r.closingPrice),
+          premiumCaptured: r.premiumCaptured == null ? null : Number(r.premiumCaptured),
+        });
+        if (d >= fiftyTwoWeeksAgo) {
+          const wKey = toIsoWeekMondayUTC(d);
+          weekly52Bucket.set(wKey, (weekly52Bucket.get(wKey) ?? 0) + val);
+        }
+        const mKey = toIsoMonthUTC(d);
+        monthlyAllBucket.set(mKey, (monthlyAllBucket.get(mKey) ?? 0) + val);
+        const yKey = String(d.getUTCFullYear());
+        yearlyBucket.set(yKey, (yearlyBucket.get(yKey) ?? 0) + val);
+      }
+      for (const [k, v] of weekly52Bucket) globalWeekly52.set(k, (globalWeekly52.get(k) ?? 0) + v);
+      for (const [k, v] of monthlyAllBucket) globalMonthlyAll.set(k, (globalMonthlyAll.get(k) ?? 0) + v);
+      for (const [k, v] of yearlyBucket) globalYearly.set(k, (globalYearly.get(k) ?? 0) + v);
+
+      // Per-portfolio: weekly-52 cumulative series
+      const weekly52Series = (() => {
+        const series: { label: string; realized: number }[] = [];
+        const todayMidnight = ensureUtcMidnight(now);
+        const todayDay = todayMidnight.getUTCDay();
+        const thisMonday = new Date(todayMidnight.getTime() - (todayDay === 0 ? 6 : todayDay - 1) * DAY_MS);
+        const startMonday = new Date(thisMonday.getTime() - 51 * 7 * DAY_MS);
+        let run = 0;
+        for (let d = new Date(startMonday); d.getTime() <= thisMonday.getTime(); d = new Date(d.getTime() + 7 * DAY_MS)) {
+          const key = toIsoDayUTC(d);
+          run += weekly52Bucket.get(key) ?? 0;
+          series.push({ label: key, realized: run });
+        }
+        return series;
+      })();
+
+      // Per-portfolio: last-12-months cumulative series
+      const monthly12Series = (() => {
+        const series: { label: string; realized: number }[] = [];
+        const endYear = now.getUTCFullYear();
+        const endMonth = now.getUTCMonth();
+        let run = 0;
+        for (let d = new Date(Date.UTC(endYear, endMonth - 11, 1)); ; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) {
+          const key = toIsoMonthUTC(d);
+          run += monthlyAllBucket.get(key) ?? 0;
+          series.push({ label: key, realized: run });
+          if (d.getUTCFullYear() === endYear && d.getUTCMonth() === endMonth) break;
+        }
+        return series;
+      })();
+
+      // Per-portfolio: all-time monthly cumulative series
+      const monthlyAllSeries = (() => {
+        if (monthlyAllBucket.size === 0) return [];
+        const keys = Array.from(monthlyAllBucket.keys()).sort();
+        const [fy, fm] = keys[0].split("-").map(Number);
+        const endYear = now.getUTCFullYear();
+        const endMonth = now.getUTCMonth();
+        const series: { label: string; realized: number }[] = [];
+        let run = 0;
+        for (let d = new Date(Date.UTC(fy, fm - 1, 1)); ; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) {
+          const key = toIsoMonthUTC(d);
+          run += monthlyAllBucket.get(key) ?? 0;
+          series.push({ label: key, realized: run });
+          if (d.getUTCFullYear() === endYear && d.getUTCMonth() === endMonth) break;
+        }
+        return series;
+      })();
+
+      // Per-portfolio: yearly cumulative series
+      const yearlySeries = (() => {
+        if (yearlyBucket.size === 0) return [];
+        const years = Array.from(yearlyBucket.keys()).map(Number).sort();
+        const currentYear = now.getUTCFullYear();
+        const series: { label: string; realized: number }[] = [];
+        let run = 0;
+        for (let y = years[0]; y <= currentYear; y++) {
+          run += yearlyBucket.get(String(y)) ?? 0;
+          series.push({ label: String(y), realized: run });
+        }
+        return series;
+      })();
+
       // Convert per-portfolio buckets to ordered cumulative series
       const mtdSeries = (() => {
         const series: { label: string; realized: number }[] = [];
@@ -579,12 +681,36 @@ export async function GET() {
           pnlSeriesMTD: mtdSeries,
           pnlSeriesYTD: ytdSeries,
           pnlSeriesDaily90: daily90Series,
+          pnlSeriesWeekly52: weekly52Series,
+          pnlSeriesMonthly12: monthly12Series,
+          pnlSeriesMonthlyAll: monthlyAllSeries,
+          pnlSeriesYearly: yearlySeries,
+          openTradesList: openTrades.map((t) => ({
+            id: t.id,
+            ticker: t.ticker,
+            type: t.type as string,
+            strikePrice: Number(t.strikePrice),
+            contractsOpen: Number(t.contractsOpen ?? 0),
+            expirationDate: new Date(t.expirationDate).toISOString().slice(0, 10),
+            contractPrice: Number(t.contractPrice),
+            collateral: collateralFor(t.strikePrice, t.contractsOpen),
+            portfolioId: p.id,
+            portfolioName: p.name,
+          })),
         },
       ] as const;
     }),
   );
 
   const perPortfolio = Object.fromEntries(perPortfolioEntries);
+
+  // Global open trades list (all portfolios, sorted by expiry then collateral)
+  const openTrades = Object.values(perPortfolio)
+    .flatMap((p) => p.openTradesList)
+    .sort((a, b) => {
+      const dateDiff = a.expirationDate.localeCompare(b.expirationDate);
+      return dateDiff !== 0 ? dateDiff : b.collateral - a.collateral;
+    });
 
   // Global premium-by-ticker recomputed from per-portfolio arrays (idempotent per request)
   const globalPremiumMap = new Map<string, number>();
@@ -665,6 +791,69 @@ export async function GET() {
       cursor = new Date(
         Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
       );
+    }
+    return series;
+  })();
+
+  // Global weekly-52 cumulative series
+  const globalWeekly52Series: { label: string; realized: number }[] = (() => {
+    const todayMidnight = ensureUtcMidnight(now);
+    const todayDay = todayMidnight.getUTCDay();
+    const thisMonday = new Date(todayMidnight.getTime() - (todayDay === 0 ? 6 : todayDay - 1) * DAY_MS);
+    const startMonday = new Date(thisMonday.getTime() - 51 * 7 * DAY_MS);
+    const series: { label: string; realized: number }[] = [];
+    let run = 0;
+    for (let d = new Date(startMonday); d.getTime() <= thisMonday.getTime(); d = new Date(d.getTime() + 7 * DAY_MS)) {
+      const key = toIsoDayUTC(d);
+      run += globalWeekly52.get(key) ?? 0;
+      series.push({ label: key, realized: run });
+    }
+    return series;
+  })();
+
+  // Global last-12-months cumulative series
+  const globalMonthly12Series: { label: string; realized: number }[] = (() => {
+    const endYear = now.getUTCFullYear();
+    const endMonth = now.getUTCMonth();
+    const series: { label: string; realized: number }[] = [];
+    let run = 0;
+    for (let d = new Date(Date.UTC(endYear, endMonth - 11, 1)); ; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) {
+      const key = toIsoMonthUTC(d);
+      run += globalMonthlyAll.get(key) ?? 0;
+      series.push({ label: key, realized: run });
+      if (d.getUTCFullYear() === endYear && d.getUTCMonth() === endMonth) break;
+    }
+    return series;
+  })();
+
+  // Global all-time monthly cumulative series
+  const globalMonthlyAllSeries: { label: string; realized: number }[] = (() => {
+    if (globalMonthlyAll.size === 0) return [];
+    const keys = Array.from(globalMonthlyAll.keys()).sort();
+    const [fy, fm] = keys[0].split("-").map(Number);
+    const endYear = now.getUTCFullYear();
+    const endMonth = now.getUTCMonth();
+    const series: { label: string; realized: number }[] = [];
+    let run = 0;
+    for (let d = new Date(Date.UTC(fy, fm - 1, 1)); ; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) {
+      const key = toIsoMonthUTC(d);
+      run += globalMonthlyAll.get(key) ?? 0;
+      series.push({ label: key, realized: run });
+      if (d.getUTCFullYear() === endYear && d.getUTCMonth() === endMonth) break;
+    }
+    return series;
+  })();
+
+  // Global yearly cumulative series
+  const globalYearlySeries: { label: string; realized: number }[] = (() => {
+    if (globalYearly.size === 0) return [];
+    const years = Array.from(globalYearly.keys()).map(Number).sort();
+    const currentYear = now.getUTCFullYear();
+    const series: { label: string; realized: number }[] = [];
+    let run = 0;
+    for (let y = years[0]; y <= currentYear; y++) {
+      run += globalYearly.get(String(y)) ?? 0;
+      series.push({ label: String(y), realized: run });
     }
     return series;
   })();
@@ -775,5 +964,10 @@ export async function GET() {
     pnlSeriesMTD: mtdSeries,
     pnlSeriesYTD: ytdSeries,
     pnlSeriesDaily90: daily90Series,
+    pnlSeriesWeekly52: globalWeekly52Series,
+    pnlSeriesMonthly12: globalMonthly12Series,
+    pnlSeriesMonthlyAll: globalMonthlyAllSeries,
+    pnlSeriesYearly: globalYearlySeries,
+    openTrades,
   });
 }
