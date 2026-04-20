@@ -112,6 +112,15 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
           ? "bg-amber-500"
           : "bg-green-500";
 
+  const accentColor =
+    expiringInSevenDays > 0 || (cashAvailable != null && cashAvailable < 0)
+      ? "border-l-amber-400"
+      : highlyDeployed
+        ? "border-l-red-400"
+        : profitPositive
+          ? "border-l-green-500"
+          : "border-l-red-400";
+
   return (
     <motion.li
       key={portfolio.id}
@@ -121,7 +130,7 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
       whileHover={{ y: -2 }}
       style={{ willChange: "opacity, transform" }}
     >
-      <Card className="relative hover:shadow-lg transition-shadow duration-200 overflow-hidden">
+      <Card className={`relative hover:shadow-lg transition-shadow duration-200 overflow-hidden border-l-4 ${isLoading ? "border-l-muted" : accentColor}`}>
         {/* Settings button */}
         <Link
           href={`/portfolios/${portfolio.id}/settings`}
@@ -138,10 +147,10 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
         <Link href={`/portfolios/${portfolio.id}`}>
           <CardContent className="p-6 cursor-pointer">
 
-            {/* ── Header: name + current capital + P&L ── */}
+            {/* ── Header: name + capital + P&L ── */}
             <div className="flex items-start justify-between gap-4 pr-8">
               <div className="min-w-0">
-                <h2 className="text-lg font-semibold text-green-600 truncate">
+                <h2 className="text-lg font-semibold text-foreground truncate">
                   {portfolio.name || "Unnamed Portfolio"}
                 </h2>
                 {currentCapital != null ? (
@@ -161,61 +170,62 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
 
               {/* P&L badge */}
               {totalProfit != null && (
-                <div
-                  className={`flex-shrink-0 flex flex-col items-end gap-0.5 rounded-lg px-3 py-2 ${
-                    profitPositive
-                      ? "bg-green-50 dark:bg-green-950/40"
-                      : "bg-red-50 dark:bg-red-950/40"
-                  }`}
-                >
+                <div className={`flex-shrink-0 flex flex-col items-end gap-1 rounded-lg px-3 py-2 ${
+                  profitPositive ? "bg-green-50 dark:bg-green-950/40" : "bg-red-50 dark:bg-red-950/40"
+                }`}>
                   <div className="flex items-center gap-1">
-                    {profitPositive ? (
-                      <TrendingUp className="h-3.5 w-3.5 text-green-600" />
-                    ) : (
-                      <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-                    )}
+                    {profitPositive
+                      ? <TrendingUp className="h-3.5 w-3.5 text-green-600" />
+                      : <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
                     <span className="text-[11px] text-muted-foreground font-medium">Total P&L</span>
                   </div>
-                  <span
-                    className={`text-base font-bold tabular-nums ${
-                      profitPositive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
-                    }`}
-                  >
-                    {profitPositive ? "+" : ""}
-                    {compact(totalProfit)}
+                  <span className={`text-base font-bold tabular-nums ${
+                    profitPositive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
+                  }`}>
+                    {profitPositive ? "+" : ""}{compact(totalProfit)}
                   </span>
-                  {realizedMTD != null && (
-                    <span
-                      className={`text-[10px] ${
-                        mtdPositive ? "text-green-500 dark:text-green-500" : "text-red-400"
-                      }`}
-                    >
-                      MTD {mtdPositive ? "+" : ""}{compact(realizedMTD)}
-                    </span>
-                  )}
-                  {realizedYTD != null && (
-                    <span
-                      className={`text-[10px] ${
-                        realizedYTD >= 0 ? "text-green-400 dark:text-green-600" : "text-red-300 dark:text-red-600"
-                      }`}
-                    >
-                      YTD {realizedYTD >= 0 ? "+" : ""}{compact(realizedYTD)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 text-[11px]">
+                    {realizedMTD != null && (
+                      <span className={mtdPositive ? "text-green-600 dark:text-green-400" : "text-red-500"}>
+                        MTD {mtdPositive ? "+" : ""}{compact(realizedMTD)}
+                      </span>
+                    )}
+                    {realizedYTD != null && realizedMTD != null && <span className="opacity-30">·</span>}
+                    {realizedYTD != null && (
+                      <span className={realizedYTD >= 0 ? "text-muted-foreground" : "text-red-400"}>
+                        YTD {realizedYTD >= 0 ? "+" : ""}{compact(realizedYTD)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* ── Urgency alert ── */}
+            {!isLoading && expiringInSevenDays > 0 && (
+              <div className="mt-4 flex items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  {expiringInSevenDays} trade{expiringInSevenDays !== 1 ? "s" : ""} expiring within 7 days — review needed
+                </span>
+              </div>
+            )}
+
             {/* ── Capital deployment bar ── */}
             {pctDeployed != null && (
               <div className="mt-4">
-                <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
                   <span>Capital Deployed</span>
-                  <span className={`font-medium ${highlyDeployed ? "text-red-500" : "text-foreground"}`}>
+                  <span className={`font-semibold ${highlyDeployed ? "text-red-500" : cashNegative ? "text-amber-500" : "text-foreground"}`}>
                     {pctDeployed.toFixed(1)}%
+                    {cashAvailable != null && (
+                      <span className="ml-1.5 font-normal text-muted-foreground">
+                        · {dollars(cashAvailable)} free
+                      </span>
+                    )}
                   </span>
                 </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                     style={{ width: `${Math.min(pctDeployed, 100)}%` }}
@@ -224,27 +234,12 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
               </div>
             )}
 
-            {/* ── urgency strip ── */}
-            {!isLoading && expiringInSevenDays > 0 && (
-              <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                  {expiringInSevenDays} trade{expiringInSevenDays !== 1 ? "s" : ""} expiring within 7 days
-                </span>
-              </div>
-            )}
-
-            {/* ── 4-stat grid ── */}
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* ── Primary stat chips ── */}
+            <div className="mt-4 grid grid-cols-3 gap-2">
               <StatChip
-                label="Cash Available"
-                value={cashAvailable != null ? dollars(cashAvailable) : "—"}
-                tone={isLoading ? "default" : cashNegative ? "danger" : "success"}
-                isLoading={isLoading}
-              />
-              <StatChip
-                label="Open Trades"
-                value={openTradesCount ?? "—"}
+                label="MTD P&L"
+                value={realizedMTD != null ? compact(realizedMTD) : "—"}
+                tone={isLoading ? "default" : mtdPositive ? "success" : "danger"}
                 isLoading={isLoading}
               />
               <StatChip
@@ -254,38 +249,37 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
                 isLoading={isLoading}
               />
               <StatChip
-                label="Avg Hold"
-                value={avgDaysInTrade != null ? `${avgDaysInTrade.toFixed(1)}d` : "—"}
+                label="Open Trades"
+                value={openTradesCount ?? "—"}
                 isLoading={isLoading}
               />
             </div>
 
-            {/* ── Next expiration row ── */}
-            {nextExp && (() => {
-              const expMs = new Date(nextExp.expirationDate).getTime();
-              const daysLeft = Math.ceil((expMs - Date.now()) / 86400000);
-              const urgent = daysLeft <= 7;
-              return (
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className={`h-3 w-3 flex-shrink-0 ${urgent ? "text-amber-500" : ""}`} />
-                  <span>Next exp:</span>
-                  <span className="font-medium text-foreground">{nextExp.ticker}</span>
-                  {nextExp.strikePrice != null && (
-                    <span className="text-muted-foreground">${nextExp.strikePrice}</span>
-                  )}
-                  <span className="opacity-50">•</span>
-                  <span>{new Date(nextExp.expirationDate).toLocaleDateString()}</span>
-                  <span className="opacity-50">•</span>
-                  <span className={`font-medium ${urgent ? "text-amber-500" : "text-foreground"}`}>
-                    {daysLeft <= 0 ? "today" : `${daysLeft}d`}
-                  </span>
-                  <span className="opacity-50">•</span>
-                  <span>
-                    {nextExp.contracts} contract{nextExp.contracts !== 1 ? "s" : ""}
-                  </span>
-                </div>
-              );
-            })()}
+            {/* ── Secondary info row ── */}
+            {!isLoading && (
+              <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                {avgDaysInTrade != null && (
+                  <span>Avg hold <span className="font-medium text-foreground">{avgDaysInTrade.toFixed(1)}d</span></span>
+                )}
+                {realizedYTD != null && (
+                  <span>YTD <span className={`font-medium ${realizedYTD >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>{realizedYTD >= 0 ? "+" : ""}{compact(realizedYTD)}</span></span>
+                )}
+                {nextExp && (() => {
+                  const daysLeft = Math.ceil((new Date(nextExp.expirationDate).getTime() - Date.now()) / 86400000);
+                  const urgent = daysLeft <= 7;
+                  return (
+                    <span className="flex items-center gap-1">
+                      <Clock className={`h-3 w-3 ${urgent ? "text-amber-500" : ""}`} />
+                      Next exp: <span className="font-medium text-foreground">{nextExp.ticker}</span>
+                      {nextExp.strikePrice != null && <span>${nextExp.strikePrice}</span>}
+                      <span className={`font-medium ${urgent ? "text-amber-500" : "text-foreground"}`}>
+                        in {daysLeft <= 0 ? "today" : `${daysLeft}d`}
+                      </span>
+                    </span>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* ── Latest note ── */}
             {portfolio.notes &&
@@ -297,14 +291,9 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
                   <div className="mt-3 pt-3 border-t border-border/50">
                     <div className="flex items-baseline gap-2 mb-0.5">
                       <span className="text-[11px] text-muted-foreground">Latest note</span>
-                      {timestamp && (
-                        <span className="text-[11px] text-muted-foreground">{timestamp}</span>
-                      )}
+                      {timestamp && <span className="text-[11px] text-muted-foreground">{timestamp}</span>}
                     </div>
-                    <p
-                      className="text-xs leading-relaxed text-muted-foreground line-clamp-2"
-                      title={body}
-                    >
+                    <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2" title={body}>
                       {body || latestRaw}
                     </p>
                   </div>
