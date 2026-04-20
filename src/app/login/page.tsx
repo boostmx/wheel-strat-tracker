@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { VersionBadge } from "@/components/layout/VersionBadge";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -132,6 +133,8 @@ export default function LoginPage() {
               </a>
             </p>
           </div>
+
+          <p className="mt-8 text-center text-[11px] text-muted-foreground/40"><VersionBadge /></p>
         </div>
       </div>
     </div>

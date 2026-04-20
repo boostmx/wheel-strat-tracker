@@ -470,38 +470,112 @@ function calcPercentPLPosition(r: ReportRow): number {
 
 function Stats({ rows }: { rows: ReportRow[] }) {
   const totalOverallPL = rows.reduce((s, r) => s + calcTotalPL(r), 0);
+  const wins = rows.filter((r) => calcTotalPL(r) > 0);
+  const losses = rows.filter((r) => calcTotalPL(r) < 0);
+  const winRate = rows.length > 0 ? wins.length / rows.length : null;
+
   const avgPct = rows.length
     ? rows.reduce((s, r) => s + calcPercentPLPosition(r), 0) / rows.length
     : 0;
-  const stockLotsCount = rows.filter((r) => r.type === "STOCK_LOT").length;
+
+  const plValues = rows.map((r) => calcTotalPL(r));
+  const bestTrade = plValues.length > 0 ? Math.max(...plValues) : null;
+  const worstTrade = plValues.length > 0 ? Math.min(...plValues) : null;
+
+  const holdDays = rows
+    .map((r) => {
+      if (typeof r.holdingDays === "number" && Number.isFinite(r.holdingDays)) return r.holdingDays;
+      if (r.closedAt && r.createdAt) {
+        const d = (new Date(r.closedAt).getTime() - new Date(r.createdAt).getTime()) / 86400000;
+        return Number.isFinite(d) && d >= 0 ? d : null;
+      }
+      return null;
+    })
+    .filter((d): d is number => d !== null);
+  const avgHoldDays = holdDays.length > 0 ? holdDays.reduce((s, d) => s + d, 0) / holdDays.length : null;
+
+  const reasonCounts = rows.reduce<Record<string, { count: number; pl: number }>>((acc, r) => {
+    const reason = (r as ReportRow & { closeReason?: string }).closeReason ?? "manual";
+    if (!acc[reason]) acc[reason] = { count: 0, pl: 0 };
+    acc[reason].count += 1;
+    acc[reason].pl += calcTotalPL(r);
+    return acc;
+  }, {});
+
+  const reasonLabels: Record<string, string> = {
+    expiredWorthless: "Expired Worthless",
+    assigned: "Assigned",
+    manual: "Manual Close",
+  };
+
+  const fmtUSDStat = (n: number) =>
+    n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <Stat label="Closed Items" value={rows.length.toString()} />
-      <Stat
-        label="Total P/L"
-        value={totalOverallPL.toLocaleString(undefined, {
-          style: "currency",
-          currency: "USD",
-        })}
-      />
-      <Stat
-        label="% P/L (avg)"
-        value={`${(avgPct * 100).toLocaleString(undefined, {
-          minimumFractionDigits: 1,
-          maximumFractionDigits: 1,
-        })}%`}
-      />
-      <Stat label="Stock Lots Included" value={stockLotsCount.toString()} />
+    <div className="space-y-3">
+      {/* 3 primary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Stat
+          label="Total P/L"
+          value={fmtUSDStat(totalOverallPL)}
+          tone={totalOverallPL >= 0 ? "success" : "danger"}
+        />
+        <Stat
+          label="Win Rate"
+          value={winRate !== null ? `${(winRate * 100).toFixed(0)}%` : "—"}
+          sub={winRate !== null ? `${wins.length}W · ${losses.length}L · ${rows.length} trades` : undefined}
+          tone={winRate !== null ? (winRate >= 0.5 ? "success" : "warning") : "default"}
+        />
+        <Stat
+          label="Avg % P/L"
+          value={`${(avgPct * 100).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
+          tone={avgPct >= 0 ? "success" : "danger"}
+        />
+      </div>
+
+      {/* Secondary metrics — compact inline row */}
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-1 text-xs text-muted-foreground">
+        {avgHoldDays !== null && (
+          <span>Avg hold <span className="font-medium text-foreground">{avgHoldDays.toFixed(1)}d</span></span>
+        )}
+        {bestTrade !== null && (
+          <span>Best <span className="font-medium text-green-600 dark:text-green-400">{fmtUSDStat(bestTrade)}</span></span>
+        )}
+        {worstTrade !== null && (
+          <span>Worst <span className={`font-medium ${worstTrade < 0 ? "text-red-500 dark:text-red-400" : "text-foreground"}`}>{fmtUSDStat(worstTrade)}</span></span>
+        )}
+        {Object.entries(reasonCounts).map(([reason, { count, pl }]) => (
+          <span key={reason}>
+            {reasonLabels[reason] ?? reason}{" "}
+            <span className="font-medium text-foreground">{count}</span>
+            <span className="mx-0.5 opacity-40">·</span>
+            <span className={pl >= 0 ? "font-medium text-green-600 dark:text-green-400" : "font-medium text-red-500 dark:text-red-400"}>
+              {pl >= 0 ? "+" : ""}{fmtUSDStat(pl)}
+            </span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+type StatTone = "default" | "success" | "danger" | "warning";
+
+function Stat({ label, value, tone = "default", sub }: { label: string; value: string; tone?: StatTone; sub?: string }) {
+  const valueClass =
+    tone === "success"
+      ? "text-green-600 dark:text-green-400"
+      : tone === "danger"
+        ? "text-red-500 dark:text-red-400"
+        : tone === "warning"
+          ? "text-amber-600 dark:text-amber-400"
+          : "text-foreground";
+
   return (
     <div className="rounded-2xl border border-border bg-card text-card-foreground p-4 shadow-sm">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="text-xl font-semibold">{value}</div>
+      <div className="text-xs text-muted-foreground mb-1">{label}</div>
+      <div className={`text-lg font-semibold tabular-nums ${valueClass}`}>{value}</div>
+      {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -658,7 +732,15 @@ function ReportTable(props: {
         accessorKey: "notes",
         cell: ({ getValue }) => {
           const v = getValue() as string | null | undefined;
-          return v && v.trim().length > 0 ? v : "—";
+          if (!v || v.trim().length === 0) return <span className="text-muted-foreground">—</span>;
+          return (
+            <span
+              className="block max-w-[200px] truncate text-muted-foreground"
+              title={v}
+            >
+              {v}
+            </span>
+          );
         },
       },
     ],
@@ -743,24 +825,21 @@ function ReportTable(props: {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-muted">
+          <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="[&>th]:px-3 [&>th]:py-2 text-left">
+              <tr key={hg.id} className="bg-muted/60 [&>th]:px-4 [&>th]:py-2.5 text-left">
                 {hg.headers.map((header) => (
-                  <th key={header.id}>
+                  <th key={header.id} className="text-xs font-medium text-muted-foreground uppercase tracking-wide whitespace-nowrap">
                     {header.isPlaceholder ? null : header.column.getCanSort() ? (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 hover:underline"
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        <span className="text-muted-foreground">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        <span>
                           {header.column.getIsSorted() === "asc"
                             ? "▲"
                             : header.column.getIsSorted() === "desc"
@@ -769,10 +848,7 @@ function ReportTable(props: {
                         </span>
                       </button>
                     ) : (
-                      flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )
+                      flexRender(header.column.columnDef.header, header.getContext())
                     )}
                   </th>
                 ))}
@@ -783,10 +859,10 @@ function ReportTable(props: {
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-t border-border hover:bg-muted/50 transition-colors [&>td]:px-3 [&>td]:py-2"
+                className="border-t border-border hover:bg-muted/40 transition-colors [&>td]:px-4 [&>td]:py-3"
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id}>
+                  <td key={cell.id} className={cell.column.id === "notes" ? "max-w-[200px]" : "whitespace-nowrap"}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

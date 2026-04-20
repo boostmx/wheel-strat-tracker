@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { CreatePortfolioModal } from "./CreatePortfolioModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Clock, TrendingUp, TrendingDown } from "lucide-react";
+import { Settings, Clock, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { useOverviewMetrics } from "@/features/portfolios/hooks/usePortfolioMetrics";
 import type { Portfolio } from "@/types";
 
@@ -89,8 +89,11 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
   const cashAvailable = toNum(m?.cashAvailable);
   const pctDeployed = toNum(m?.percentCapitalDeployed);
   const realizedMTD = toNum(m?.realizedMTD);
+  const realizedYTD = toNum(m?.realizedYTD);
   const openTradesCount = m?.openTradesCount ?? null;
   const winRate = toNum(m?.winRate);
+  const avgDaysInTrade = toNum(m?.avgDaysInTrade);
+  const expiringInSevenDays: number = (m?.expiringInSevenDays as number | undefined) ?? 0;
   const nextExp = (m?.nextExpirations ?? [])[0] as
     | { ticker: string; expirationDate: string; contracts: number; strikePrice?: number | null; type?: string | null }
     | undefined;
@@ -190,6 +193,15 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
                       MTD {mtdPositive ? "+" : ""}{compact(realizedMTD)}
                     </span>
                   )}
+                  {realizedYTD != null && (
+                    <span
+                      className={`text-[10px] ${
+                        realizedYTD >= 0 ? "text-green-400 dark:text-green-600" : "text-red-300 dark:text-red-600"
+                      }`}
+                    >
+                      YTD {realizedYTD >= 0 ? "+" : ""}{compact(realizedYTD)}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -212,8 +224,18 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
               </div>
             )}
 
+            {/* ── urgency strip ── */}
+            {!isLoading && expiringInSevenDays > 0 && (
+              <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  {expiringInSevenDays} trade{expiringInSevenDays !== 1 ? "s" : ""} expiring within 7 days
+                </span>
+              </div>
+            )}
+
             {/* ── 4-stat grid ── */}
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
               <StatChip
                 label="Cash Available"
                 value={cashAvailable != null ? dollars(cashAvailable) : "—"}
@@ -232,30 +254,38 @@ function PortfolioCard({ portfolio, index }: { portfolio: Portfolio; index: numb
                 isLoading={isLoading}
               />
               <StatChip
-                label="Realized MTD"
-                value={realizedMTD != null ? compact(realizedMTD) : "—"}
-                tone={isLoading ? "default" : mtdPositive ? "success" : "danger"}
+                label="Avg Hold"
+                value={avgDaysInTrade != null ? `${avgDaysInTrade.toFixed(1)}d` : "—"}
                 isLoading={isLoading}
               />
             </div>
 
             {/* ── Next expiration row ── */}
-            {nextExp && (
-              <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3 flex-shrink-0" />
-                <span>Next exp:</span>
-                <span className="font-medium text-foreground">{nextExp.ticker}</span>
-                {nextExp.strikePrice != null && (
-                  <span className="text-muted-foreground">${nextExp.strikePrice}</span>
-                )}
-                <span className="opacity-50">•</span>
-                <span>{new Date(nextExp.expirationDate).toLocaleDateString()}</span>
-                <span className="opacity-50">•</span>
-                <span>
-                  {nextExp.contracts} contract{nextExp.contracts !== 1 ? "s" : ""}
-                </span>
-              </div>
-            )}
+            {nextExp && (() => {
+              const expMs = new Date(nextExp.expirationDate).getTime();
+              const daysLeft = Math.ceil((expMs - Date.now()) / 86400000);
+              const urgent = daysLeft <= 7;
+              return (
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className={`h-3 w-3 flex-shrink-0 ${urgent ? "text-amber-500" : ""}`} />
+                  <span>Next exp:</span>
+                  <span className="font-medium text-foreground">{nextExp.ticker}</span>
+                  {nextExp.strikePrice != null && (
+                    <span className="text-muted-foreground">${nextExp.strikePrice}</span>
+                  )}
+                  <span className="opacity-50">•</span>
+                  <span>{new Date(nextExp.expirationDate).toLocaleDateString()}</span>
+                  <span className="opacity-50">•</span>
+                  <span className={`font-medium ${urgent ? "text-amber-500" : "text-foreground"}`}>
+                    {daysLeft <= 0 ? "today" : `${daysLeft}d`}
+                  </span>
+                  <span className="opacity-50">•</span>
+                  <span>
+                    {nextExp.contracts} contract{nextExp.contracts !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* ── Latest note ── */}
             {portfolio.notes &&
