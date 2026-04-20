@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
 type ExposureEntry = { ticker: string; weightPct: number };
 type TickerPremium = { ticker: string; premium: number };
@@ -247,20 +248,6 @@ function DteBadge({ days }: { days: number }) {
   );
 }
 
-function TypeBadge({ type }: { type: string }) {
-  const t = type.toLowerCase().replace(/\s/g, "");
-  const isCSP = t === "cashsecuredput" || t === "csp";
-  const isCC = t === "coveredcall" || t === "cc";
-  return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${
-      isCSP ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-        : isCC ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
-          : "bg-muted text-muted-foreground"
-    }`}>
-      {isCSP ? "CSP" : isCC ? "CC" : type}
-    </span>
-  );
-}
 
 function OpenPositionsCard({
   trades,

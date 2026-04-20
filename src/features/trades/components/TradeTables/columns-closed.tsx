@@ -1,8 +1,8 @@
 type TradeWithNewFields = Trade & { contractsInitial?: number | null };
 import { ColumnDef } from "@tanstack/react-table";
 import { Trade } from "@/types";
-// Removed Link and Button imports (Action column removed)
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
+import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
 const formatUSD = (n: number) =>
   new Intl.NumberFormat("en-US", {
@@ -12,8 +12,6 @@ const formatUSD = (n: number) =>
     maximumFractionDigits: 2,
   }).format(n);
 
-// Formats enum-ish strings like "CashSecuredPut" -> "Cash Secured Put"
-const formatType = (s: string) => s.replace(/([a-z])([A-Z])/g, "$1 $2");
 
 const computePremiumCaptured = (t: Trade) => {
   // Prefer stored premiumCaptured if present
@@ -50,7 +48,7 @@ export const makeClosedColumns = (): ColumnDef<Trade>[] => [
   {
     accessorKey: "type",
     header: "Type",
-    cell: ({ getValue }) => formatType(String(getValue())),
+    cell: ({ getValue }) => <TypeBadge type={String(getValue())} />,
   },
   {
     accessorKey: "strikePrice",
@@ -110,7 +108,7 @@ export const makeClosedColumns = (): ColumnDef<Trade>[] => [
           ? "text-green-700 bg-green-100"
           : n < 0
             ? "text-red-700 bg-red-100"
-            : "text-gray-700 bg-gray-100";
+            : "text-muted-foreground bg-muted";
       return (
         <span
           className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}

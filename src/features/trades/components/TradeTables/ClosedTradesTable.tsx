@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import useSWR from "swr";
 import { Trade, StockLot } from "@/types";
+import { TypeBadge } from "@/features/trades/components/TypeBadge";
 import { useRouter } from "next/navigation";
 import { Label } from "@/components/ui/label";
 import {
@@ -267,11 +268,9 @@ export function ClosedTradesTable({
         accessorFn: (r) => (r.kind === "trade" ? (r.item as TradeLike).type : "Shares"),
         cell: ({ row }) => {
           const r = row.original;
-          return (
-            <span className="text-xs text-muted-foreground">
-              {r.kind === "trade" ? (r.item as TradeLike).type : "Shares"}
-            </span>
-          );
+          return r.kind === "trade"
+            ? <TypeBadge type={String((r.item as TradeLike).type)} />
+            : <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-muted text-muted-foreground">Shares</span>;
         },
       },
       {
@@ -722,8 +721,8 @@ export function ClosedTradesTable({
 
         {/* Desktop table (shown on md+) */}
         <div className="hidden md:block">
-          <table className="min-w-full text-sm text-left text-gray-700 dark:text-gray-100">
-            <thead className="bg-gray-100 dark:bg-gray-800">
+          <table className="min-w-full text-sm text-left text-foreground">
+            <thead className="border-b border-border/60">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -731,8 +730,8 @@ export function ClosedTradesTable({
                       key={header.id}
                       className={
                         header.column.getCanSort()
-                          ? "px-4 py-2 font-semibold cursor-pointer select-none dark:text-gray-200"
-                          : "px-4 py-2 font-semibold select-none dark:text-gray-200"
+                          ? "px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide cursor-pointer select-none"
+                          : "px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none"
                       }
                       onClick={
                         header.column.getCanSort()
@@ -759,7 +758,7 @@ export function ClosedTradesTable({
                 <tr>
                   <td
                     colSpan={table.getAllColumns().length}
-                    className="px-4 py-4 text-center text-gray-500 dark:text-gray-400"
+                    className="px-4 py-6 text-center text-muted-foreground"
                   >
                     No trades or stock lots have been closed yet.
                   </td>
@@ -768,7 +767,7 @@ export function ClosedTradesTable({
                 pageRows.map((row) => (
                   <tr
                     key={row.id}
-                    className="group border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
+                    className="group border-b border-border/40 last:border-0 hover:bg-muted/40 transition-colors cursor-pointer"
                     onClick={() => {
                       const r = row.original as ClosedRow;
                       router.push(

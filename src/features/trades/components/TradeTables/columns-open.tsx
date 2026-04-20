@@ -1,11 +1,10 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Trade } from "@/types";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
+import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
 type TradeWithNewFields = Trade & { contractsOpen?: number | null };
 
-// Formats enum-ish strings like "CashSecuredPut" -> "Cash Secured Put"
-const formatType = (s: string) => s.replace(/([a-z])([A-Z])/g, "$1 $2");
 
 const calcDTE = (expirationDate: string | Date): number => {
   const exp = new Date(expirationDate);
@@ -26,7 +25,7 @@ export const makeOpenColumns = (): ColumnDef<Trade>[] => [
   {
     accessorKey: "type",
     header: "Type",
-    cell: ({ getValue }) => formatType(String(getValue())),
+    cell: ({ getValue }) => <TypeBadge type={String(getValue())} />,
   },
   {
     accessorKey: "strikePrice",

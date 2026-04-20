@@ -6,6 +6,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-20",
+    version: "v2.3.1",
+    highlights: [
+      "Dashboard P&L chart swapped from a cumulative area line to per-period bars — each bar is that day's (or week's, or month's) realized premium, making it immediately obvious which periods were strong and which weren't.",
+      "Time period tabs expanded from MTD / 90D / YTD to six views: Daily, Weekly, Monthly, Yearly, YTD, and All Time.",
+      "Activity stats promoted to a full-width strip right below the KPI cards — Win Rate, Avg Hold, Realized YTD/MTD, contracts expiring within 7 days, and next expiry date are now always visible without scrolling.",
+      "New Open Positions card shows every active trade with live underlying prices, day change %, and how far each position is OTM or ITM. DTE badges are color-coded red when under 7 days and amber under 14.",
+      "Dashboard layout reorganized so all actionable information — activity, positions, exposures — appears above the chart. The P&L chart moves to the bottom as a historical reference.",
+      "Trade type now displays as a colored pill throughout the app: CSP in blue, CC in violet, Put in amber, Call in green. Applies to the open trades table, closed trades table, and the dashboard positions card.",
+      "Table headers across all trade and stock tables refreshed — heavy gray backgrounds removed in favor of a clean separator line with uppercase muted labels, matching the dashboard style.",
+      "Row hover updated from emerald tint to a neutral muted highlight for a more polished, consistent feel.",
+    ],
+  },
+  {
     date: "2026-04-19",
     version: "v2.3.0",
     highlights: [

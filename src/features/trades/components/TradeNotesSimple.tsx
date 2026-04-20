@@ -78,7 +78,7 @@ export function TradeNotesSimple({
 
   return (
     <section className={cn("bg-transparent", className)}>
-      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-semibold">Notes</h3>
         {!editing ? (
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
