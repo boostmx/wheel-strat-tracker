@@ -47,14 +47,14 @@ export function StocksTable({ portfolioId }: Props) {
         </div>
       ) : (
         <div className="w-full overflow-x-auto">
-          <table className="min-w-full text-sm text-left text-gray-700 dark:text-gray-100">
-            <thead className="bg-gray-100 dark:bg-gray-800">
+          <table className="min-w-full text-sm text-left text-foreground">
+            <thead className="border-b border-border/60">
               <tr>
-                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Ticker</th>
-                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Shares</th>
-                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Avg Cost</th>
-                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Cost Basis</th>
-                <th className="px-4 py-2 font-semibold select-none dark:text-gray-200">Notes</th>
+                <th className="px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Ticker</th>
+                <th className="px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Shares</th>
+                <th className="px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Avg Cost</th>
+                <th className="px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Cost Basis</th>
+                <th className="px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -65,7 +65,7 @@ export function StocksTable({ portfolioId }: Props) {
                 return (
                   <tr
                     key={r.id}
-                    className="group border-t border-gray-200 dark:border-gray-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer"
+                    className="group border-b border-border/40 last:border-0 hover:bg-muted/40 transition-colors cursor-pointer"
                     onClick={() => router.push(`/portfolios/${portfolioId}/stocks/${r.id}`)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {

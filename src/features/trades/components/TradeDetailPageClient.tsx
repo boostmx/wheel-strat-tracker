@@ -133,10 +133,10 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
         transition={{ duration: 0.24, delay: 0.04 }}
         style={{ willChange: "opacity" }}
       >
-        <Card className="bg-white dark:bg-gray-900 dark:border-gray-800">
+        <Card>
           <CardContent className="p-6 space-y-6 relative">
             <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-2xl font-bold text-foreground">
                 {trade.ticker} — {formatType(trade.type)}
               </h1>
               <div className="flex items-center gap-3">

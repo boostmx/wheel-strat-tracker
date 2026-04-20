@@ -15,9 +15,23 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
 type ExposureEntry = { ticker: string; weightPct: number };
 type TickerPremium = { ticker: string; premium: number };
+type OpenTradeSummary = {
+  id: string;
+  ticker: string;
+  type: string;
+  strikePrice: number;
+  contractsOpen: number;
+  expirationDate: string;
+  contractPrice: number;
+  collateral: number;
+  portfolioId: string;
+  portfolioName: string;
+};
+type QuoteMap = Record<string, { price: number | null; change: number | null; changePct: number | null }>;
 
 type SummaryPortfolio = {
   portfolioId: string;
@@ -55,6 +69,11 @@ type SummaryPortfolio = {
   pnlSeriesMTD: { label: string; realized: number }[];
   pnlSeriesYTD: { label: string; realized: number }[];
   pnlSeriesDaily90: { label: string; realized: number }[];
+  pnlSeriesWeekly52: { label: string; realized: number }[];
+  pnlSeriesMonthly12: { label: string; realized: number }[];
+  pnlSeriesMonthlyAll: { label: string; realized: number }[];
+  pnlSeriesYearly: { label: string; realized: number }[];
+  openTradesList: OpenTradeSummary[];
 };
 
 type SummaryResponse = {
@@ -80,6 +99,11 @@ type SummaryResponse = {
   pnlSeriesMTD: { label: string; realized: number }[];
   pnlSeriesYTD: { label: string; realized: number }[];
   pnlSeriesDaily90: { label: string; realized: number }[];
+  pnlSeriesWeekly52: { label: string; realized: number }[];
+  pnlSeriesMonthly12: { label: string; realized: number }[];
+  pnlSeriesMonthlyAll: { label: string; realized: number }[];
+  pnlSeriesYearly: { label: string; realized: number }[];
+  openTrades: OpenTradeSummary[];
 };
 
 function formatCompactCurrency(value: number) {
@@ -197,6 +221,148 @@ function HorizontalBars({
         );
       })}
     </div>
+  );
+}
+
+const TODAY_MS = (() => {
+  const d = new Date();
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+})();
+
+function dte(expirationDate: string): number {
+  const exp = new Date(expirationDate + "T00:00:00Z").getTime();
+  return Math.ceil((exp - TODAY_MS) / 86_400_000);
+}
+
+function DteBadge({ days }: { days: number }) {
+  const cls =
+    days <= 7
+      ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+      : days <= 14
+        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+        : "bg-muted text-muted-foreground";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${cls}`}>
+      {days}d
+    </span>
+  );
+}
+
+
+function OpenPositionsCard({
+  trades,
+  quotes,
+  quotesLoading,
+}: {
+  trades: OpenTradeSummary[];
+  quotes: QuoteMap;
+  quotesLoading: boolean;
+}) {
+  const [posTab, setPosTab] = useState<"expiring" | "all">("expiring");
+
+  const expiringSoon = trades.filter((t) => dte(t.expirationDate) <= 14);
+  const displayed = posTab === "expiring" ? expiringSoon : trades;
+
+  const formatPrice = (n: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+  return (
+    <Card className="rounded-xl">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-foreground">Open Positions</h2>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{trades.length} active</span>
+          </div>
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            {([["expiring", `Expiring Soon (${expiringSoon.length})`], ["all", "All"]] as const).map(([tab, label]) => (
+              <button key={tab} onClick={() => setPosTab(tab)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${posTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {displayed.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            {posTab === "expiring" ? "No positions expiring within 14 days" : "No open positions"}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50">
+                  {["Ticker", "Type", "Strike", "Expiry", "Contracts", "Collateral", "Live Price", "OTM %"].map((h) => (
+                    <th key={h} className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide pb-2 pr-4 last:pr-0 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayed.map((t) => {
+                  const d = dte(t.expirationDate);
+                  const q = quotes[t.ticker];
+                  const price = q?.price ?? null;
+                  const change = q?.changePct ?? null;
+
+                  const isCSP = t.type.toLowerCase().replace(/\s/g, "") === "cashsecuredput" || t.type.toLowerCase() === "csp";
+                  const isCC = t.type.toLowerCase().replace(/\s/g, "") === "coveredcall" || t.type.toLowerCase() === "cc";
+                  let otmPct: number | null = null;
+                  if (price != null) {
+                    if (isCSP) otmPct = ((price - t.strikePrice) / price) * 100;
+                    else if (isCC) otmPct = ((t.strikePrice - price) / price) * 100;
+                  }
+                  const isITM = otmPct != null && otmPct < 0;
+
+                  return (
+                    <tr key={t.id} className="border-b border-border/30 last:border-0 hover:bg-muted/40 transition-colors">
+                      <td className="py-2.5 pr-4 font-semibold text-foreground">{t.ticker}</td>
+                      <td className="py-2.5 pr-4"><TypeBadge type={t.type} /></td>
+                      <td className="py-2.5 pr-4 tabular-nums text-foreground">{formatPrice(t.strikePrice)}</td>
+                      <td className="py-2.5 pr-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground tabular-nums">{t.expirationDate.slice(5).replace("-", "/")}</span>
+                          <DteBadge days={d} />
+                        </div>
+                      </td>
+                      <td className="py-2.5 pr-4 tabular-nums text-foreground">{t.contractsOpen}</td>
+                      <td className="py-2.5 pr-4 tabular-nums text-foreground">
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(t.collateral)}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {quotesLoading && !price ? (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        ) : price != null ? (
+                          <div className="flex flex-col">
+                            <span className="tabular-nums font-medium text-foreground text-xs">{formatPrice(price)}</span>
+                            {change != null && (
+                              <span className={`text-[10px] tabular-nums font-medium ${change >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                                {change >= 0 ? "▲" : "▼"}{Math.abs(change).toFixed(2)}%
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">n/a</span>
+                        )}
+                      </td>
+                      <td className="py-2.5">
+                        {otmPct != null ? (
+                          <span className={`text-xs font-semibold tabular-nums ${isITM ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                            {isITM ? "ITM " : ""}{Math.abs(otmPct).toFixed(1)}%{!isITM ? " OTM" : ""}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -399,12 +565,6 @@ export default function AccountSummaryContent() {
     return source ? [...source] : [];
   }, [selectedPortfolio, agg]);
 
-  const chartMtdSeries = useMemo(() => {
-    return selectedPortfolio
-      ? selectedPortfolio.pnlSeriesMTD
-      : (data?.pnlSeriesMTD ?? []);
-  }, [selectedPortfolio, data]);
-
   const chartYtdSeries = useMemo(() => {
     return selectedPortfolio
       ? selectedPortfolio.pnlSeriesYTD
@@ -417,14 +577,62 @@ export default function AccountSummaryContent() {
       : (data?.pnlSeriesDaily90 ?? []);
   }, [selectedPortfolio, data]);
 
-  const [activeTab, setActiveTab] = useState<"mtd" | "90d" | "ytd">("90d");
+  const chartWeekly52Series = useMemo(() => {
+    return selectedPortfolio
+      ? selectedPortfolio.pnlSeriesWeekly52
+      : (data?.pnlSeriesWeekly52 ?? []);
+  }, [selectedPortfolio, data]);
+
+  const chartMonthly12Series = useMemo(() => {
+    return selectedPortfolio
+      ? selectedPortfolio.pnlSeriesMonthly12
+      : (data?.pnlSeriesMonthly12 ?? []);
+  }, [selectedPortfolio, data]);
+
+  const chartMonthlyAllSeries = useMemo(() => {
+    return selectedPortfolio
+      ? selectedPortfolio.pnlSeriesMonthlyAll
+      : (data?.pnlSeriesMonthlyAll ?? []);
+  }, [selectedPortfolio, data]);
+
+  const chartYearlySeries = useMemo(() => {
+    return selectedPortfolio
+      ? selectedPortfolio.pnlSeriesYearly
+      : (data?.pnlSeriesYearly ?? []);
+  }, [selectedPortfolio, data]);
+
+  const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly" | "yearly" | "ytd" | "alltime">("daily");
   const [showAllPremium, setShowAllPremium] = useState(false);
 
+  // Open trades scoped to selected portfolio
+  const openTrades = useMemo<OpenTradeSummary[]>(() => {
+    if (!data) return [];
+    const list = selectedPortfolio
+      ? selectedPortfolio.openTradesList
+      : (data.openTrades ?? []);
+    return [...list].sort((a, b) => a.expirationDate.localeCompare(b.expirationDate));
+  }, [data, selectedPortfolio]);
+
+  // Unique tickers for live quote fetching
+  const quoteTickers = useMemo(
+    () => [...new Set(openTrades.map((t) => t.ticker))].join(","),
+    [openTrades],
+  );
+
+  const { data: quotesData, isLoading: quotesLoading } = useSWR<QuoteMap>(
+    quoteTickers ? `/api/quotes?tickers=${quoteTickers}` : null,
+    { refreshInterval: 60_000 },
+  );
+  const quotes: QuoteMap = quotesData ?? {};
+
   const timelineSeries = useMemo(() => {
-    if (activeTab === "mtd") return chartMtdSeries;
-    if (activeTab === "90d") return chartDaily90Series;
-    return chartYtdSeries;
-  }, [activeTab, chartMtdSeries, chartDaily90Series, chartYtdSeries]);
+    if (activeTab === "weekly") return chartWeekly52Series;
+    if (activeTab === "monthly") return chartMonthly12Series;
+    if (activeTab === "yearly") return chartYearlySeries;
+    if (activeTab === "ytd") return chartYtdSeries;
+    if (activeTab === "alltime") return chartMonthlyAllSeries;
+    return chartDaily90Series; // "daily"
+  }, [activeTab, chartDaily90Series, chartWeekly52Series, chartMonthly12Series, chartYearlySeries, chartYtdSeries, chartMonthlyAllSeries]);
 
   if (isLoading) {
     return <div className="max-w-5xl mx-auto py-16 px-6">Loading...</div>;
@@ -471,13 +679,19 @@ export default function AccountSummaryContent() {
     if (!data || data.length === 0)
       return <div className="text-xs text-muted-foreground py-8 text-center">No data for this period</div>;
 
+    // Convert cumulative series to per-period values
+    const bars = data.map((d, i) => ({
+      label: d.label,
+      value: i === 0 ? d.realized : d.realized - data[i - 1].realized,
+    }));
+
     const margin = { top: 16, right: 16, bottom: 32, left: 58 };
     const W = 600;
     const H = height;
     const iW = W - margin.left - margin.right;
     const iH = H - margin.top - margin.bottom;
 
-    const ys = data.map((d) => d.realized);
+    const ys = bars.map((b) => b.value);
     const rawMin = Math.min(0, ...ys);
     const rawMax = Math.max(0, ...ys);
     const pad = (rawMax - rawMin) * 0.12 || 10;
@@ -485,44 +699,35 @@ export default function AccountSummaryContent() {
     const yMax = rawMax + pad;
     const yRange = Math.max(1, yMax - yMin);
 
-    const xScale = (i: number) => margin.left + (i * iW) / Math.max(1, data.length - 1);
     const yScale = (v: number) => margin.top + iH - ((v - yMin) * iH) / yRange;
+    const zeroY = yScale(0);
 
-    const finalVal = ys[ys.length - 1] ?? 0;
-    const isPos = finalVal >= 0;
-    const lineColor = isPos ? "#22c55e" : "#ef4444";
-    const gradId = "pnl-grad";
+    const totalBars = bars.length;
+    const barGap = Math.max(1, Math.min(4, Math.round(iW / totalBars * 0.15)));
+    const barW = Math.max(2, (iW - barGap * (totalBars - 1)) / totalBars);
+    const barX = (i: number) => margin.left + i * (barW + barGap);
 
-    // 5 evenly spaced Y gridlines
     const yGridVals = Array.from({ length: 5 }, (_, i) => rawMin + ((rawMax - rawMin) / 4) * i);
     if (!yGridVals.includes(0) && rawMin < 0 && rawMax > 0) yGridVals.push(0);
 
-    // X labels: up to 6, evenly spaced
-    const maxLabels = Math.min(6, data.length);
+    const maxLabels = Math.min(8, bars.length);
     const xIdxs = Array.from({ length: maxLabels }, (_, i) =>
-      Math.round((i * (data.length - 1)) / Math.max(1, maxLabels - 1)),
+      Math.round((i * (bars.length - 1)) / Math.max(1, maxLabels - 1)),
     );
 
     const formatMoney = (n: number) =>
       new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(n);
 
     const formatX = (s: string) => {
-      if (s.length === 10) return `${s.slice(5, 7)}/${s.slice(8, 10)}`;
-      if (s.length === 7) return s.slice(5); // show only MM from YYYY-MM
-      return s;
+      if (s.length === 10) return `${s.slice(5, 7)}/${s.slice(8, 10)}`; // YYYY-MM-DD → MM/DD
+      if (s.length === 7) return `${s.slice(5)}/${s.slice(2, 4)}`; // YYYY-MM → MM/YY
+      return s; // YYYY (yearly) → as-is
     };
 
-    const pts = data.map((d, i) => `${xScale(i)},${yScale(d.realized)}`).join(" ");
-    const areaD = [
-      `M ${xScale(0)},${yScale(0)}`,
-      ...data.map((d, i) => `L ${xScale(i)},${yScale(d.realized)}`),
-      `L ${xScale(data.length - 1)},${yScale(0)} Z`,
-    ].join(" ");
-
-    const hovered = hoveredIdx !== null ? data[hoveredIdx] : null;
-    const tooltipX = hoveredIdx !== null ? xScale(hoveredIdx) : 0;
-    const tooltipY = hovered ? yScale(hovered.realized) : 0;
-    const flipTooltip = tooltipX > W * 0.65;
+    const hovered = hoveredIdx !== null ? bars[hoveredIdx] : null;
+    const tooltipBx = hoveredIdx !== null ? barX(hoveredIdx) + barW / 2 : 0;
+    const tooltipBy = hovered ? (hovered.value >= 0 ? yScale(hovered.value) : zeroY) : 0;
+    const flipTooltip = tooltipBx > W * 0.65;
 
     return (
       <svg
@@ -534,18 +739,11 @@ export default function AccountSummaryContent() {
           const rect = e.currentTarget.getBoundingClientRect();
           const scaleX = W / rect.width;
           const mx = (e.clientX - rect.left) * scaleX - margin.left;
-          const idx = Math.round((mx / iW) * (data.length - 1));
-          setHoveredIdx(Math.max(0, Math.min(data.length - 1, idx)));
+          const idx = Math.floor(mx / (barW + barGap));
+          setHoveredIdx(Math.max(0, Math.min(bars.length - 1, idx)));
         }}
         onMouseLeave={() => setHoveredIdx(null)}
       >
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
-          </linearGradient>
-        </defs>
-
         {/* Y gridlines + labels */}
         {yGridVals.map((v, i) => {
           const y = yScale(v);
@@ -567,39 +765,45 @@ export default function AccountSummaryContent() {
           );
         })}
 
-        {/* Area fill */}
-        <path d={areaD} fill={`url(#${gradId})`} />
-
-        {/* Line */}
-        <polyline fill="none" stroke={lineColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" points={pts} />
+        {/* Bars */}
+        {bars.map((b, i) => {
+          const isPos = b.value >= 0;
+          const barTop = isPos ? yScale(b.value) : zeroY;
+          const barHeight = Math.abs(yScale(b.value) - zeroY);
+          const isHovered = hoveredIdx === i;
+          return (
+            <rect
+              key={i}
+              x={barX(i)}
+              y={barTop}
+              width={barW}
+              height={Math.max(1, barHeight)}
+              rx={Math.min(2, barW * 0.15)}
+              fill={isPos ? (isHovered ? "#16a34a" : "#22c55e") : (isHovered ? "#dc2626" : "#ef4444")}
+              opacity={hoveredIdx !== null && !isHovered ? 0.45 : 1}
+            />
+          );
+        })}
 
         {/* X labels */}
         {xIdxs.map((idx) => (
-          <text key={idx} x={xScale(idx)} y={margin.top + iH + 20} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
-            {formatX(data[idx].label)}
+          <text key={idx} x={barX(idx) + barW / 2} y={margin.top + iH + 20} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
+            {formatX(bars[idx].label)}
           </text>
         ))}
 
-        {/* Endpoint dot (when not hovering) */}
-        {hoveredIdx === null && (
-          <circle cx={xScale(data.length - 1)} cy={yScale(finalVal)} r={4} fill={lineColor} stroke="white" strokeWidth={1.5} />
-        )}
-
-        {/* Hover crosshair + tooltip */}
+        {/* Hover tooltip */}
         {hovered && hoveredIdx !== null && (
           <g>
-            <line x1={tooltipX} x2={tooltipX} y1={margin.top} y2={margin.top + iH}
-              stroke="#9ca3af" strokeWidth={1} strokeDasharray="4 3" />
-            <circle cx={tooltipX} cy={tooltipY} r={4.5} fill={lineColor} stroke="white" strokeWidth={1.5} />
-            <g transform={`translate(${flipTooltip ? tooltipX - 112 : tooltipX + 8}, ${Math.max(margin.top, tooltipY - 34)})`}>
-              <rect x={0} y={0} width={104} height={42} rx={6}
+            <g transform={`translate(${flipTooltip ? tooltipBx - 116 : tooltipBx + 8}, ${Math.max(margin.top, tooltipBy - 44)})`}>
+              <rect x={0} y={0} width={108} height={42} rx={6}
                 fill="white" stroke="#e5e7eb" strokeWidth={1}
                 className="dark:fill-gray-800 dark:stroke-gray-600"
                 style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.12))" }}
               />
               <text x={8} y={15} fontSize={10} className="fill-muted-foreground">{formatX(hovered.label)}</text>
-              <text x={8} y={32} fontSize={13} fontWeight={700} fill={hovered.realized >= 0 ? "#22c55e" : "#ef4444"}>
-                {hovered.realized >= 0 ? "+" : ""}{formatMoney(hovered.realized)}
+              <text x={8} y={32} fontSize={13} fontWeight={700} fill={hovered.value >= 0 ? "#22c55e" : "#ef4444"}>
+                {hovered.value >= 0 ? "+" : ""}{formatMoney(hovered.value)}
               </text>
             </g>
           </g>
@@ -615,7 +819,7 @@ export default function AccountSummaryContent() {
     );
     const best = diffs.length ? Math.max(...diffs) : 0;
     const worst = diffs.length ? Math.min(...diffs) : 0;
-    const periodLabel = activeTab === "ytd" ? "mo" : "day";
+    const periodLabel = activeTab === "weekly" ? "wk" : activeTab === "monthly" || activeTab === "ytd" || activeTab === "alltime" ? "mo" : activeTab === "yearly" ? "yr" : "day";
     return { last, best, worst, periodLabel };
   })();
 
@@ -724,7 +928,7 @@ export default function AccountSummaryContent() {
         </div>
       </motion.div>
 
-      {/* ── Hero: P&L Chart ── */}
+      {/* ── Activity strip ── */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -732,14 +936,154 @@ export default function AccountSummaryContent() {
         style={{ willChange: "opacity, transform" }}
       >
         <Card className="rounded-xl">
+          <CardContent className="px-5 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-3 divide-y sm:divide-y-0 sm:divide-x divide-border/40">
+              <div className="pt-3 sm:pt-0 sm:pl-6 first:pl-0 first:pt-0 space-y-0.5">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Win Rate</p>
+                <p className="text-xl font-bold tabular-nums text-foreground">
+                  {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">of closed trades</p>
+              </div>
+              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Avg Hold</p>
+                <p className="text-xl font-bold tabular-nums text-foreground">
+                  {view.avgDaysInTrade != null ? `${view.avgDaysInTrade.toFixed(1)}d` : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">per trade</p>
+              </div>
+              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Realized YTD</p>
+                <p className={`text-xl font-bold tabular-nums ${moneyColor(view.totalRealizedYTD)}`}>
+                  {view.totalRealizedYTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedYTD)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}
+                </p>
+              </div>
+              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Expiring ≤7d</p>
+                <p className={`text-xl font-bold tabular-nums ${view.totalExpiringSoon > 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
+                  {view.totalExpiringSoon}
+                </p>
+                <p className="text-[10px] text-muted-foreground">contracts</p>
+              </div>
+              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Next Expiry</p>
+                <p className="text-sm font-semibold text-primary leading-tight mt-0.5">
+                  {view.nextExpiration
+                    ? `${view.nextExpiration.topTicker ? view.nextExpiration.topTicker + " · " : ""}${formatDateOnlyUTC(view.nextExpiration.date)}`
+                    : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {view.nextExpiration ? `${view.nextExpiration.contracts}c` : "no upcoming"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ── Middle row: Open Positions (2/3) + Exposures & Premium stacked (1/3) ── */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, delay: 0.14 }}
+        style={{ willChange: "opacity, transform" }}
+      >
+        {/* Open Positions — takes 2 of 3 columns */}
+        <div className="lg:col-span-2">
+          <OpenPositionsCard trades={openTrades} quotes={quotes} quotesLoading={quotesLoading} />
+        </div>
+
+        {/* Right panel: Exposures on top, Premium below */}
+        <div className="flex flex-col gap-4">
+          {/* Top Exposures */}
+          <Card className="rounded-xl flex-1">
+            <CardContent className="p-5">
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-sm font-semibold text-foreground">Top Exposures</h2>
+                <span className="text-[11px] text-muted-foreground">by collateral</span>
+              </div>
+              {chartExposures.length ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <DonutChart
+                      data={chartExposures.map((t) => ({ label: t.ticker, value: t.pct }))}
+                      size={90}
+                    />
+                  </div>
+                  <ul className="flex-1 min-w-0 space-y-1.5">
+                    {chartExposures.map((t, idx) => (
+                      <li key={t.ticker} className="flex items-center gap-1.5 min-w-0">
+                        <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)` }} />
+                        <span className="text-[11px] font-medium text-foreground w-9 truncate">{t.ticker}</span>
+                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                          <div className="h-1 rounded-full" style={{ width: `${t.pct.toFixed(0)}%`, backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)` }} />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{t.pct.toFixed(0)}%</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No open CSP positions</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Premium by Ticker */}
+          <Card className="rounded-xl flex-1">
+            <CardContent className="p-5">
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-sm font-semibold text-foreground">Premium by Ticker</h2>
+                <span className="text-[11px] text-muted-foreground">realized</span>
+              </div>
+              {chartPremiumByTicker.length ? (
+                <>
+                  <HorizontalBars
+                    data={(showAllPremium ? chartPremiumByTicker : chartPremiumByTicker.slice(0, 5)).map(
+                      (p) => ({ label: p.ticker, value: p.premium }),
+                    )}
+                  />
+                  {chartPremiumByTicker.length > 5 && (
+                    <button
+                      onClick={() => setShowAllPremium((v) => !v)}
+                      className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showAllPremium ? (
+                        <><ChevronUp className="h-3 w-3" /> Show less</>
+                      ) : (
+                        <><ChevronDown className="h-3 w-3" /> All {chartPremiumByTicker.length} tickers</>
+                      )}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">No realized premium yet</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </motion.div>
+
+      {/* ── P&L Chart ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, delay: 0.18 }}
+        style={{ willChange: "opacity, transform" }}
+      >
+        <Card className="rounded-xl">
           <CardContent className="p-6">
             <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
               <div>
                 <h2 className="text-base font-semibold text-foreground">Realized P&L</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Cumulative — hover to inspect</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Per period — hover to inspect</p>
               </div>
-              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-                {(["mtd", "90d", "ytd"] as const).map((tab) => (
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-wrap">
+                {(["daily", "weekly", "monthly", "yearly", "ytd", "alltime"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -749,13 +1093,12 @@ export default function AccountSummaryContent() {
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {tab === "mtd" ? "MTD" : tab === "90d" ? "90D" : "YTD"}
+                    {tab === "daily" ? "Daily" : tab === "weekly" ? "Weekly" : tab === "monthly" ? "Monthly" : tab === "yearly" ? "Yearly" : tab === "ytd" ? "YTD" : "All Time"}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Period stat chips */}
             <div className="flex flex-wrap gap-4 mb-5 pb-4 border-b border-border/50">
               <div>
                 <p className="text-[11px] text-muted-foreground">Period Total</p>
@@ -786,130 +1129,7 @@ export default function AccountSummaryContent() {
               </div>
             </div>
 
-            <PnLChart data={timelineSeries} height={300} />
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* ── Bottom 3-col: Exposures | Activity | Premium ── */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.14 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        {/* Top Exposures: horizontal donut + inline legend */}
-        <Card className="rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-base font-semibold text-foreground">Top Exposures</h2>
-              <span className="text-xs text-muted-foreground">by collateral</span>
-            </div>
-            {chartExposures.length ? (
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0">
-                  <DonutChart
-                    data={chartExposures.map((t) => ({ label: t.ticker, value: t.pct }))}
-                    size={110}
-                  />
-                </div>
-                <ul className="flex-1 min-w-0 space-y-2">
-                  {chartExposures.map((t, idx) => (
-                    <li key={t.ticker} className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className="h-2 w-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)` }}
-                      />
-                      <span className="text-[12px] font-medium text-foreground w-10 truncate">{t.ticker}</span>
-                      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-1 rounded-full"
-                          style={{
-                            width: `${t.pct.toFixed(0)}%`,
-                            backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-[11px] text-muted-foreground tabular-nums w-9 text-right">{t.pct.toFixed(1)}%</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No open CSP positions</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Activity stats 2×2 */}
-        <Card className="rounded-xl">
-          <CardContent className="p-5">
-            <h2 className="text-base font-semibold text-foreground mb-4">Activity</h2>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Next Expiration</p>
-                <p className="mt-1 text-sm font-semibold text-primary leading-snug">
-                  {view.nextExpiration
-                    ? `${view.nextExpiration.topTicker ? view.nextExpiration.topTicker + " · " : ""}${formatDateOnlyUTC(view.nextExpiration.date)}`
-                    : "—"}
-                </p>
-                {view.nextExpiration && (
-                  <p className="text-[11px] text-muted-foreground">{view.nextExpiration.contracts}c</p>
-                )}
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Expiring ≤7d</p>
-                <p className={`mt-1 text-2xl font-bold tabular-nums ${view.totalExpiringSoon > 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
-                  {view.totalExpiringSoon}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Win Rate</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
-                  {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Avg Days Held</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
-                  {view.avgDaysInTrade != null ? view.avgDaysInTrade.toFixed(1) : "—"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Premium by Ticker */}
-        <Card className="rounded-xl">
-          <CardContent className="p-5">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-base font-semibold text-foreground">Premium by Ticker</h2>
-              <span className="text-xs text-muted-foreground">realized</span>
-            </div>
-            {chartPremiumByTicker.length ? (
-              <>
-                <HorizontalBars
-                  data={(showAllPremium ? chartPremiumByTicker : chartPremiumByTicker.slice(0, 5)).map(
-                    (p) => ({ label: p.ticker, value: p.premium }),
-                  )}
-                />
-                {chartPremiumByTicker.length > 5 && (
-                  <button
-                    onClick={() => setShowAllPremium((v) => !v)}
-                    className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showAllPremium ? (
-                      <><ChevronUp className="h-3 w-3" /> Show less</>
-                    ) : (
-                      <><ChevronDown className="h-3 w-3" /> View all {chartPremiumByTicker.length} tickers</>
-                    )}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">No realized premium yet</p>
-            )}
+            <PnLChart data={timelineSeries} height={280} />
           </CardContent>
         </Card>
       </motion.div>
