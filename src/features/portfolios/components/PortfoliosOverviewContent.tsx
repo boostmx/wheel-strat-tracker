@@ -316,7 +316,7 @@ export default function PortfoliosOverviewContent() {
   } = useSWR<Portfolio[]>(session?.user?.id ? "/api/portfolios" : null);
 
   return (
-    <div className="max-w-5xl mx-auto py-16 px-6 space-y-8">
+    <div className="max-w-5xl mx-auto py-8 sm:py-16 px-4 sm:px-6 space-y-8">
       <motion.div
         className="flex justify-between items-center"
         initial={{ opacity: 0, y: 6 }}
@@ -337,7 +337,7 @@ export default function PortfoliosOverviewContent() {
         <CreatePortfolioModal />
       </motion.div>
 
-      <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[11px] text-muted-foreground">
         <span className="font-medium uppercase tracking-wide">Card border</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 flex-shrink-0" />Profitable &amp; healthy</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 flex-shrink-0" />Expiring soon or cash low</span>

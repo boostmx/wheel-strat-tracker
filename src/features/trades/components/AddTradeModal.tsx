@@ -211,7 +211,7 @@ export function AddTradeModal({
       <DialogTrigger asChild>
         {trigger ?? <Button variant="outline">+ Add Trade</Button>}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[540px]">
         <DialogHeader>
           <DialogTitle>Add New Trade</DialogTitle>
         </DialogHeader>

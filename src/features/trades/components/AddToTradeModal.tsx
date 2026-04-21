@@ -118,7 +118,7 @@ export default function AddToTradeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             Add to Position{ticker ? ` — ${ticker}` : ""}
