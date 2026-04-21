@@ -208,7 +208,7 @@ export function CloseTradeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {`Close Position${displayTicker ? ` — ${displayTicker}` : ""}`}

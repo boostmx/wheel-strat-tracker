@@ -623,9 +623,6 @@ export function ClosedTradesTable({
                   ? (r.item as TradeLike).ticker
                   : (r.item as StockLotLike).ticker;
 
-              const typeLabel =
-                r.kind === "trade" ? (r.item as TradeLike).type : "Shares";
-
               const closedDate =
                 r.kind === "trade"
                   ? getTradeClosedDate(r.item as TradeLike)
@@ -659,9 +656,10 @@ export function ClosedTradesTable({
                 >
                   <div className="flex items-center justify-between">
                     <div className="font-semibold">{ticker}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {typeLabel}
-                    </div>
+                    {r.kind === "trade"
+                      ? <TypeBadge type={String((r.item as TradeLike).type)} />
+                      : <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-muted text-muted-foreground">Shares</span>
+                    }
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                     <div>

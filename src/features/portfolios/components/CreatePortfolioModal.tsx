@@ -51,7 +51,7 @@ export function CreatePortfolioModal() {
       <DialogTrigger asChild>
         <Button variant="default">Create Portfolio</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create New Portfolio</DialogTitle>
         </DialogHeader>

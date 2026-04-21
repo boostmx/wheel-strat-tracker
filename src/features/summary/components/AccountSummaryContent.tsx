@@ -289,77 +289,149 @@ function OpenPositionsCard({
             {posTab === "expiring" ? "No positions expiring within 14 days" : "No open positions"}
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50">
-                  {["Ticker", "Type", "Strike", "Expiry", "Contracts", "Collateral", "Live Price", "OTM %"].map((h) => (
-                    <th key={h} className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide pb-2 pr-4 last:pr-0 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {displayed.map((t) => {
-                  const d = dte(t.expirationDate);
-                  const q = quotes[t.ticker];
-                  const price = q?.price ?? null;
-                  const change = q?.changePct ?? null;
-
-                  const isCSP = t.type.toLowerCase().replace(/\s/g, "") === "cashsecuredput" || t.type.toLowerCase() === "csp";
-                  const isCC = t.type.toLowerCase().replace(/\s/g, "") === "coveredcall" || t.type.toLowerCase() === "cc";
-                  let otmPct: number | null = null;
-                  if (price != null) {
-                    if (isCSP) otmPct = ((price - t.strikePrice) / price) * 100;
-                    else if (isCC) otmPct = ((t.strikePrice - price) / price) * 100;
-                  }
-                  const isITM = otmPct != null && otmPct < 0;
-
-                  return (
-                    <tr key={t.id} className="border-b border-border/30 last:border-0 hover:bg-muted/40 transition-colors">
-                      <td className="py-2.5 pr-4 font-semibold text-foreground">{t.ticker}</td>
-                      <td className="py-2.5 pr-4"><TypeBadge type={t.type} /></td>
-                      <td className="py-2.5 pr-4 tabular-nums text-foreground">{formatPrice(t.strikePrice)}</td>
-                      <td className="py-2.5 pr-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground tabular-nums">{t.expirationDate.slice(5).replace("-", "/")}</span>
-                          <DteBadge days={d} />
-                        </div>
-                      </td>
-                      <td className="py-2.5 pr-4 tabular-nums text-foreground">{t.contractsOpen}</td>
-                      <td className="py-2.5 pr-4 tabular-nums text-foreground">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(t.collateral)}
-                      </td>
-                      <td className="py-2.5 pr-4">
+          <>
+            {/* Mobile card view */}
+            <div className="sm:hidden space-y-2">
+              {displayed.map((t) => {
+                const d = dte(t.expirationDate);
+                const q = quotes[t.ticker];
+                const price = q?.price ?? null;
+                const change = q?.changePct ?? null;
+                const isCSP = t.type.toLowerCase().replace(/\s/g, "") === "cashsecuredput" || t.type.toLowerCase() === "csp";
+                const isCC = t.type.toLowerCase().replace(/\s/g, "") === "coveredcall" || t.type.toLowerCase() === "cc";
+                let otmPct: number | null = null;
+                if (price != null) {
+                  if (isCSP) otmPct = ((price - t.strikePrice) / price) * 100;
+                  else if (isCC) otmPct = ((t.strikePrice - price) / price) * 100;
+                }
+                const isITM = otmPct != null && otmPct < 0;
+                return (
+                  <div key={t.id} className="rounded-lg border border-border/50 p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground text-sm">{t.ticker}</span>
+                        <TypeBadge type={t.type} />
+                      </div>
+                      <DteBadge days={d} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Strike</p>
+                        <p className="text-xs font-medium text-foreground tabular-nums">{formatPrice(t.strikePrice)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Expiry</p>
+                        <p className="text-xs font-medium text-foreground">{t.expirationDate.slice(5).replace("-", "/")}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Collateral</p>
+                        <p className="text-xs font-medium text-foreground tabular-nums">
+                          {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(t.collateral)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1.5 border-t border-border/30 text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="text-muted-foreground">
+                          Cts: <span className="font-medium text-foreground">{t.contractsOpen}</span>
+                        </span>
                         {quotesLoading && !price ? (
-                          <span className="text-[11px] text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">—</span>
                         ) : price != null ? (
-                          <div className="flex flex-col">
-                            <span className="tabular-nums font-medium text-foreground text-xs">{formatPrice(price)}</span>
+                          <span className="text-muted-foreground">
+                            Live: <span className="font-medium text-foreground tabular-nums">{formatPrice(price)}</span>
                             {change != null && (
-                              <span className={`text-[10px] tabular-nums font-medium ${change >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                              <span className={`ml-1 tabular-nums font-medium ${change >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                                 {change >= 0 ? "▲" : "▼"}{Math.abs(change).toFixed(2)}%
                               </span>
                             )}
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">n/a</span>
-                        )}
-                      </td>
-                      <td className="py-2.5">
-                        {otmPct != null ? (
-                          <span className={`text-xs font-semibold tabular-nums ${isITM ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}`}>
-                            {isITM ? "ITM " : ""}{Math.abs(otmPct).toFixed(1)}%{!isITM ? " OTM" : ""}
                           </span>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        ) : null}
+                      </div>
+                      {otmPct != null ? (
+                        <span className={`font-semibold tabular-nums ${isITM ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                          {isITM ? "ITM " : ""}{Math.abs(otmPct).toFixed(1)}%{!isITM ? " OTM" : ""}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50">
+                    {["Ticker", "Type", "Strike", "Expiry", "Contracts", "Collateral", "Live Price", "OTM %"].map((h) => (
+                      <th key={h} className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide pb-2 pr-4 last:pr-0 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayed.map((t) => {
+                    const d = dte(t.expirationDate);
+                    const q = quotes[t.ticker];
+                    const price = q?.price ?? null;
+                    const change = q?.changePct ?? null;
+                    const isCSP = t.type.toLowerCase().replace(/\s/g, "") === "cashsecuredput" || t.type.toLowerCase() === "csp";
+                    const isCC = t.type.toLowerCase().replace(/\s/g, "") === "coveredcall" || t.type.toLowerCase() === "cc";
+                    let otmPct: number | null = null;
+                    if (price != null) {
+                      if (isCSP) otmPct = ((price - t.strikePrice) / price) * 100;
+                      else if (isCC) otmPct = ((t.strikePrice - price) / price) * 100;
+                    }
+                    const isITM = otmPct != null && otmPct < 0;
+                    return (
+                      <tr key={t.id} className="border-b border-border/30 last:border-0 hover:bg-muted/40 transition-colors">
+                        <td className="py-2.5 pr-4 font-semibold text-foreground">{t.ticker}</td>
+                        <td className="py-2.5 pr-4"><TypeBadge type={t.type} /></td>
+                        <td className="py-2.5 pr-4 tabular-nums text-foreground">{formatPrice(t.strikePrice)}</td>
+                        <td className="py-2.5 pr-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground tabular-nums">{t.expirationDate.slice(5).replace("-", "/")}</span>
+                            <DteBadge days={d} />
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-4 tabular-nums text-foreground">{t.contractsOpen}</td>
+                        <td className="py-2.5 pr-4 tabular-nums text-foreground">
+                          {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(t.collateral)}
+                        </td>
+                        <td className="py-2.5 pr-4">
+                          {quotesLoading && !price ? (
+                            <span className="text-[11px] text-muted-foreground">—</span>
+                          ) : price != null ? (
+                            <div className="flex flex-col">
+                              <span className="tabular-nums font-medium text-foreground text-xs">{formatPrice(price)}</span>
+                              {change != null && (
+                                <span className={`text-[10px] tabular-nums font-medium ${change >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                                  {change >= 0 ? "▲" : "▼"}{Math.abs(change).toFixed(2)}%
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">n/a</span>
+                          )}
+                        </td>
+                        <td className="py-2.5">
+                          {otmPct != null ? (
+                            <span className={`text-xs font-semibold tabular-nums ${isITM ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                              {isITM ? "ITM " : ""}{Math.abs(otmPct).toFixed(1)}%{!isITM ? " OTM" : ""}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
@@ -635,11 +707,11 @@ export default function AccountSummaryContent() {
   }, [activeTab, chartDaily90Series, chartWeekly52Series, chartMonthly12Series, chartYearlySeries, chartYtdSeries, chartMonthlyAllSeries]);
 
   if (isLoading) {
-    return <div className="max-w-5xl mx-auto py-16 px-6">Loading...</div>;
+    return <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6">Loading...</div>;
   }
   if (error) {
     return (
-      <div className="max-w-5xl mx-auto py-16 px-6 text-red-600">
+      <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6 text-red-600">
         Failed to load portfolios.
       </div>
     );
@@ -650,7 +722,7 @@ export default function AccountSummaryContent() {
     data && Object.keys(data.perPortfolio || {}).length === 0;
   if (hasNoPortfolios) {
     return (
-      <div className="max-w-3xl mx-auto py-24 px-6 text-center">
+      <div className="max-w-3xl mx-auto py-16 sm:py-24 px-4 sm:px-6 text-center">
         <h1 className="text-3xl font-bold text-foreground">
           Welcome!
         </h1>
@@ -824,7 +896,7 @@ export default function AccountSummaryContent() {
   })();
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-6 space-y-5">
+    <div className="max-w-6xl mx-auto py-6 sm:py-10 px-4 sm:px-6 space-y-5">
 
       {/* ── Header ── */}
       <motion.div
@@ -842,7 +914,7 @@ export default function AccountSummaryContent() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={selectedPortfolioId} onValueChange={setSelectedPortfolioId}>
-            <SelectTrigger className="w-48 h-8 text-xs">
+            <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
               <SelectValue placeholder="All Accounts" />
             </SelectTrigger>
             <SelectContent>
@@ -937,22 +1009,22 @@ export default function AccountSummaryContent() {
       >
         <Card className="rounded-xl">
           <CardContent className="px-5 py-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-3 divide-y sm:divide-y-0 sm:divide-x divide-border/40">
-              <div className="pt-3 sm:pt-0 sm:pl-6 first:pl-0 first:pt-0 space-y-0.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+              <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Win Rate</p>
                 <p className="text-xl font-bold tabular-nums text-foreground">
                   {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">of closed trades</p>
               </div>
-              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+              <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Avg Hold</p>
                 <p className="text-xl font-bold tabular-nums text-foreground">
                   {view.avgDaysInTrade != null ? `${view.avgDaysInTrade.toFixed(1)}d` : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">per trade</p>
               </div>
-              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+              <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Realized YTD</p>
                 <p className={`text-xl font-bold tabular-nums ${moneyColor(view.totalRealizedYTD)}`}>
                   {view.totalRealizedYTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedYTD)}
@@ -961,14 +1033,14 @@ export default function AccountSummaryContent() {
                   MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}
                 </p>
               </div>
-              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+              <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Expiring ≤7d</p>
                 <p className={`text-xl font-bold tabular-nums ${view.totalExpiringSoon > 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>
                   {view.totalExpiringSoon}
                 </p>
                 <p className="text-[10px] text-muted-foreground">contracts</p>
               </div>
-              <div className="pt-3 sm:pt-0 sm:pl-6 space-y-0.5">
+              <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Next Expiry</p>
                 <p className="text-sm font-semibold text-primary leading-tight mt-0.5">
                   {view.nextExpiration
@@ -1106,21 +1178,21 @@ export default function AccountSummaryContent() {
                   {pnlStats.last >= 0 ? "+" : ""}{formatCompactCurrency(pnlStats.last)}
                 </p>
               </div>
-              <div className="w-px bg-border" />
+              <div className="hidden sm:block w-px bg-border" />
               <div>
                 <p className="text-[11px] text-muted-foreground">Best {pnlStats.periodLabel}</p>
                 <p className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                   {pnlStats.best > 0 ? "+" : ""}{formatCompactCurrency(pnlStats.best)}
                 </p>
               </div>
-              <div className="w-px bg-border" />
+              <div className="hidden sm:block w-px bg-border" />
               <div>
                 <p className="text-[11px] text-muted-foreground">Worst {pnlStats.periodLabel}</p>
                 <p className="text-lg font-bold tabular-nums text-red-500">
                   {formatCompactCurrency(pnlStats.worst)}
                 </p>
               </div>
-              <div className="w-px bg-border" />
+              <div className="hidden sm:block w-px bg-border" />
               <div>
                 <p className="text-[11px] text-muted-foreground">All-time P&L</p>
                 <p className={`text-lg font-bold tabular-nums ${moneyColor(view.accountProfit)}`}>

@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Info, XCircle } from "lucide-react";
+import { TypeBadge } from "@/features/trades/components/TypeBadge";
 import { useRouter } from "next/navigation";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 import { Label } from "@/components/ui/label";
@@ -471,7 +472,7 @@ export function OpenTradesTable({
               >
                 <div className="flex items-center justify-between">
                   <div className="font-semibold">{t.ticker}</div>
-                  <div className="text-xs text-muted-foreground">{t.type}</div>
+                  <TypeBadge type={t.type} />
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                   <div>
