@@ -6,6 +6,21 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-21",
+    version: "v2.3.2",
+    highlights: [
+      "Full mobile overhaul — every page now works like a native app on phones, not a desktop site squeezed onto a small screen.",
+      "Open Positions on the dashboard gets a dedicated mobile card layout: each position shows the ticker, type badge, DTE countdown, strike/expiry/collateral in a compact grid, and live price with OTM % at the bottom — no horizontal scrolling required.",
+      "Open and Closed trade tables on the Portfolio detail page now show the correct colored type badge (CSP in blue, CC in violet) on mobile cards, matching the desktop table.",
+      "All modals (Add Trade, Close Trade, Add to Position, Create Portfolio) now take full screen width on phones instead of overflowing off the edges.",
+      "Page containers use tighter padding on mobile across all pages — Account Summary, Portfolios, and Reports — so content has more breathing room.",
+      "Portfolio overview page has a shorter top padding on mobile so you get to the cards faster, and the color legend wraps cleanly instead of overflowing.",
+      "The account selector on the dashboard stretches to full width on mobile when it wraps, making it easier to tap.",
+      "Activity stats strip no longer shows broken divider lines on mobile — spacing is handled by the grid gap instead.",
+      "P&L chart stat dividers (Period Total / Best / Worst) are hidden on mobile so the stats wrap cleanly without visual clutter.",
+    ],
+  },
+  {
     date: "2026-04-20",
     version: "v2.3.1",
     highlights: [

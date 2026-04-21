@@ -623,9 +623,6 @@ export function ClosedTradesTable({
                   ? (r.item as TradeLike).ticker
                   : (r.item as StockLotLike).ticker;
 
-              const typeLabel =
-                r.kind === "trade" ? (r.item as TradeLike).type : "Shares";
-
               const closedDate =
                 r.kind === "trade"
                   ? getTradeClosedDate(r.item as TradeLike)
