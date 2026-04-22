@@ -5,15 +5,17 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-
 import { mutate } from "swr";
 
 export function CreatePortfolioModal() {
@@ -35,7 +37,7 @@ export function CreatePortfolioModal() {
     setIsLoading(false);
 
     if (res.ok) {
-      toast.success("A new portfolio has been added!");
+      toast.success("Portfolio created!");
       mutate("/api/portfolios");
       setOpen(false);
       setName("");
@@ -51,32 +53,51 @@ export function CreatePortfolioModal() {
       <DialogTrigger asChild>
         <Button variant="default">Create Portfolio</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>Create New Portfolio</DialogTitle>
+          <DialogDescription>
+            Name your portfolio and set a starting capital amount to track allocation and returns.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <Input
-            type="text"
-            placeholder="Portfolio Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <div className="space-y-1.5">
+            <Label htmlFor="portfolio-name">Portfolio Name</Label>
+            <Input
+              id="portfolio-name"
+              type="text"
+              placeholder="e.g. Wheel Strategy"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
 
-          <CurrencyInput
-            value={capital}
-            onChange={setCapital}
-            placeholder="Starting Capital"
-          />
+          <div className="space-y-1.5">
+            <Label htmlFor="starting-capital">Starting Capital</Label>
+            <CurrencyInput
+              value={capital}
+              onChange={setCapital}
+              placeholder="e.g. $25,000"
+            />
+          </div>
+        </div>
 
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isLoading || !name || capital.raw <= 0}
+            disabled={isLoading || !name.trim() || capital.raw <= 0}
           >
-            {isLoading ? "Creating..." : "Create Portfolio"}
+            {isLoading ? "Creating…" : "Create Portfolio"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

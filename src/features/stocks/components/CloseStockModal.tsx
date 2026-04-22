@@ -7,12 +7,14 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { cn } from "@/lib/utils";
 
 function money(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -44,15 +46,18 @@ export function CloseStockLotModal({
   shares,
   avgCost,
 }: CloseStockLotModalProps) {
-  const [closePrice, setClosePrice] = React.useState<string>("");
+  const [closePrice, setClosePrice] = React.useState<{ formatted: string; raw: number }>({
+    formatted: "",
+    raw: 0,
+  });
   const [isClosing, setIsClosing] = React.useState<boolean>(false);
 
-  const closePriceNum = Number(closePrice);
-  const validClosePrice = Number.isFinite(closePriceNum) && closePriceNum > 0;
+  const validClosePrice = Number.isFinite(closePrice.raw) && closePrice.raw > 0;
 
-  const proceeds = validClosePrice ? closePriceNum * shares : NaN;
+  const proceeds = validClosePrice ? closePrice.raw * shares : NaN;
   const costBasis = avgCost * shares;
-  const estPL = validClosePrice ? (closePriceNum - avgCost) * shares : NaN;
+  const estPL = validClosePrice ? (closePrice.raw - avgCost) * shares : NaN;
+  const plPositive = Number.isFinite(estPL) && estPL >= 0;
 
   async function handleClose() {
     if (!validClosePrice) {
@@ -65,7 +70,7 @@ export function CloseStockLotModal({
       const res = await fetch(`/api/stocks/${encodeURIComponent(stockId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closePrice: closePriceNum }),
+        body: JSON.stringify({ closePrice: closePrice.raw }),
       });
 
       if (!res.ok) {
@@ -75,20 +80,15 @@ export function CloseStockLotModal({
 
       toast.success(`Closed ${ticker} stock lot.`);
       onOpenChange(false);
-      setClosePrice("");
+      setClosePrice({ formatted: "", raw: 0 });
 
       await Promise.all([
         mutate(`/api/stocks/${stockId}`),
-        mutate(
-          `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`,
-        ),
-        mutate(
-          `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`,
-        ),
+        mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`),
+        mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`),
       ]);
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to close stock lot";
+      const msg = err instanceof Error ? err.message : "Failed to close stock lot";
       toast.error(msg);
     } finally {
       setIsClosing(false);
@@ -100,23 +100,23 @@ export function CloseStockLotModal({
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
-        if (!next) setClosePrice("");
+        if (!next) setClosePrice({ formatted: "", raw: 0 });
       }}
     >
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>Close Stock Lot</DialogTitle>
           <DialogDescription>
-            This closes the entire lot and computes realized share P/L using your
-            current average cost.
+            Closes the entire lot and records realized share P/L using your current average cost.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-md border p-3 text-sm">
+          {/* Position summary */}
+          <div className="bg-muted/50 rounded-lg border p-3 text-sm space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Ticker</span>
-              <span className="font-medium">{ticker}</span>
+              <span className="font-semibold">{ticker}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Shares</span>
@@ -128,59 +128,59 @@ export function CloseStockLotModal({
             </div>
           </div>
 
+          {/* Close price input */}
           <div className="space-y-1.5">
             <Label htmlFor="closePrice">Close Price (per share)</Label>
-            <Input
-              id="closePrice"
-              type="number"
-              step="0.01"
-              min="0"
-              inputMode="decimal"
+            <CurrencyInput
               value={closePrice}
-              onChange={(e) => setClosePrice(e.target.value)}
+              onChange={setClosePrice}
               placeholder="e.g. 155.25"
             />
           </div>
 
-          <div className="rounded-md border p-3 text-sm space-y-1">
+          {/* Calculated summary */}
+          <div className="bg-muted/50 rounded-lg border p-3 text-sm space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Estimated Proceeds</span>
-              <span className="font-medium">
-                {formatMoney(proceeds)}
-              </span>
+              <span className="font-medium">{formatMoney(proceeds)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Cost Basis</span>
-              <span className="font-medium">
-                {formatMoney(costBasis)}
-              </span>
+              <span className="font-medium">{formatMoney(costBasis)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">
-                Estimated Share P/L
-              </span>
-              <span className="font-semibold">
+              <span className="text-muted-foreground">Estimated Share P/L</span>
+              <span
+                className={cn(
+                  "font-semibold",
+                  Number.isFinite(estPL)
+                    ? plPositive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
+                    : "",
+                )}
+              >
                 {formatMoney(estPL)}
               </span>
             </div>
           </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isClosing}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleClose}
-              disabled={!validClosePrice || isClosing}
-            >
-              {isClosing ? "Closing…" : "Close Stock Lot"}
-            </Button>
-          </div>
         </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isClosing}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleClose}
+            disabled={!validClosePrice || isClosing}
+          >
+            {isClosing ? "Closing…" : "Close Stock Lot"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

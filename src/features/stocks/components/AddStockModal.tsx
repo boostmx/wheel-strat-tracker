@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 type Props = {
   portfolioId: string;
@@ -27,14 +28,17 @@ type Props = {
 export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
   const [ticker, setTicker] = React.useState<string>("");
   const [shares, setShares] = React.useState<string>("");
-  const [avgCost, setAvgCost] = React.useState<string>("");
+  const [avgCost, setAvgCost] = React.useState<{ formatted: string; raw: number }>({
+    formatted: "",
+    raw: 0,
+  });
   const [notes, setNotes] = React.useState<string>("");
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
 
   const reset = React.useCallback(() => {
     setTicker("");
     setShares("");
-    setAvgCost("");
+    setAvgCost({ formatted: "", raw: 0 });
     setNotes("");
   }, []);
 
@@ -47,13 +51,12 @@ export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
 
     const t = ticker.trim().toUpperCase();
     const s = Number(shares);
-    const a = Number(avgCost);
 
     if (!t) return toast.error("Ticker is required");
     if (!Number.isFinite(s) || s <= 0 || !Number.isInteger(s)) {
       return toast.error("Shares must be a positive whole number");
     }
-    if (!Number.isFinite(a) || a <= 0) {
+    if (!Number.isFinite(avgCost.raw) || avgCost.raw <= 0) {
       return toast.error("Avg cost must be a positive number");
     }
 
@@ -61,7 +64,7 @@ export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
       portfolioId,
       ticker: t,
       shares: s,
-      avgCost: a,
+      avgCost: avgCost.raw,
       notes: notes.trim() ? notes.trim() : null,
     };
 
@@ -80,7 +83,6 @@ export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
 
       await res.json();
 
-      // refresh open stocks list
       const key = `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`;
       await mutate(key);
 
@@ -97,28 +99,28 @@ export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Add Stock</DialogTitle>
           <DialogDescription>
-            Track assigned shares (or any underlying position) with avg cost and notes.
+            Track assigned shares or any underlying position with avg cost and notes.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-1 space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="ticker">Ticker</Label>
               <Input
                 id="ticker"
                 value={ticker}
-                onChange={(e) => setTicker(e.target.value)}
+                onChange={(e) => setTicker(e.target.value.toUpperCase())}
                 placeholder="NVDA"
                 autoComplete="off"
               />
             </div>
 
-            <div className="sm:col-span-1 space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="shares">Shares</Label>
               <Input
                 id="shares"
@@ -129,19 +131,17 @@ export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
               />
             </div>
 
-            <div className="sm:col-span-1 space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="avgCost">Avg Cost</Label>
-              <Input
-                id="avgCost"
+              <CurrencyInput
                 value={avgCost}
-                onChange={(e) => setAvgCost(e.target.value)}
+                onChange={setAvgCost}
                 placeholder="142.61"
-                inputMode="decimal"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="notes">Notes (optional)</Label>
             <Textarea
               id="notes"
@@ -152,10 +152,10 @@ export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
             />
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
