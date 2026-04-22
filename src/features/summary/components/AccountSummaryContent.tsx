@@ -31,7 +31,7 @@ type OpenTradeSummary = {
   portfolioId: string;
   portfolioName: string;
 };
-type QuoteMap = Record<string, { price: number | null; change: number | null; changePct: number | null }>;
+type QuoteMap = Record<string, { price: number | null; change: number | null; changePct: number | null; marketState?: string | null }>;
 
 type SummaryPortfolio = {
   portfolioId: string;
@@ -266,6 +266,16 @@ function OpenPositionsCard({
   const formatPrice = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
+  const marketState = Object.values(quotes).find((q) => q.marketState)?.marketState ?? null;
+  const marketLabel =
+    marketState === "PRE"
+      ? "Pre-Market"
+      : marketState === "POST" || marketState === "POSTPOST"
+        ? "After Hours"
+        : marketState != null && marketState !== "REGULAR"
+          ? "Last Close"
+          : "Live Price";
+
   return (
     <Card className="rounded-xl">
       <CardContent className="p-5">
@@ -339,7 +349,7 @@ function OpenPositionsCard({
                           <span className="text-muted-foreground">—</span>
                         ) : price != null ? (
                           <span className="text-muted-foreground">
-                            Live: <span className="font-medium text-foreground tabular-nums">{formatPrice(price)}</span>
+                            {marketLabel}: <span className="font-medium text-foreground tabular-nums">{formatPrice(price)}</span>
                             {change != null && (
                               <span className={`ml-1 tabular-nums font-medium ${change >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
                                 {change >= 0 ? "▲" : "▼"}{Math.abs(change).toFixed(2)}%
@@ -366,7 +376,7 @@ function OpenPositionsCard({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50">
-                    {["Ticker", "Type", "Strike", "Expiry", "Contracts", "Collateral", "Live Price", "OTM %"].map((h) => (
+                    {["Ticker", "Type", "Strike", "Expiry", "Contracts", "Collateral", marketLabel, "OTM %"].map((h) => (
                       <th key={h} className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide pb-2 pr-4 last:pr-0 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>

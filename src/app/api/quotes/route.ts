@@ -11,6 +11,7 @@ export type QuoteResult = {
   change: number | null;
   changePct: number | null;
   previousClose: number | null;
+  marketState: "REGULAR" | "PRE" | "POST" | "CLOSED" | string | null;
 };
 
 export async function GET(request: Request) {
@@ -40,18 +41,19 @@ export async function GET(request: Request) {
             signal: AbortSignal.timeout(5000),
           },
         );
-        if (!res.ok) return { ticker, price: null, change: null, changePct: null, previousClose: null };
+        if (!res.ok) return { ticker, price: null, change: null, changePct: null, previousClose: null, marketState: null };
         const json = await res.json();
         const meta = json?.chart?.result?.[0]?.meta;
-        if (!meta) return { ticker, price: null, change: null, changePct: null, previousClose: null };
+        if (!meta) return { ticker, price: null, change: null, changePct: null, previousClose: null, marketState: null };
 
         const price: number | null = meta.regularMarketPrice ?? null;
         const prev: number | null = meta.chartPreviousClose ?? meta.previousClose ?? null;
         const change = price != null && prev != null ? price - prev : null;
         const changePct = change != null && prev ? (change / prev) * 100 : null;
-        return { ticker, price, change, changePct, previousClose: prev };
+        const marketState: string | null = meta.marketState ?? null;
+        return { ticker, price, change, changePct, previousClose: prev, marketState };
       } catch {
-        return { ticker, price: null, change: null, changePct: null, previousClose: null };
+        return { ticker, price: null, change: null, changePct: null, previousClose: null, marketState: null };
       }
     }),
   );

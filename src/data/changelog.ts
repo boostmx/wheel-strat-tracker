@@ -6,6 +6,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-22",
+    version: "v2.4.0",
+    highlights: [
+      "Trade detail page fully redesigned — primary stats (Strike, Avg Price, Capital In Use or Premium Captured) each get their own prominent card, while secondary info (Contracts, Expiry, DTE, Opened, Days Held, Close Reason) is consolidated into a clean Details card.",
+      "Trade type badges are now color-coded on the trade detail page: Covered Calls in violet, Cash-Secured Puts in blue, Calls in green, Puts in amber — consistent with the rest of the app.",
+      "Adding to a position now automatically appends a log entry to the trade notes (e.g. +2x @ $0.85 — Apr 22, 2026) so your add history is captured without any manual steps. Edit the note afterwards if you want to add context.",
+      "Notes card on the trade detail page has a dedicated header with an Edit button in the top right — clicking it opens inline editing without disrupting the rest of the page.",
+      "Live ticker price now appears as a fourth primary stat card on the trade detail page, refreshing every 60 seconds.",
+      "Live ticker price also appears in the stock lot detail stat cards, showing the current price alongside your avg cost and cost basis.",
+      "When the market is closed, the price card label updates automatically to Last Close, Pre-Market, or After Hours instead of Live Price — applies to the trade detail, stock lot detail, and the dashboard Open Positions table.",
+    ],
+  },
+  {
     date: "2026-04-21",
     version: "v2.3.2",
     highlights: [

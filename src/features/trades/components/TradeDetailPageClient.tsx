@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import useSWR from "swr";
+import type { QuoteResult } from "@/app/api/quotes/route";
 import { Trade } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -161,6 +162,13 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   const [notesEditing, setNotesEditing] = useState(false);
   const notesRef = useRef<TradeNotesHandle>(null);
 
+  const { data: quoteData } = useSWR<Record<string, QuoteResult>>(
+    trade?.ticker ? `/api/quotes?tickers=${trade.ticker}` : null,
+    fetcher,
+    { refreshInterval: 60_000, dedupingInterval: 30_000 },
+  );
+  const quote = trade?.ticker ? quoteData?.[trade.ticker] : undefined;
+
   const daysUntilExpiration = useMemo(() => {
     if (!trade || trade.status !== "open") return null;
     const exp = ensureUtcMidnight(trade.expirationDate).getTime();
@@ -254,7 +262,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       </div>
 
       {/* Primary stat cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <PrimaryStat label="Strike" value={fmt(trade.strikePrice)} />
         <PrimaryStat
           label="Avg Price"
@@ -274,6 +282,32 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
             tone={premiumTone}
           />
         )}
+        <PrimaryStat
+          label={
+            quote?.marketState && quote.marketState !== "REGULAR"
+              ? quote.marketState === "PRE"
+                ? "Pre-Market"
+                : quote.marketState === "POST" || quote.marketState === "POSTPOST"
+                  ? "After Hours"
+                  : "Last Close"
+              : "Live Price"
+          }
+          value={quote?.price != null ? fmt(quote.price) : "—"}
+          sub={
+            quote?.change != null && quote?.changePct != null
+              ? `${quote.change >= 0 ? "+" : ""}${fmt(quote.change)} (${quote.changePct >= 0 ? "+" : ""}${quote.changePct.toFixed(2)}%)`
+              : undefined
+          }
+          tone={
+            quote?.change == null
+              ? "default"
+              : quote.change > 0
+                ? "success"
+                : quote.change < 0
+                  ? "danger"
+                  : "default"
+          }
+        />
       </div>
 
       {/* Secondary details card */}
