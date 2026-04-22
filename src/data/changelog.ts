@@ -18,6 +18,12 @@ export const changelog: ChangelogEntry[] = [
       "The account selector on the dashboard stretches to full width on mobile when it wraps, making it easier to tap.",
       "Activity stats strip no longer shows broken divider lines on mobile — spacing is handled by the grid gap instead.",
       "P&L chart stat dividers (Period Total / Best / Worst) are hidden on mobile so the stats wrap cleanly without visual clutter.",
+      "Stock lot detail page overhauled into a proper dashboard — shares, avg cost, cost basis, and open date are now displayed as stat cards matching the rest of the app.",
+      "Each covered call row now links directly to the trade detail page — click any row to open the position.",
+      "New cost basis reduction card shows the running impact of covered calls: original avg cost, current avg after premiums, total captured, and projected avg if all open CCs expire worthless.",
+      "Covered call table gains a DTE countdown (color-coded amber under 21 days, red under 7) on open positions, a per-share cost reduction column showing before/after avg cost for closed CCs and the projected avg for open ones, and premium % of max captured on closed positions.",
+      "Premium column is now green for profitable closes and red for losses.",
+      "Stock lot notes are included in the cost basis card so all position context is in one place.",
     ],
   },
   {
