@@ -54,7 +54,6 @@ export function StocksTable({ portfolioId }: Props) {
                 <th className="px-2 sm:px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Shares</th>
                 <th className="px-2 sm:px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Avg Cost</th>
                 <th className="px-2 sm:px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Cost Basis</th>
-                <th className="px-2 sm:px-4 py-2.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wide select-none">Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -80,13 +79,6 @@ export function StocksTable({ portfolioId }: Props) {
                     <td className="px-2 sm:px-4 py-2">{r.shares}</td>
                     <td className="px-2 sm:px-4 py-2">{formatCurrency(avg)}</td>
                     <td className="px-2 sm:px-4 py-2">{formatCurrency(basis)}</td>
-                    <td className="px-2 sm:px-4 py-2 text-muted-foreground">
-                      {r.notes ? (
-                        <span className="line-clamp-1">{r.notes}</span>
-                      ) : (
-                        <span>—</span>
-                      )}
-                    </td>
                   </tr>
                 );
               })}
