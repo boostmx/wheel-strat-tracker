@@ -245,9 +245,6 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
           ? "warning"
           : "default";
 
-  const plTone: Tone =
-    trade.percentPL == null ? "default" : trade.percentPL > 0 ? "success" : "danger";
-
   const premiumTone: Tone =
     trade.premiumCaptured == null
       ? "default"
@@ -326,12 +323,14 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       </div>
 
       {/* Primary stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className={`grid gap-3 ${isOpen ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-4"}`}>
         <PrimaryStat label="Strike" value={fmt(trade.strikePrice)} />
         <PrimaryStat
           label="Avg Price"
           value={fmt(trade.contractPrice)}
-          sub={isOpen ? `${fmt(openPremium)} total` : undefined}
+          sub={isOpen
+            ? `${fmt(openPremium)} total`
+            : `${fmt(trade.contractPrice * 100 * contractsInitial)} received`}
         />
         {isOpen ? (
           <PrimaryStat
@@ -347,37 +346,52 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
           />
         ) : (
           <PrimaryStat
+            label="Close Price"
+            value={trade.closingPrice != null ? fmt(trade.closingPrice) : "Expired"}
+            sub={trade.closingPrice != null
+              ? `${fmt(trade.closingPrice * 100 * contractsInitial)} paid`
+              : "worthless"}
+          />
+        )}
+        {isOpen ? (
+          <PrimaryStat
+            label={
+              quote?.marketState && quote.marketState !== "REGULAR"
+                ? quote.marketState === "PRE"
+                  ? "Pre-Market"
+                  : quote.marketState === "POST" || quote.marketState === "POSTPOST"
+                    ? "After Hours"
+                    : "Last Close"
+                : "Live Price"
+            }
+            value={quote?.price != null ? fmt(quote.price) : "—"}
+            sub={
+              quote?.change != null && quote?.changePct != null
+                ? `${quote.change >= 0 ? "+" : ""}${fmt(quote.change)} (${quote.changePct >= 0 ? "+" : ""}${quote.changePct.toFixed(2)}%)`
+                : undefined
+            }
+            tone={
+              quote?.change == null
+                ? "default"
+                : quote.change > 0
+                  ? "success"
+                  : quote.change < 0
+                    ? "danger"
+                    : "default"
+            }
+          />
+        ) : (
+          <PrimaryStat
             label="Premium Captured"
             value={trade.premiumCaptured != null ? fmt(trade.premiumCaptured) : "—"}
+            sub={
+              trade.percentPL != null
+                ? `${trade.percentPL >= 0 ? "+" : ""}${trade.percentPL.toFixed(1)}% P/L`
+                : undefined
+            }
             tone={premiumTone}
           />
         )}
-        <PrimaryStat
-          label={
-            quote?.marketState && quote.marketState !== "REGULAR"
-              ? quote.marketState === "PRE"
-                ? "Pre-Market"
-                : quote.marketState === "POST" || quote.marketState === "POSTPOST"
-                  ? "After Hours"
-                  : "Last Close"
-              : "Live Price"
-          }
-          value={quote?.price != null ? fmt(quote.price) : "—"}
-          sub={
-            quote?.change != null && quote?.changePct != null
-              ? `${quote.change >= 0 ? "+" : ""}${fmt(quote.change)} (${quote.changePct >= 0 ? "+" : ""}${quote.changePct.toFixed(2)}%)`
-              : undefined
-          }
-          tone={
-            quote?.change == null
-              ? "default"
-              : quote.change > 0
-                ? "success"
-                : quote.change < 0
-                  ? "danger"
-                  : "default"
-          }
-        />
       </div>
 
       {/* Secondary details card */}
@@ -414,13 +428,8 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
             <>
               <DetailRow label="Contracts" value={String(contractsDisplay)} />
               <DetailRow
-                label="% P/L"
-                value={
-                  trade.percentPL != null
-                    ? `${trade.percentPL >= 0 ? "+" : ""}${trade.percentPL.toFixed(1)}%`
-                    : "—"
-                }
-                tone={plTone}
+                label="Expiry"
+                value={formatDateOnlyUTC(trade.expirationDate)}
               />
               <DetailRow label="Opened" value={formatDateOnlyUTC(trade.createdAt)} />
               <DetailRow

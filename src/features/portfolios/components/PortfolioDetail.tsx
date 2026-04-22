@@ -243,22 +243,74 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         </div>
       </motion.div>
 
-      {/* ── Stock Lots + Stats row ── */}
+      {/* ── Performance strip ── */}
+      {(potentialPremium != null || winRate != null || avgPLPercent != null || avgDaysInTrade != null || realizedYTD != null || realizedMTD != null) && (
+        <motion.div
+          className="rounded-xl border bg-card shadow-sm px-4 py-3 flex flex-wrap gap-x-6 gap-y-3"
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, delay: 0.08 }}
+          style={{ willChange: "opacity, transform" }}
+        >
+          {potentialPremium != null && (
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Open Premium</p>
+              <p className="text-sm font-bold text-teal-600 dark:text-teal-400 tabular-nums">{compact(potentialPremium)}</p>
+            </div>
+          )}
+          {winRate != null && (
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Win Rate</p>
+              <p className={`text-sm font-bold tabular-nums ${winRate >= 0.5 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}`}>
+                {(winRate * 100).toFixed(0)}%
+              </p>
+            </div>
+          )}
+          {avgPLPercent != null && (
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Avg P/L</p>
+              <p className={`text-sm font-bold tabular-nums ${avgPLPercent >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                {avgPLPercent >= 0 ? "+" : ""}{avgPLPercent.toFixed(1)}%
+              </p>
+            </div>
+          )}
+          {avgDaysInTrade != null && (
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Avg Days</p>
+              <p className="text-sm font-bold text-foreground tabular-nums">{avgDaysInTrade.toFixed(0)}</p>
+            </div>
+          )}
+          {realizedYTD != null && (
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">YTD Realized</p>
+              <p className={`text-sm font-bold tabular-nums ${realizedYTD >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                {realizedYTD >= 0 ? "+" : ""}{compact(realizedYTD)}
+              </p>
+            </div>
+          )}
+          {realizedMTD != null && (
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">MTD Realized</p>
+              <p className={`text-sm font-bold tabular-nums ${realizedMTD >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                {realizedMTD >= 0 ? "+" : ""}{compact(realizedMTD)}
+              </p>
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ── Stock Lots ── */}
       <motion.div
-        className="grid grid-cols-1 lg:grid-cols-2 gap-3"
         initial={{ opacity: 0, y: 5 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.08 }}
+        transition={{ duration: 0.22, delay: 0.1 }}
         style={{ willChange: "opacity, transform" }}
       >
-        {/* Stock Lots half-card */}
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col">
+        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                Stock Lots
-              </span>
-            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+              Stock Lots
+            </span>
             <Button
               variant="outline"
               size="sm"
@@ -269,111 +321,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               Add Stock
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-64">
-            <StocksTable portfolioId={portfolio.id} />
-          </div>
-          <AddStockModal
-            portfolioId={portfolio.id}
-            open={addStockOpen}
-            onOpenChange={setAddStockOpen}
-          />
+          <StocksTable portfolioId={portfolio.id} />
         </div>
-
-        {/* Performance stats half-card */}
-        <div className="rounded-xl border bg-card shadow-sm p-4 flex flex-col gap-3">
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-            Performance
-          </span>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3.5">
-            {potentialPremium != null && (
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                  Open Premium
-                </p>
-                <p className="mt-0.5 text-base font-bold text-teal-600 dark:text-teal-400 tabular-nums">
-                  {compact(potentialPremium)}
-                </p>
-              </div>
-            )}
-            {winRate != null && (
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                  Win Rate
-                </p>
-                <p
-                  className={`mt-0.5 text-base font-bold tabular-nums ${
-                    winRate >= 0.5
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-amber-600"
-                  }`}
-                >
-                  {(winRate * 100).toFixed(0)}%
-                </p>
-              </div>
-            )}
-            {avgPLPercent != null && (
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                  Avg P/L
-                </p>
-                <p
-                  className={`mt-0.5 text-base font-bold tabular-nums ${
-                    avgPLPercent >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-red-500"
-                  }`}
-                >
-                  {avgPLPercent >= 0 ? "+" : ""}
-                  {avgPLPercent.toFixed(1)}%
-                </p>
-              </div>
-            )}
-            {avgDaysInTrade != null && (
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                  Avg Days
-                </p>
-                <p className="mt-0.5 text-base font-bold text-foreground tabular-nums">
-                  {avgDaysInTrade.toFixed(0)}
-                </p>
-              </div>
-            )}
-            {realizedYTD != null && (
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                  YTD Realized
-                </p>
-                <p
-                  className={`mt-0.5 text-base font-bold tabular-nums ${
-                    realizedYTD >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-red-500"
-                  }`}
-                >
-                  {realizedYTD >= 0 ? "+" : ""}
-                  {compact(realizedYTD)}
-                </p>
-              </div>
-            )}
-            {realizedMTD != null && (
-              <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                  MTD Realized
-                </p>
-                <p
-                  className={`mt-0.5 text-base font-bold tabular-nums ${
-                    realizedMTD >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-red-500"
-                  }`}
-                >
-                  {realizedMTD >= 0 ? "+" : ""}
-                  {compact(realizedMTD)}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        <AddStockModal
+          portfolioId={portfolio.id}
+          open={addStockOpen}
+          onOpenChange={setAddStockOpen}
+        />
       </motion.div>
 
       {/* ── Open Positions ── */}

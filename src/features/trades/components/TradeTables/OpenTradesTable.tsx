@@ -13,6 +13,10 @@ import { makeOpenColumns } from "./columns-open";
 import { Trade } from "@/types";
 import { CloseTradeModal } from "@/features/trades/components/CloseTradeModal";
 import { mutate } from "swr";
+import useSWR from "swr";
+import type { QuoteResult } from "@/app/api/quotes/route";
+
+type QuoteMap = Record<string, QuoteResult>;
 import {
   Tooltip,
   TooltipContent,
@@ -215,6 +219,58 @@ const makeAllocationColumn = (totalCapital: number): ColumnDef<Trade> => ({
   meta: { align: "right" },
 });
 
+const makePriceColumn = (quotes: QuoteMap, isLoading: boolean): ColumnDef<Trade> => ({
+  id: "livePrice",
+  header: "Price",
+  enableSorting: true,
+  accessorFn: (row) => quotes[row.ticker]?.price ?? -1,
+  cell: ({ row }) => {
+    const q = quotes[row.original.ticker];
+    if (isLoading && !q) return <span className="text-muted-foreground text-xs">—</span>;
+    if (!q?.price) return <span className="text-muted-foreground text-xs">n/a</span>;
+    return (
+      <div>
+        <div className="tabular-nums font-medium">{formatUSD(q.price)}</div>
+        {q.changePct != null && (
+          <div className={`text-xs tabular-nums ${q.changePct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+            {q.changePct >= 0 ? "▲" : "▼"}{Math.abs(q.changePct).toFixed(2)}%
+          </div>
+        )}
+      </div>
+    );
+  },
+  meta: { align: "right" },
+});
+
+const makeOtmColumn = (quotes: QuoteMap): ColumnDef<Trade> => ({
+  id: "otmPct",
+  header: "OTM %",
+  enableSorting: true,
+  accessorFn: (row) => {
+    const price = quotes[row.ticker]?.price ?? null;
+    if (!price) return -999;
+    if (isCashSecuredPut(row.type)) return ((price - row.strikePrice) / price) * 100;
+    if (isCoveredCall(row.type)) return ((row.strikePrice - price) / price) * 100;
+    return -999;
+  },
+  cell: ({ row }) => {
+    const t = row.original;
+    const price = quotes[t.ticker]?.price ?? null;
+    if (!price) return <span className="text-muted-foreground">—</span>;
+    let otmPct: number | null = null;
+    if (isCashSecuredPut(t.type)) otmPct = ((price - t.strikePrice) / price) * 100;
+    else if (isCoveredCall(t.type)) otmPct = ((t.strikePrice - price) / price) * 100;
+    if (otmPct == null) return <span className="text-muted-foreground">—</span>;
+    const isITM = otmPct < 0;
+    return (
+      <span className={`text-xs font-semibold tabular-nums ${isITM ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+        {isITM ? "ITM " : ""}{Math.abs(otmPct).toFixed(1)}%{!isITM ? " OTM" : ""}
+      </span>
+    );
+  },
+  meta: { align: "right" },
+});
+
 // ---------- Component ----------
 export function OpenTradesTable({
   trades,
@@ -235,6 +291,17 @@ export function OpenTradesTable({
     strikePrice: number;
     contracts: number;
   } | null>(null);
+
+  // Live quotes
+  const quoteTickers = useMemo(() => {
+    const tickers = [...new Set(trades.map((t) => t.ticker).filter(Boolean))];
+    return tickers.length > 0 ? tickers.join(",") : null;
+  }, [trades]);
+  const { data: quoteData, isLoading: quotesLoading } = useSWR<QuoteMap>(
+    quoteTickers ? `/api/quotes?tickers=${quoteTickers}` : null,
+    { refreshInterval: 60_000, dedupingInterval: 30_000 },
+  );
+  const quotes: QuoteMap = quoteData ?? {};
 
   // Mobile filters sheet
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -266,8 +333,10 @@ export function OpenTradesTable({
     if (totalCapital != null && totalCapital > 0) {
       cols.push(makeAllocationColumn(totalCapital));
     }
+    cols.push(makePriceColumn(quotes, quotesLoading));
+    cols.push(makeOtmColumn(quotes));
     return cols;
-  }, [totalCapital]);
+  }, [totalCapital, quotes, quotesLoading]);
 
   const table = useReactTable({
     data: filteredTrades,
@@ -510,10 +579,39 @@ export function OpenTradesTable({
                     const pct = calcAllocationPct(t, totalCapital);
                     return pct != null ? (
                       <div>
-                        <span className="text-muted-foreground">Allocation</span>{" "}
-                        {pct.toFixed(1)}%
+                        <div className="text-xs text-muted-foreground">Allocation</div>
+                        <div>{pct.toFixed(1)}%</div>
                       </div>
                     ) : null;
+                  })()}
+                  {(() => {
+                    const q = quotes[t.ticker];
+                    if (!q?.price) return null;
+                    let otmPct: number | null = null;
+                    if (isCashSecuredPut(t.type)) otmPct = ((q.price - t.strikePrice) / q.price) * 100;
+                    else if (isCoveredCall(t.type)) otmPct = ((t.strikePrice - q.price) / q.price) * 100;
+                    const isITM = otmPct != null && otmPct < 0;
+                    return (
+                      <>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Price</div>
+                          <div className="tabular-nums font-medium">{formatUSD(q.price)}</div>
+                          {q.changePct != null && (
+                            <div className={`text-xs tabular-nums ${q.changePct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                              {q.changePct >= 0 ? "▲" : "▼"}{Math.abs(q.changePct).toFixed(2)}%
+                            </div>
+                          )}
+                        </div>
+                        {otmPct != null && (
+                          <div>
+                            <div className="text-xs text-muted-foreground">OTM %</div>
+                            <div className={`text-xs font-semibold tabular-nums ${isITM ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                              {isITM ? "ITM " : ""}{Math.abs(otmPct).toFixed(1)}%{!isITM ? " OTM" : ""}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
                   })()}
                 </div>
               </button>
