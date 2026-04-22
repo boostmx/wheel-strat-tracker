@@ -258,7 +258,7 @@ function OpenPositionsCard({
   quotes: QuoteMap;
   quotesLoading: boolean;
 }) {
-  const [posTab, setPosTab] = useState<"expiring" | "all">("expiring");
+  const [posTab, setPosTab] = useState<"expiring" | "all">("all");
 
   const expiringSoon = trades.filter((t) => dte(t.expirationDate) <= 14);
   const displayed = posTab === "expiring" ? expiringSoon : trades;
