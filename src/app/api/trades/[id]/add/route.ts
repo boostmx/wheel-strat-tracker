@@ -57,6 +57,15 @@ export async function PATCH(
   const newAvgPrice =
     totalOpen > 0 ? totalPremium / totalOpen : existingContractPrice;
 
+  const logDate = new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const logEntry = `+${addedContracts}x @ $${addedContractPrice.toFixed(2)} — ${logDate}`;
+  const existingNotes = (trade as Trade & { notes?: string | null }).notes ?? "";
+  const newNotes = existingNotes ? `${existingNotes}\n${logEntry}` : logEntry;
+
   const updated = await prisma.trade.update({
     where: { id },
     data: {
@@ -65,6 +74,7 @@ export async function PATCH(
       contractPrice: newAvgPrice,
       // keep legacy field in sync while migrating UI
       contracts: totalOpen,
+      notes: newNotes,
     },
   });
 
