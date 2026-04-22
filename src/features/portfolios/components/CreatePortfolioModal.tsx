@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
 
-export function CreatePortfolioModal() {
+export function CreatePortfolioModal({ trigger }: { trigger?: React.ReactNode } = {}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [capital, setCapital] = useState({ formatted: "", raw: 0 });
@@ -51,7 +51,7 @@ export function CreatePortfolioModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default">Create Portfolio</Button>
+        {trigger ?? <Button variant="default">Create Portfolio</Button>}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>

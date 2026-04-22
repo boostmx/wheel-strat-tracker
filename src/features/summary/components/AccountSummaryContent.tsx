@@ -932,7 +932,7 @@ export default function AccountSummaryContent() {
         style={{ willChange: "opacity, transform" }}
       >
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Account Summary</h1>
+          <h1 className="text-2xl font-bold text-foreground">Account Dashboard</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {selectedPortfolio ? selectedPortfolio.name : "All portfolios"} · as of today
           </p>
@@ -951,9 +951,6 @@ export default function AccountSummaryContent() {
               ))}
             </SelectContent>
           </Select>
-          <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-            <Link href="/portfolios">Portfolios</Link>
-          </Button>
         </div>
       </motion.div>
 
