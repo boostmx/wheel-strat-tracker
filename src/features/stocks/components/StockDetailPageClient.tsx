@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 
 import type { StockLot } from "@/types";
+import type { QuoteResult } from "@/app/api/quotes/route";
 import { CloseStockLotModal } from "./CloseStockModal";
 import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
 
@@ -63,6 +64,12 @@ const fetcher = async (url: string): Promise<StockResponse> => {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to load stock");
   return (await res.json()) as StockResponse;
+};
+
+const quoteFetcher = async (url: string): Promise<Record<string, QuoteResult>> => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json() as Promise<Record<string, QuoteResult>>;
 };
 
 function toNumber(v: string | number): number {
@@ -135,10 +142,12 @@ function StatusBadge(props: { status: string }) {
 function LotStat({
   label,
   value,
+  sub,
   tone = "default",
 }: {
   label: string;
   value: string;
+  sub?: string;
   tone?: "default" | "success" | "danger";
 }) {
   const valueColor =
@@ -152,6 +161,7 @@ function LotStat({
     <div className="rounded-lg border bg-background p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`text-base font-semibold tabular-nums ${valueColor}`}>{value}</div>
+      {sub ? <div className="text-xs text-muted-foreground mt-0.5">{sub}</div> : null}
     </div>
   );
 }
@@ -338,6 +348,13 @@ export default function StockDetailPageClient(props: {
   const shares = safeNumber(stockLot?.shares ?? 0);
   const avg = toNumber(stockLot?.avgCost ?? 0);
 
+  const { data: quoteData } = useSWR<Record<string, QuoteResult>>(
+    stockLot?.ticker ? `/api/quotes?tickers=${stockLot.ticker}` : null,
+    quoteFetcher,
+    { refreshInterval: 60_000, dedupingInterval: 30_000 },
+  );
+  const quote = stockLot?.ticker ? quoteData?.[stockLot.ticker] : undefined;
+
   const avgCostHistory = React.useMemo(
     () => buildAvgCostHistory(coveredCalls, avg, shares),
     [coveredCalls, avg, shares],
@@ -443,6 +460,26 @@ export default function StockDetailPageClient(props: {
         <LotStat
           label="Opened"
           value={new Date(s.openedAt).toLocaleDateString()}
+        />
+        <LotStat
+          label={
+            quote?.marketState && quote.marketState !== "REGULAR"
+              ? quote.marketState === "PRE"
+                ? "Pre-Market"
+                : quote.marketState === "POST" || quote.marketState === "POSTPOST"
+                  ? "After Hours"
+                  : "Last Close"
+              : "Live Price"
+          }
+          value={quote?.price != null ? moneyCompact(quote.price) : "—"}
+          sub={
+            quote?.change != null && quote?.changePct != null
+              ? `${quote.change >= 0 ? "+" : ""}${moneyCompact(quote.change)} (${quote.changePct >= 0 ? "+" : ""}${quote.changePct.toFixed(2)}%)`
+              : undefined
+          }
+          tone={
+            quote?.change == null ? "default" : quote.change > 0 ? "success" : quote.change < 0 ? "danger" : "default"
+          }
         />
         {isClosed ? (
           <>
