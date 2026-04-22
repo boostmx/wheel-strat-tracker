@@ -458,10 +458,6 @@ export default function StockDetailPageClient(props: {
         <LotStat label="Avg Cost / Share" value={moneyCompact(avg)} />
         <LotStat label="Total Cost Basis" value={money(basis)} />
         <LotStat
-          label="Opened"
-          value={new Date(s.openedAt).toLocaleDateString()}
-        />
-        <LotStat
           label={
             quote?.marketState && quote.marketState !== "REGULAR"
               ? quote.marketState === "PRE"
@@ -504,9 +500,14 @@ export default function StockDetailPageClient(props: {
       {coveredCalls.length > 0 || s.notes ? (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Cost Basis via Covered Calls
-            </h2>
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Cost Basis via Covered Calls
+              </h2>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Opened {new Date(s.openedAt).toLocaleDateString()}
+              </div>
+            </div>
             {closedCount > 0 ? (
               <span className="text-xs text-muted-foreground">
                 {closedCount} CC{closedCount !== 1 ? "s" : ""} closed
