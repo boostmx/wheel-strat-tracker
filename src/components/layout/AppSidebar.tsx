@@ -122,7 +122,12 @@ function PortfolioItem({
       )}
     >
       <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors", dotColor)} />
-      <span className="truncate">{portfolio.name || "Unnamed Portfolio"}</span>
+      <span className="truncate flex-1">{portfolio.name || "Unnamed Portfolio"}</span>
+      {!isLoading && (m?.expiringInSevenDays ?? 0) > 0 && (
+        <span className="flex-shrink-0 text-[10px] font-semibold bg-amber-400/20 text-amber-600 dark:text-amber-400 rounded-full px-1.5 py-0.5 leading-none">
+          {m!.expiringInSevenDays}
+        </span>
+      )}
     </Link>
   );
 }
