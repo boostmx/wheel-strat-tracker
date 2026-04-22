@@ -9,6 +9,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+import type { Metrics } from "@/types";
+import {
   TradeNotesSimple,
   type TradeNotesHandle,
 } from "@/features/trades/components/TradeNotesSimple";
@@ -169,6 +177,12 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   );
   const quote = trade?.ticker ? quoteData?.[trade.ticker] : undefined;
 
+  const { data: metrics } = useSWR<Metrics>(
+    trade ? `/api/portfolios/${portfolioId}/metrics` : null,
+    fetcher,
+    { dedupingInterval: 60_000 },
+  );
+
   const daysUntilExpiration = useMemo(() => {
     if (!trade || trade.status !== "open") return null;
     const exp = ensureUtcMidnight(trade.expirationDate).getTime();
@@ -210,6 +224,17 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
   const capitalInUse = isOpen && isCashSecuredPut
     ? trade.strikePrice * 100 * contractsOpen
     : 0;
+
+  const isCoveredCall = t.includes("covered");
+  const totalCapital = metrics?.capitalBase ?? metrics?.startingCapital ?? 0;
+  const allocPct = totalCapital > 0 && capitalInUse > 0
+    ? (capitalInUse / totalCapital) * 100
+    : null;
+  const breakeven = isCashSecuredPut
+    ? trade.strikePrice - trade.contractPrice
+    : isCoveredCall && trade.entryPrice != null
+      ? trade.entryPrice - trade.contractPrice
+      : null;
 
   const dteTone: Tone =
     daysUntilExpiration == null
@@ -259,6 +284,45 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
         <h1 className="text-3xl font-semibold tracking-tight">{trade.ticker}</h1>
         <TypeBadge type={trade.type} />
         <StatusBadge status={trade.status} />
+        {isOpen && (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Position details"
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8} className="text-xs space-y-1">
+                <div>
+                  Open premium:{" "}
+                  <span className="font-medium">{fmt(openPremium)}</span>
+                </div>
+                {capitalInUse > 0 && (
+                  <div>
+                    Capital in use:{" "}
+                    <span className="font-medium">{fmt(capitalInUse)}</span>
+                  </div>
+                )}
+                {allocPct != null && (
+                  <div>
+                    Portfolio allocation:{" "}
+                    <span className="font-medium">{allocPct.toFixed(1)}%</span>
+                  </div>
+                )}
+                {breakeven != null && (
+                  <div>
+                    Breakeven:{" "}
+                    <span className="font-medium">{fmt(breakeven)}</span>
+                  </div>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
 
       {/* Primary stat cards */}
@@ -273,7 +337,13 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
           <PrimaryStat
             label="Capital In Use"
             value={capitalInUse > 0 ? fmt(capitalInUse) : "—"}
-            sub={capitalInUse > 0 ? undefined : "N/A for CCs"}
+            sub={
+              capitalInUse > 0 && allocPct != null
+                ? `${allocPct.toFixed(1)}% of portfolio`
+                : capitalInUse > 0
+                  ? undefined
+                  : "N/A for CCs"
+            }
           />
         ) : (
           <PrimaryStat
