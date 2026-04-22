@@ -7,6 +7,8 @@ import { Trade } from "@/types";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,6 +20,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { mutate } from "swr";
+import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
 interface CloseTradeModalProps {
   id: string;
@@ -29,10 +32,9 @@ interface CloseTradeModalProps {
   ticker?: string;
   expirationDate?: string;
   type?: string;
-  refresh?: () => void; // optional legacy fallback
+  refresh?: () => void;
 }
 
-// simple int validator
 function isPositiveInt(v: string | number) {
   const n = typeof v === "string" ? Number(v) : v;
   return Number.isInteger(n) && n > 0;
@@ -59,7 +61,6 @@ export function CloseTradeModal({
   const [contractsToClose, setContractsToClose] = useState(contracts);
   const [closingPrice, setClosingPrice] = useState({ formatted: "", raw: 0 });
 
-  // touched flags (show errors only after interaction)
   const [contractsTouched, setContractsTouched] = useState(false);
   const [priceTouched, setPriceTouched] = useState(false);
 
@@ -76,7 +77,6 @@ export function CloseTradeModal({
     }
   }, [isOpen, contracts]);
 
-  // Assignment or expired worthless: force full close at 0.00
   useEffect(() => {
     if (!isOpen) return;
     if (!assigned && !expiredWorthless) return;
@@ -86,38 +86,27 @@ export function CloseTradeModal({
     setPriceTouched(false);
   }, [assigned, expiredWorthless, isOpen, contracts]);
 
-  // Fetch trade for fallback display fields when props are missing
   const { data: tradeData } = useSWR<Trade>(
     isOpen ? `/api/trades/${id}` : null,
     (url: string) => fetch(url).then((r) => r.json()),
     { dedupingInterval: 10_000 },
   );
 
-  // Prefer props; fall back to fetched trade data
   const displayTicker = ticker ?? tradeData?.ticker ?? "";
-
-  const humanize = (s?: string) =>
-    (s ?? "")
-      .replace(/_/g, " ")
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .trim();
-
-  const displayType = humanize(type ?? tradeData?.type ?? "");
+  const displayType = type ?? tradeData?.type ?? "";
 
   const tradeType = type ?? tradeData?.type;
   const isCSP = tradeType === "CashSecuredPut";
   const isCC = tradeType === "CoveredCall";
   const isShortOption = isCSP || isCC;
 
-  const displayAvgPrice = tradeData?.contractPrice; // average price per contract (fallback)
+  const displayAvgPrice = tradeData?.contractPrice;
   const displayExpiration =
     expirationDate ??
     (tradeData?.expirationDate ? String(tradeData.expirationDate) : undefined);
 
-  // Effective contracts (honor full close)
   const effectiveContracts = fullClose ? contracts : contractsToClose;
 
-  // Validations
   const contractsValid =
     isPositiveInt(effectiveContracts) &&
     Number(effectiveContracts) <= contracts;
@@ -141,7 +130,6 @@ export function CloseTradeModal({
 
   const handleSubmit = async () => {
     if (!canSubmit) {
-      // surface errors if user hasn't interacted
       setContractsTouched(true);
       setPriceTouched(true);
       toast.error(contractsErr || priceErr || "Fix errors before submitting.");
@@ -168,30 +156,17 @@ export function CloseTradeModal({
         throw new Error(msg || "Error closing trade");
       }
 
-      // Revalidate all dependent data (detail metrics + lists)
       await Promise.allSettled([
         mutate(`/api/trades?portfolioId=${portfolioId}&status=open`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`),
-        // stocks can change when:
-        // - CSP is closed as assignment (creates a new stock lot)
-        // - CC is closed (updates underlying lot avg cost)
-        mutate(
-          `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`,
-        ),
-        mutate(
-          `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`,
-        ),
-        // If you also use an overview metrics endpoint, add it here:
+        mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`),
+        mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`),
         mutate(`/api/portfolios/${portfolioId}/metrics`),
       ]);
 
-      // Force-refresh any server-rendered cards
       router.refresh();
-
       toast.success("Position closed successfully!");
       onClose();
-
-      // Optional: legacy refresh callback (safe no-op if not provided)
       refresh?.();
     } catch (err: unknown) {
       const errorMessage =
@@ -208,54 +183,52 @@ export function CloseTradeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            {`Close Position${displayTicker ? ` — ${displayTicker}` : ""}`}
+          <DialogTitle>
+            Close Position{displayTicker ? ` — ${displayTicker}` : ""}
           </DialogTitle>
+          <DialogDescription>
+            Record the closing price to calculate realized P/L.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Trade summary */}
-        <div className="bg-muted rounded-md px-3 py-2 text-sm mb-3 space-y-0.5">
-          <p>
-            <span className="font-medium">Type:</span> {displayType}
-          </p>
-          <p>
-            <span className="font-medium">Strike:</span> $
-            {strikePrice.toFixed(2)}
-          </p>
+        <div className="bg-muted/50 rounded-lg border p-3 text-sm space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Type</span>
+            {displayType ? <TypeBadge type={displayType} /> : <span>—</span>}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Strike</span>
+            <span className="font-medium">${strikePrice.toFixed(2)}</span>
+          </div>
           {typeof displayAvgPrice === "number" && (
-            <p>
-              <span className="font-medium">Avg Price:</span> $
-              {displayAvgPrice.toFixed(2)}
-            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Avg Price</span>
+              <span className="font-medium">${displayAvgPrice.toFixed(2)}</span>
+            </div>
           )}
           {displayExpiration && (
-            <p>
-              <span className="font-medium">Expiration:</span>{" "}
-              {format(new Date(displayExpiration), "MMM d, yyyy")}
-            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Expiration</span>
+              <span className="font-medium">
+                {format(new Date(displayExpiration), "MMM d, yyyy")}
+              </span>
+            </div>
           )}
         </div>
 
-        <div className="grid gap-3 sm:[grid-template-columns:1fr_1fr auto] items-start">
-          {/* Contracts column */}
-          <div className="sm:col-span-1">
-            <Label
-              htmlFor="contractsToClose"
-              className="text-sm whitespace-nowrap"
-            >
-              Contracts
-            </Label>
-
+        {/* Contracts + Price inputs */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="contractsToClose">Contracts</Label>
             <Input
               id="contractsToClose"
               type="text"
               inputMode="numeric"
-              className="h-11 text-base [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               disabled={!!fullClose || assigned}
               aria-invalid={contractsTouched && !contractsValid}
-              aria-describedby="contracts-help"
               value={
                 fullClose
                   ? String(contracts)
@@ -273,17 +246,9 @@ export function CloseTradeModal({
                 }
               }}
               placeholder={`Max ${contracts}`}
-              required
             />
-
-            {/* fixed-height helper row to prevent layout shift */}
             <p
-              id="contracts-help"
-              className={`text-xs mt-1 h-6 ${
-                contractsTouched && !contractsValid
-                  ? "text-red-600"
-                  : "text-muted-foreground"
-              }`}
+              className={`text-xs h-4 ${contractsTouched && !contractsValid ? "text-destructive" : "text-muted-foreground"}`}
             >
               {contractsTouched && !contractsValid
                 ? contractsErr
@@ -293,10 +258,8 @@ export function CloseTradeModal({
             </p>
           </div>
 
-          {/* Price column */}
-          <div className="sm:col-span-1">
-            <Label className="text-sm whitespace-nowrap">Close Price</Label>
-            {/* CurrencyInput doesn't expose onBlur/onKeyDown, wrap to capture Enter */}
+          <div className="space-y-1.5">
+            <Label>Close Price</Label>
             <div
               onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
                 if (e.key === "Enter") handleSubmit();
@@ -309,41 +272,26 @@ export function CloseTradeModal({
                   setPriceTouched(true);
                   setClosingPrice(v);
                 }}
-                placeholder={forcedZero ? "0.00" : "e.g., 0.20"}
+                placeholder={forcedZero ? "0.00" : "e.g. 0.20"}
                 disabled={forcedZero}
               />
             </div>
-
             <p
-              className={`text-xs mt-1 h-6 ${
-                priceTouched && !priceValid
-                  ? "text-red-600"
-                  : "text-muted-foreground"
-              }`}
+              className={`text-xs h-4 ${priceTouched && !priceValid ? "text-destructive" : "text-muted-foreground"}`}
             >
               {priceTouched && !priceValid
                 ? priceErr
                 : forcedZero
                   ? "Closes at 0.00"
-                  : "Enter per‑contract price"}
+                  : "Per‑contract price"}
             </p>
-          </div>
-
-          {/* Submit column */}
-          <div className="sm:col-span-1 flex items-start pt-4">
-            <Button
-              onClick={handleSubmit}
-              className="w-full"
-              disabled={submitting || !canSubmit}
-            >
-              {submitting ? "Submitting..." : "Submit"}
-            </Button>
           </div>
         </div>
 
-        <div className="mt-2 space-y-2">
+        {/* Outcome checkboxes */}
+        <div className="space-y-2 pt-1">
           {isShortOption && (
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox
                 checked={expiredWorthless}
                 disabled={assigned}
@@ -354,13 +302,13 @@ export function CloseTradeModal({
                 }}
               />
               <span className="text-xs text-muted-foreground">
-                Expired worthless (full premium captured)
+                Expired worthless — full premium captured
               </span>
             </label>
           )}
 
           {isCSP && (
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox
                 checked={assigned}
                 disabled={expiredWorthless}
@@ -371,13 +319,13 @@ export function CloseTradeModal({
                 }}
               />
               <span className="text-xs text-muted-foreground">
-                Assigned (stock put to you — creates a stock lot)
+                Assigned — stock put to you (creates a stock lot)
               </span>
             </label>
           )}
 
           {isCC && (
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox
                 checked={assigned}
                 disabled={expiredWorthless}
@@ -388,12 +336,12 @@ export function CloseTradeModal({
                 }}
               />
               <span className="text-xs text-muted-foreground">
-                Assigned (stock called away — closes the stock lot)
+                Assigned — stock called away (closes the stock lot)
               </span>
             </label>
           )}
 
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox
               checked={fullClose}
               disabled={forcedZero}
@@ -410,16 +358,25 @@ export function CloseTradeModal({
           </label>
 
           {assigned && isCSP && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground pl-6">
               Closes the CSP at 100% premium capture and opens a stock lot at the net basis (strike − premium).
             </p>
           )}
           {assigned && isCC && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground pl-6">
               Closes the covered call and marks the linked stock lot as sold at the strike price.
             </p>
           )}
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={submitting || !canSubmit}>
+            {submitting ? "Submitting…" : "Close Position"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

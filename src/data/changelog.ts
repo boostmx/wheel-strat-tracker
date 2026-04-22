@@ -16,6 +16,7 @@ export const changelog: ChangelogEntry[] = [
       "Performance stats (Win Rate, Avg P/L, Open Premium, etc.) moved from a side card to a compact horizontal strip, giving the stock lots table full width to breathe.",
       "Dashboard P&L bar chart hover fixed — the highlighted bar now correctly tracks the cursor position using the SVG coordinate matrix instead of a manual screen-to-viewBox calculation.",
       "Daily P&L chart defaults to the current month (MTD) instead of 90 days — a new MTD / 30d / 90d sub-filter appears when on the Daily tab so you can expand the window when needed.",
+      "Modal UI updates for a cleaner, more consistent look across the app"
     ],
   },
   {

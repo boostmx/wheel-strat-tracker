@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
 import { CurrencyInput } from "@/components/ui/currency-input";
+
 type StockLotStatus = "OPEN" | "CLOSED";
 
 type StockLot = {
@@ -39,6 +40,8 @@ function formatAvgCost(v: string | number): string {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -53,6 +56,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -74,11 +84,6 @@ type AddTradeModalProps = {
   lockPrefill?: boolean;
 };
 
-/**
- * Add Trade Modal Component
- * @param param0 - The portfolio ID to which the trade will be added
- * @returns
- */
 export function AddTradeModal({
   portfolioId,
   trigger,
@@ -90,7 +95,6 @@ export function AddTradeModal({
   const [strikePrice, setStrikePrice] = useState({ formatted: "", raw: 0 });
   const [expirationDate, setExpirationDate] = useState<Date | undefined>();
 
-  //Options for trade types on select dropdown
   const tradeTypeOptions = [
     { label: "Cash Secured Put", value: "CashSecuredPut" },
     { label: "Covered Call", value: "CoveredCall" },
@@ -120,8 +124,6 @@ export function AddTradeModal({
   const [entryPrice, setEntryPrice] = useState({ formatted: "", raw: 0 });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Apply prefill when opening so Stock Detail can launch a pre-configured Covered Call.
-  // When closing, reset to the default (non-prefilled) state.
   useEffect(() => {
     if (open) {
       if (prefill?.ticker != null) setTicker(prefill.ticker.toUpperCase());
@@ -134,7 +136,6 @@ export function AddTradeModal({
       return;
     }
 
-    // modal closed -> reset to clean defaults (original behavior)
     setTicker("");
     setStrikePrice({ formatted: "", raw: 0 });
     setExpirationDate(undefined);
@@ -211,42 +212,70 @@ export function AddTradeModal({
       <DialogTrigger asChild>
         {trigger ?? <Button variant="outline">+ Add Trade</Button>}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[540px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Add New Trade</DialogTitle>
+          <DialogDescription>
+            Log an options trade to track premiums and P/L.
+          </DialogDescription>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="ticker">Ticker</Label>
-            <Input
-              id="ticker"
-              placeholder="e.g. META"
-              value={ticker}
-              disabled={lockPrefill && !!prefill?.ticker}
-              onChange={(e) => {
-                if (lockPrefill && prefill?.ticker) return;
-                setTicker(e.target.value.toUpperCase());
-              }}
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ticker">Ticker</Label>
+              <Input
+                id="ticker"
+                placeholder="e.g. META"
+                value={ticker}
+                disabled={lockPrefill && !!prefill?.ticker}
+                onChange={(e) => {
+                  if (lockPrefill && prefill?.ticker) return;
+                  setTicker(e.target.value.toUpperCase());
+                }}
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="type">Option Type</Label>
+              <Select
+                value={type}
+                onValueChange={handleTypeChange}
+                disabled={lockPrefill && !!prefill?.type}
+              >
+                <SelectTrigger id="type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {tradeTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="strikePrice">Strike Price</Label>
-            <CurrencyInput
-              value={strikePrice}
-              onChange={setStrikePrice}
-              placeholder="e.g. $170"
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="strikePrice">Strike Price</Label>
+              <CurrencyInput
+                value={strikePrice}
+                onChange={setStrikePrice}
+                placeholder="e.g. $170"
+              />
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="entryPrice">Stock Entry Price</Label>
-            <CurrencyInput
-              value={entryPrice}
-              onChange={setEntryPrice}
-              placeholder="e.g. $184.34"
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="entryPrice">Stock Entry Price</Label>
+              <CurrencyInput
+                value={entryPrice}
+                onChange={setEntryPrice}
+                placeholder="e.g. $184.34"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -263,7 +292,7 @@ export function AddTradeModal({
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {expirationDate
                     ? format(expirationDate, "PPP")
-                    : "Pick a trade date"}
+                    : "Pick expiration date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -271,91 +300,84 @@ export function AddTradeModal({
                   mode="single"
                   selected={expirationDate}
                   onSelect={setExpirationDate}
-                  initialFocus
+                  autoFocus
                 />
               </PopoverContent>
             </Popover>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="type">Option Type</Label>
-            <select
-              id="type"
-              className="w-full border rounded px-3 py-2 text-sm"
-              value={type}
-              onChange={(e) => handleTypeChange(e.target.value)}
-              disabled={lockPrefill && !!prefill?.type}
-              required
-            >
-              {tradeTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {type === "CoveredCall" ? (
+          {type === "CoveredCall" && (
             <div className="space-y-1.5">
               <Label htmlFor="stockLotId">Underlying Stock Lot</Label>
-              <select
-                id="stockLotId"
-                className="w-full border rounded px-3 py-2 text-sm"
+              <Select
                 value={stockLotId}
-                onChange={(e) => setStockLotId(e.target.value)}
+                onValueChange={setStockLotId}
                 disabled={lockPrefill && !!prefill?.stockLotId}
-                required
               >
-                <option value="">Select a stock lot…</option>
-                {matchingStockLots.map((lot) => (
-                  <option key={lot.id} value={lot.id}>
-                    {lot.ticker} — {lot.shares} sh @ ${formatAvgCost(lot.avgCost)}
-                  </option>
-                ))}
-              </select>
-
-              {tickerUpper && matchingStockLots.length === 0 ? (
+                <SelectTrigger id="stockLotId" className="w-full">
+                  <SelectValue placeholder="Select a stock lot…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {matchingStockLots.map((lot) => (
+                    <SelectItem key={lot.id} value={lot.id}>
+                      {lot.ticker} — {lot.shares} sh @ ${formatAvgCost(lot.avgCost)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {tickerUpper && matchingStockLots.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  No OPEN stock lots found for this ticker. Add a stock position first.
+                  No open stock lots found for {tickerUpper}. Add a stock position first.
                 </p>
-              ) : null}
+              )}
             </div>
-          ) : null}
+          )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="contracts"># of Contracts</Label>
-            <Input
-              id="contracts"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              value={contracts === 0 ? "" : contracts.toString()}
-              disabled={lockPrefill && !!prefill?.contracts}
-              onChange={(e) => {
-                if (lockPrefill && prefill?.contracts != null) return;
-                const val = e.target.value;
-                // Only allow digits, no leading zeros unless it's '0' by itself
-                if (/^(0|[1-9][0-9]*)?$/.test(val)) {
-                  setContracts(val === "" ? 0 : Number(val));
-                }
-              }}
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="contracts"># of Contracts</Label>
+              <Input
+                id="contracts"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                value={contracts === 0 ? "" : contracts.toString()}
+                disabled={lockPrefill && !!prefill?.contracts}
+                onChange={(e) => {
+                  if (lockPrefill && prefill?.contracts != null) return;
+                  const val = e.target.value;
+                  if (/^(0|[1-9][0-9]*)?$/.test(val)) {
+                    setContracts(val === "" ? 0 : Number(val));
+                  }
+                }}
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="contractPrice">Premium per Contract</Label>
+              <CurrencyInput
+                value={contractPrice}
+                onChange={setContractPrice}
+                placeholder="e.g. $2.40"
+              />
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="contractPrice">Premium per Contract</Label>
-            <CurrencyInput
-              value={contractPrice}
-              onChange={setContractPrice}
-              placeholder="e.g. $2.40"
-            />
-          </div>
-
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? "Adding..." : "Add Trade"}
-          </Button>
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Adding…" : "Add Trade"}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
