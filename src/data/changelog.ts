@@ -7,6 +7,19 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-22",
+    version: "v2.4.2",
+    highlights: [
+      "Closed trades table cleaned up — the messy Details column is replaced with separate Strike/Cost and Qty columns; P/L and % P/L are merged into a single column showing dollar amount with percentage below.",
+      "Trade detail page for closed positions now shows the close price as a primary stat card alongside the avg open price, making it easy to see exactly what you received vs. what you paid to close. Expiration date added to the details section.",
+      "Live stock price added to the Open Positions table on the portfolio detail page — shows current price with day change % and a color-coded OTM % column so you can see at a glance how far each option is from being in the money.",
+      "Stock lots table expanded to full width on the portfolio detail page with two new columns: Live Price (with day change %) and Unrealized P/L (dollar and percent) so you can track your share positions alongside your options.",
+      "Performance stats (Win Rate, Avg P/L, Open Premium, etc.) moved from a side card to a compact horizontal strip, giving the stock lots table full width to breathe.",
+      "Dashboard P&L bar chart hover fixed — the highlighted bar now correctly tracks the cursor position using the SVG coordinate matrix instead of a manual screen-to-viewBox calculation.",
+      "Daily P&L chart defaults to the current month (MTD) instead of 90 days — a new MTD / 30d / 90d sub-filter appears when on the Daily tab so you can expand the window when needed.",
+    ],
+  },
+  {
+    date: "2026-04-22",
     version: "v2.4.0",
     highlights: [
       "Trade detail page fully redesigned — primary stats (Strike, Avg Price, Capital In Use or Premium Captured) each get their own prominent card, while secondary info (Contracts, Expiry, DTE, Opened, Days Held, Close Reason) is consolidated into a clean Details card.",

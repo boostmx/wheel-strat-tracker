@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, type ReactNode } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,6 +13,7 @@ import useSWR from "swr";
 import { Trade, StockLot } from "@/types";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
 import { useRouter } from "next/navigation";
+import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -135,11 +136,6 @@ const formatUSD = (n: number) =>
     maximumFractionDigits: 2,
   }).format(n);
 
-const Badge = ({ children }: { children: ReactNode }) => (
-  <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">
-    {children}
-  </span>
-);
 
 const getStockClosedDate = (s: StockLotLike): Date | undefined => {
   return toDate(s.closedAt) ?? toDate((s as StockLotLike).openedAt);
@@ -274,99 +270,85 @@ export function ClosedTradesTable({
         },
       },
       {
-        header: "Details",
-        accessorFn: (r) => {
-          if (r.kind === "trade") {
-            const t = r.item as TradeLike;
-            return `Strike ${Number(t.strikePrice ?? 0).toFixed(2)}`;
-          }
-          const s = r.item as StockLotLike;
-          const shares = toNumber(s.shares);
-          return `${shares} sh`;
-        },
+        header: "Strike / Cost",
+        accessorFn: (r) =>
+          r.kind === "trade"
+            ? Number((r.item as TradeLike).strikePrice ?? 0)
+            : toNumber((r.item as StockLotLike).avgCost),
         cell: ({ row }) => {
           const r = row.original;
-
           if (r.kind === "trade") {
-            const t = r.item as TradeLike;
-            const strike = Number(t.strikePrice ?? 0);
-            const exp = t.expirationDate
-              ? new Date(t.expirationDate as unknown as string | number | Date)
-              : null;
-
-            const contractsLabel =
-              t.contractsInitial != null
-                ? `${t.contractsInitial} contract${t.contractsInitial === 1 ? "" : "s"}`
-                : t.contracts != null
-                  ? `${t.contracts} contract${t.contracts === 1 ? "" : "s"}`
-                  : "";
-
-            return (
-              <div className="flex flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge>{`Strike ${strike.toFixed(2)}`}</Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {exp ? exp.toLocaleDateString() : "—"}
-                  </span>
-                </div>
-
-                {contractsLabel ? (
-                  <div className="text-xs text-muted-foreground">{contractsLabel}</div>
-                ) : null}
-              </div>
-            );
+            const strike = Number((r.item as TradeLike).strikePrice ?? 0);
+            return <span className="tabular-nums">{formatUSD(strike)}</span>;
           }
-
-          const s = r.item as StockLotLike;
-          const shares = toNumber(s.shares);
-          const avg = toNumber(s.avgCost);
-          const close = toNumber(s.closePrice);
-
+          const avg = toNumber((r.item as StockLotLike).avgCost);
           return (
-            <div className="flex flex-col gap-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge>{`${shares} sh`}</Badge>
-                <span className="text-xs text-muted-foreground">
-                  {close > 0 ? `Close ${formatUSD(close)}` : "Close —"}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">{`Avg ${formatUSD(avg)}`}</div>
+            <div>
+              <div className="tabular-nums">{formatUSD(avg)}</div>
+              <div className="text-xs text-muted-foreground">avg cost</div>
             </div>
           );
         },
+        meta: { align: "right" },
       },
       {
-        header: "P/L ($)",
+        header: "Qty",
+        accessorFn: (r) =>
+          r.kind === "trade"
+            ? ((r.item as TradeLike).contractsInitial ?? (r.item as TradeLike).contracts ?? 0)
+            : toNumber((r.item as StockLotLike).shares),
+        cell: ({ row }) => {
+          const r = row.original;
+          if (r.kind === "trade") {
+            const t = r.item as TradeLike;
+            const qty = t.contractsInitial ?? t.contracts ?? 0;
+            return (
+              <div>
+                <div>{qty}</div>
+                <div className="text-xs text-muted-foreground">contract{qty === 1 ? "" : "s"}</div>
+              </div>
+            );
+          }
+          const shares = toNumber((r.item as StockLotLike).shares);
+          return (
+            <div>
+              <div>{shares}</div>
+              <div className="text-xs text-muted-foreground">shares</div>
+            </div>
+          );
+        },
+        meta: { align: "right" },
+      },
+      {
+        header: "P/L",
         accessorFn: (r) => {
           if (r.kind === "trade") return toNumber((r.item as TradeLike).premiumCaptured);
           return toNumber((r.item as StockLotLike).realizedPnl);
         },
         cell: ({ row }) => {
           const r = row.original;
-          const v =
+          const dollars =
             r.kind === "trade"
               ? toNumber((r.item as TradeLike).premiumCaptured)
               : toNumber((r.item as StockLotLike).realizedPnl);
-          return <span className={plClass(v)}>{formatUSD(v)}</span>;
-        },
-      },
-      {
-        header: "% P/L",
-        accessorFn: (r) => {
-          if (r.kind === "trade") return computePercentPl(r.item as TradeLike) ?? 0;
-          return computeStockPercentPl(r.item as StockLotLike) ?? 0;
-        },
-        cell: ({ row }) => {
-          const r = row.original;
           const pct =
             r.kind === "trade"
               ? computePercentPl(r.item as TradeLike)
               : computeStockPercentPl(r.item as StockLotLike);
-          if (pct === null) return <span className="text-muted-foreground">—</span>;
           return (
-            <span className={plClass(pct)}>{`${Number(pct).toFixed(2)}%`}</span>
+            <div>
+              <div className={`tabular-nums font-medium ${plClass(dollars)}`}>
+                {formatUSD(dollars)}
+              </div>
+              {pct !== null && (
+                <div className={`text-xs tabular-nums ${plClass(pct)}`}>
+                  {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
+                </div>
+              )}
+            </div>
           );
         },
+        meta: { align: "right" },
       },
       {
         header: "Closed",
@@ -384,8 +366,8 @@ export function ClosedTradesTable({
               ? getTradeClosedDate(r.item)
               : getStockClosedDate(r.item as StockLotLike);
           return (
-            <span className="text-muted-foreground">
-              {d ? d.toLocaleDateString() : "—"}
+            <span className="text-muted-foreground tabular-nums">
+              {d ? formatDateOnlyUTC(d) : "—"}
             </span>
           );
         },
@@ -663,52 +645,39 @@ export function ClosedTradesTable({
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Closed</span>{" "}
-                      {closedDate ? closedDate.toLocaleDateString() : "—"}
+                      <div className="text-xs text-muted-foreground">Closed</div>
+                      <div>{closedDate ? formatDateOnlyUTC(closedDate) : "—"}</div>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">P/L</span>{" "}
-                      <span
-                        className={
-                          plClass(
-                            r.kind === "trade"
-                              ? toNumber((r.item as TradeLike).premiumCaptured)
-                              : toNumber((r.item as StockLotLike).realizedPnl),
-                          )
-                        }
-                      >
+                      <div className="text-xs text-muted-foreground">P/L</div>
+                      <div className={`font-medium ${plClass(r.kind === "trade" ? toNumber((r.item as TradeLike).premiumCaptured) : toNumber((r.item as StockLotLike).realizedPnl))}`}>
                         {premium}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">% P/L</span>{" "}
-                      <span className={pct !== null ? plClass(pct) : "text-muted-foreground"}>
-                        {pctLabel}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Details</span>{" "}
-                      {r.kind === "trade" ? (
-                        <span className="text-muted-foreground">
-                          {`$${Number((r.item as TradeLike).strikePrice ?? 0).toFixed(2)}`} •{" "}
-                          {(() => {
-                            const exp = (r.item as TradeLike).expirationDate
-                              ? new Date(
-                                  (r.item as TradeLike).expirationDate as unknown as
-                                    | string
-                                    | number
-                                    | Date,
-                                )
-                              : null;
-                            return exp ? exp.toLocaleDateString() : "—";
-                          })()}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {`${toNumber((r.item as StockLotLike).shares)} sh`} • Avg{" "}
-                          {formatUSD(toNumber((r.item as StockLotLike).avgCost))}
-                        </span>
+                      </div>
+                      {pct !== null && (
+                        <div className={`text-xs ${plClass(pct)}`}>
+                          {pct >= 0 ? "+" : ""}{pctLabel}
+                        </div>
                       )}
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        {r.kind === "trade" ? "Strike" : "Avg Cost"}
+                      </div>
+                      <div className="tabular-nums">
+                        {r.kind === "trade"
+                          ? formatUSD(Number((r.item as TradeLike).strikePrice ?? 0))
+                          : formatUSD(toNumber((r.item as StockLotLike).avgCost))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        {r.kind === "trade" ? "Contracts" : "Shares"}
+                      </div>
+                      <div>
+                        {r.kind === "trade"
+                          ? ((r.item as TradeLike).contractsInitial ?? (r.item as TradeLike).contracts ?? 0)
+                          : toNumber((r.item as StockLotLike).shares)}
+                      </div>
                     </div>
                   </div>
                 </button>

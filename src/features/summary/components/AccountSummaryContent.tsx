@@ -684,6 +684,7 @@ export default function AccountSummaryContent() {
   }, [selectedPortfolio, data]);
 
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly" | "yearly" | "ytd" | "alltime">("daily");
+  const [dailyWindow, setDailyWindow] = useState<"mtd" | "30d" | "90d">("mtd");
   const [showAllPremium, setShowAllPremium] = useState(false);
 
   // Open trades scoped to selected portfolio
@@ -708,13 +709,30 @@ export default function AccountSummaryContent() {
   const quotes: QuoteMap = quotesData ?? {};
 
   const timelineSeries = useMemo(() => {
-    if (activeTab === "weekly") return chartWeekly52Series;
-    if (activeTab === "monthly") return chartMonthly12Series;
-    if (activeTab === "yearly") return chartYearlySeries;
-    if (activeTab === "ytd") return chartYtdSeries;
-    if (activeTab === "alltime") return chartMonthlyAllSeries;
-    return chartDaily90Series; // "daily"
-  }, [activeTab, chartDaily90Series, chartWeekly52Series, chartMonthly12Series, chartYearlySeries, chartYtdSeries, chartMonthlyAllSeries]);
+    const toPerPeriod = (s: { label: string; realized: number }[]) =>
+      s.map((d, i) => ({
+        label: d.label,
+        value: i === 0 ? d.realized : d.realized - s[i - 1].realized,
+      }));
+
+    if (activeTab === "daily") {
+      const all = toPerPeriod(chartDaily90Series);
+      if (dailyWindow === "mtd") {
+        const now = new Date();
+        const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const filtered = all.filter((d) => d.label.startsWith(prefix));
+        return filtered.length > 0 ? filtered : all;
+      }
+      if (dailyWindow === "30d") return all.slice(-30);
+      return all; // "90d"
+    }
+    if (activeTab === "weekly") return toPerPeriod(chartWeekly52Series);
+    if (activeTab === "monthly") return toPerPeriod(chartMonthly12Series);
+    if (activeTab === "yearly") return toPerPeriod(chartYearlySeries);
+    if (activeTab === "ytd") return toPerPeriod(chartYtdSeries);
+    if (activeTab === "alltime") return toPerPeriod(chartMonthlyAllSeries);
+    return toPerPeriod(chartDaily90Series);
+  }, [activeTab, dailyWindow, chartDaily90Series, chartWeekly52Series, chartMonthly12Series, chartYearlySeries, chartYtdSeries, chartMonthlyAllSeries]);
 
   if (isLoading) {
     return <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6">Loading...</div>;
@@ -753,7 +771,7 @@ export default function AccountSummaryContent() {
     data,
     height = 280,
   }: {
-    data: { label: string; realized: number }[];
+    data: { label: string; value: number }[];
     height?: number;
   }) {
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
@@ -761,11 +779,7 @@ export default function AccountSummaryContent() {
     if (!data || data.length === 0)
       return <div className="text-xs text-muted-foreground py-8 text-center">No data for this period</div>;
 
-    // Convert cumulative series to per-period values
-    const bars = data.map((d, i) => ({
-      label: d.label,
-      value: i === 0 ? d.realized : d.realized - data[i - 1].realized,
-    }));
+    const bars = data;
 
     const margin = { top: 16, right: 16, bottom: 32, left: 58 };
     const W = 600;
@@ -818,9 +832,12 @@ export default function AccountSummaryContent() {
         viewBox={`0 0 ${W} ${H}`}
         className="w-full overflow-visible cursor-crosshair"
         onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const scaleX = W / rect.width;
-          const mx = (e.clientX - rect.left) * scaleX - margin.left;
+          const ctm = e.currentTarget.getScreenCTM();
+          if (!ctm) return;
+          const pt = (e.currentTarget as SVGSVGElement).createSVGPoint();
+          pt.x = e.clientX;
+          pt.y = e.clientY;
+          const mx = pt.matrixTransform(ctm.inverse()).x - margin.left;
           const idx = Math.floor(mx / (barW + barGap));
           setHoveredIdx(Math.max(0, Math.min(bars.length - 1, idx)));
         }}
@@ -895,12 +912,10 @@ export default function AccountSummaryContent() {
   }
 
   const pnlStats = (() => {
-    const last = timelineSeries[timelineSeries.length - 1]?.realized ?? 0;
-    const diffs = timelineSeries.map((pt, i) =>
-      i === 0 ? pt.realized : pt.realized - timelineSeries[i - 1].realized,
-    );
-    const best = diffs.length ? Math.max(...diffs) : 0;
-    const worst = diffs.length ? Math.min(...diffs) : 0;
+    const values = timelineSeries.map((pt) => pt.value);
+    const last = values.reduce((a, b) => a + b, 0);
+    const best = values.length ? Math.max(...values) : 0;
+    const worst = values.length ? Math.min(...values) : 0;
     const periodLabel = activeTab === "weekly" ? "wk" : activeTab === "monthly" || activeTab === "ytd" || activeTab === "alltime" ? "mo" : activeTab === "yearly" ? "yr" : "day";
     return { last, best, worst, periodLabel };
   })();
@@ -1164,20 +1179,39 @@ export default function AccountSummaryContent() {
                 <h2 className="text-base font-semibold text-foreground">Realized P&L</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Per period — hover to inspect</p>
               </div>
-              <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-wrap">
-                {(["daily", "weekly", "monthly", "yearly", "ytd", "alltime"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                      activeTab === tab
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {tab === "daily" ? "Daily" : tab === "weekly" ? "Weekly" : tab === "monthly" ? "Monthly" : tab === "yearly" ? "Yearly" : tab === "ytd" ? "YTD" : "All Time"}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 flex-wrap">
+                {activeTab === "daily" && (
+                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                    {(["mtd", "30d", "90d"] as const).map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => setDailyWindow(w)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          dailyWindow === w
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {w === "mtd" ? "MTD" : w}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-wrap">
+                  {(["daily", "weekly", "monthly", "yearly", "ytd", "alltime"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                        activeTab === tab
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {tab === "daily" ? "Daily" : tab === "weekly" ? "Weekly" : tab === "monthly" ? "Monthly" : tab === "yearly" ? "Yearly" : tab === "ytd" ? "YTD" : "All Time"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
