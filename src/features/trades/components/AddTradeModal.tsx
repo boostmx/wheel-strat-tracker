@@ -221,7 +221,7 @@ export function AddTradeModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="ticker">Ticker</Label>
               <Input
@@ -258,7 +258,7 @@ export function AddTradeModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="strikePrice">Strike Price</Label>
               <CurrencyInput
@@ -300,7 +300,7 @@ export function AddTradeModal({
                   mode="single"
                   selected={expirationDate}
                   onSelect={setExpirationDate}
-                  initialFocus
+                  autoFocus
                 />
               </PopoverContent>
             </Popover>
@@ -333,7 +333,7 @@ export function AddTradeModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="contracts"># of Contracts</Label>
               <Input
