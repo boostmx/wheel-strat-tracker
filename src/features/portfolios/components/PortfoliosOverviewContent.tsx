@@ -325,13 +325,13 @@ export default function PortfoliosOverviewContent() {
         style={{ willChange: "opacity, transform" }}
       >
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Portfolios</h1>
+          <h1 className="text-3xl font-bold text-foreground">Portfolio Overview</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isLoading
               ? "Loading…"
               : portfolios.length === 0
                 ? "No portfolios yet"
-                : `${portfolios.length} portfolio${portfolios.length !== 1 ? "s" : ""}`}
+                : `Health snapshot across ${portfolios.length} portfolio${portfolios.length !== 1 ? "s" : ""}`}
           </p>
         </div>
         <CreatePortfolioModal />

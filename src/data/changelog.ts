@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-22",
+    version: "v2.4.3",
+    highlights: [
+      "Replaced the top navigation bar with a persistent left sidebar — click directly into any portfolio from anywhere in the app without going through the overview page first.",
+      "Portfolio health dots in the sidebar show green, amber, or red at a glance based on deployment level, expiring trades, and P&L — no need to open a portfolio to know its status.",
+    ],
+  },
+  {
+    date: "2026-04-22",
     version: "v2.4.2",
     highlights: [
       "Closed trades table cleaned up — the messy Details column is replaced with separate Strike/Cost and Qty columns; P/L and % P/L are merged into a single column showing dollar amount with percentage below.",

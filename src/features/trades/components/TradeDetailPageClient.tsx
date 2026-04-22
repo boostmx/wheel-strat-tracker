@@ -14,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Info, ChevronRight } from "lucide-react";
 import type { Metrics } from "@/types";
 import {
   TradeNotesSimple,
@@ -183,6 +183,12 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
     { dedupingInterval: 60_000 },
   );
 
+  const { data: portfolio } = useSWR<{ id: string; name: string | null }>(
+    portfolioId ? `/api/portfolios/${portfolioId}` : null,
+    fetcher,
+    { dedupingInterval: 60_000 },
+  );
+
   const daysUntilExpiration = useMemo(() => {
     if (!trade || trade.status !== "open") return null;
     const exp = ensureUtcMidnight(trade.expirationDate).getTime();
@@ -258,12 +264,15 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
     <div className="max-w-3xl mx-auto py-10 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <Link
-          href={`/portfolios/${portfolioId}`}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ← Back to Portfolio
-        </Link>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Link href="/portfolios" className="hover:text-foreground transition-colors">Portfolio Overview</Link>
+          <ChevronRight className="h-3 w-3 opacity-50" />
+          <Link href={`/portfolios/${portfolioId}`} className="hover:text-foreground transition-colors">
+            {portfolio?.name ?? "Portfolio"}
+          </Link>
+          <ChevronRight className="h-3 w-3 opacity-50" />
+          <span className="text-foreground">{trade?.ticker ?? "Trade"}</span>
+        </div>
         {isOpen ? (
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setCloseModalOpen(true)}>

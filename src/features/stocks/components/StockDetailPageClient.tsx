@@ -18,6 +18,7 @@ import type { StockLot } from "@/types";
 import type { QuoteResult } from "@/app/api/quotes/route";
 import { CloseStockLotModal } from "./CloseStockModal";
 import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
+import { ChevronRight } from "lucide-react";
 
 type StockResponse = { stockLot: StockLot };
 
@@ -325,6 +326,12 @@ export default function StockDetailPageClient(props: {
     fetcher,
   );
 
+  const { data: portfolioData } = useSWR<{ id: string; name: string | null }>(
+    portfolioId ? `/api/portfolios/${portfolioId}` : null,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { dedupingInterval: 60_000 },
+  );
+
   const stockLot = data?.stockLot;
 
   const coveredCalls: CoveredCallRow[] = React.useMemo(() => {
@@ -419,12 +426,15 @@ export default function StockDetailPageClient(props: {
     <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between gap-4">
-        <Link
-          href={`/portfolios/${portfolioId}`}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ← Back to Portfolio
-        </Link>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Link href="/portfolios" className="hover:text-foreground transition-colors">Portfolio Overview</Link>
+          <ChevronRight className="h-3 w-3 opacity-50" />
+          <Link href={`/portfolios/${portfolioId}`} className="hover:text-foreground transition-colors">
+            {portfolioData?.name ?? "Portfolio"}
+          </Link>
+          <ChevronRight className="h-3 w-3 opacity-50" />
+          <span className="text-foreground">{stockLot?.ticker ?? "Stock"}</span>
+        </div>
 
         <div className="flex items-center gap-2">
           {!isClosed && sharesForContracts >= 1 ? (

@@ -23,7 +23,7 @@ import { useTrades } from "@/features/trades/hooks/useTrades";
 import { useDetailMetrics } from "@/features/portfolios/hooks/useDetailMetrics";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Settings, Plus } from "lucide-react";
+import { Settings, Plus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -134,6 +134,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
         style={{ willChange: "opacity, transform" }}
       >
         <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Link href="/portfolios" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Portfolio Overview
+            </Link>
+            <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+            <span className="text-xs text-muted-foreground">{portfolio.name || "Unnamed Portfolio"}</span>
+          </div>
           <h1 className="text-2xl font-bold text-foreground leading-tight">
             {portfolio.name || "Unnamed Portfolio"}
           </h1>
