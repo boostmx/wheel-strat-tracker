@@ -99,7 +99,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const potentialPremium = m?.potentialPremium != null ? Number(m.potentialPremium) : null;
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-5">
+    <div className="py-6 px-4 sm:px-6 space-y-5">
 
       {/* ── Header — always visible ── */}
       <motion.div

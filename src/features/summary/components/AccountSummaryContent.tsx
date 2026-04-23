@@ -750,11 +750,11 @@ export default function AccountSummaryContent({
   }, [activeTab, dailyWindow, chartDaily90Series, chartWeekly52Series, chartMonthly12Series, chartYearlySeries, chartYtdSeries, chartMonthlyAllSeries]);
 
   if (isLoading) {
-    return <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6">Loading...</div>;
+    return <div className="py-16 px-4 sm:px-6">Loading...</div>;
   }
   if (error) {
     return (
-      <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6 text-red-600">
+      <div className="py-16 px-4 sm:px-6 text-red-600">
         Failed to load portfolios.
       </div>
     );
@@ -765,7 +765,7 @@ export default function AccountSummaryContent({
     data && Object.keys(data.perPortfolio || {}).length === 0;
   if (hasNoPortfolios) {
     return (
-      <div className="max-w-3xl mx-auto py-16 sm:py-24 px-4 sm:px-6 text-center">
+      <div className="py-16 sm:py-24 px-4 sm:px-6 text-center">
         <h1 className="text-3xl font-bold text-foreground">
           Welcome!
         </h1>
@@ -940,7 +940,7 @@ export default function AccountSummaryContent({
   })();
 
   return (
-    <div className={embedded ? "space-y-5" : "max-w-6xl mx-auto py-6 sm:py-10 px-4 sm:px-6 space-y-5"}>
+    <div className={embedded ? "space-y-5" : "py-6 sm:py-8 px-4 sm:px-6 space-y-5"}>
 
       {/* ── Header — hidden when embedded in portfolio detail ── */}
       {!embedded && (
@@ -1070,7 +1070,7 @@ export default function AccountSummaryContent({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
               <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Win Rate</p>
-                <p className="text-xl font-bold tabular-nums text-foreground">
+                <p className={`text-xl font-bold tabular-nums ${view.winRate != null && view.winRate > 0 ? "text-emerald-600 dark:text-emerald-400" : view.winRate != null ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
                   {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">of closed trades</p>

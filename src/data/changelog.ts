@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-23",
+    version: "v2.5.2",
+    highlights: [
+      "Win rate on the All Accounts dashboard and Reports page is now color-coded — green when positive, red when zero, neutral dash when there's no data.",
+      "Sidebar can now be collapsed to a slim icon rail, giving tables and charts full screen real estate on desktop. State persists across page loads.",
+      "Sidebar controls reorganized for better usability — the collapse toggle lives in the header next to the app name, and theme/settings are now compact icon buttons at the bottom rather than full nav items.",
+      "All main content pages (All Accounts, Portfolio Detail, Reports) now use the full available width — the previous max-width cap has been removed so tables and cards always fill the panel.",
+    ],
+  },
+  {
+    date: "2026-04-23",
     version: "v2.5.1",
     highlights: [
       "Portfolio tabs now remember where you left off — navigating away and back lands you on the same tab instead of resetting to Overview.",
