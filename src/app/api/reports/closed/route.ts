@@ -2,6 +2,7 @@ import { prisma } from "@/server/db";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/server/auth/auth";
 import { getClosedTradesInRange } from "@/features/reports/hooks/getClosedTradesRange";
+import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 function parseDateOrFallback(value: string | null, fallback: Date): Date {
   if (!value) return fallback;
@@ -29,9 +30,11 @@ export async function GET(req: NextRequest) {
   // include all portfolios owned by the authenticated user.
   const portfolioIds: string[] = [];
   const portfolioNameMap: Record<string, string> = {};
+  const effectiveUserId = await getEffectiveUserId(session.user.id, session.user.isAdmin ?? false);
+
   if (!portfolioId || portfolioId === "all") {
     const mine = await prisma.portfolio.findMany({
-      where: { userId: session.user.id },
+      where: { userId: effectiveUserId },
       select: { id: true, name: true },
     });
     for (const p of mine) {
@@ -41,7 +44,7 @@ export async function GET(req: NextRequest) {
   } else {
     portfolioIds.push(portfolioId);
     const p = await prisma.portfolio.findFirst({
-      where: { id: portfolioId, userId: session.user.id },
+      where: (session.user.isAdmin) ? { id: portfolioId } : { id: portfolioId, userId: effectiveUserId },
       select: { name: true },
     });
     portfolioNameMap[portfolioId] = p?.name ?? "Unnamed";

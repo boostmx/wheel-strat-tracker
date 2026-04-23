@@ -3,6 +3,7 @@ import { prisma } from "@/server/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
 import { Prisma } from "@prisma/client";
+import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -18,10 +19,11 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
-    if (!userId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const isAdmin = session.user.isAdmin ?? false;
+    const userId = await getEffectiveUserId(session.user.id, isAdmin);
 
     const params = await props.params;
     const id = params.id;
@@ -29,7 +31,7 @@ export async function GET(
     const stockLot = await prisma.stockLot.findFirst({
       where: {
         id,
-        portfolio: { userId },
+        portfolio: isAdmin ? undefined : { userId },
       },
       include: {
         trades: {
@@ -55,10 +57,11 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
-    if (!userId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const isAdmin = session.user.isAdmin ?? false;
+    const userId = await getEffectiveUserId(session.user.id, isAdmin);
 
     const params = await props.params;
     const id = params.id;
@@ -75,7 +78,7 @@ export async function PATCH(
     const lot = await prisma.stockLot.findFirst({
       where: {
         id,
-        portfolio: { userId },
+        portfolio: isAdmin ? undefined : { userId },
       },
       select: {
         id: true,

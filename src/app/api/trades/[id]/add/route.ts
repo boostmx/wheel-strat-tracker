@@ -28,8 +28,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
+  const isAdmin = session?.user?.isAdmin ?? false;
   const trade = await prisma.trade.findFirst({
-    where: { id, portfolio: { userId } },
+    where: isAdmin ? { id } : { id, portfolio: { userId } },
   });
   if (!trade) {
     return NextResponse.json({ error: "Trade not found" }, { status: 404 });

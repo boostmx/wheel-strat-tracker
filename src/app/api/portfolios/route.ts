@@ -1,6 +1,7 @@
 import { auth } from "@/server/auth/auth";
 import { prisma } from "@/server/prisma";
 import { NextResponse } from "next/server";
+import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 export async function GET(): Promise<NextResponse> {
   const session = await auth();
@@ -10,8 +11,9 @@ export async function GET(): Promise<NextResponse> {
   }
 
   try {
+    const uid = await getEffectiveUserId(session.user.id, session.user.isAdmin ?? false);
     const portfolios = await prisma.portfolio.findMany({
-      where: { userId: session.user.id },
+      where: { userId: uid },
       orderBy: { createdAt: "asc" },
     });
 

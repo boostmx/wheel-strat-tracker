@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
+import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 type StockLotStatusQuery = "open" | "closed";
 
@@ -17,10 +18,11 @@ function parseStatus(value: string | null): Prisma.StockLotWhereInput["status"] 
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
-    if (!userId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const isAdmin = session.user.isAdmin ?? false;
+    const userId = await getEffectiveUserId(session.user.id, isAdmin);
 
     const url = new URL(req.url);
     const portfolioId = url.searchParams.get("portfolioId");
@@ -31,7 +33,7 @@ export async function GET(req: Request) {
     }
 
     const portfolio = await prisma.portfolio.findFirst({
-      where: { id: portfolioId, userId },
+      where: isAdmin ? { id: portfolioId } : { id: portfolioId, userId },
       select: { id: true },
     });
     if (!portfolio) {
@@ -77,10 +79,11 @@ function isCreateBody(value: unknown): value is CreateStockLotBody {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
-    if (!userId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const isAdmin = session.user.isAdmin ?? false;
+    const userId = session.user.id;
 
     const bodyUnknown: unknown = await req.json();
 
@@ -106,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     const portfolio = await prisma.portfolio.findFirst({
-      where: { id: portfolioId, userId },
+      where: isAdmin ? { id: portfolioId } : { id: portfolioId, userId },
       select: { id: true },
     });
     if (!portfolio) {
