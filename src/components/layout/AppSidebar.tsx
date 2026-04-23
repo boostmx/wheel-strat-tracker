@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Briefcase,
   Settings,
+  Shield,
   LogOut,
   Moon,
   Sun,
@@ -17,6 +18,7 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  ChevronUp,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -28,6 +30,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { CreatePortfolioModal } from "@/features/portfolios/components/CreatePortfolioModal";
 import { useOverviewMetrics } from "@/features/portfolios/hooks/usePortfolioMetrics";
 import { VersionBadge } from "@/components/layout/VersionBadge";
@@ -57,36 +64,6 @@ function WithTooltip({
         {label}
       </TooltipContent>
     </Tooltip>
-  );
-}
-
-function ThemeIconButton() {
-  const { theme, resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
-
-  const isDark = (theme ?? resolvedTheme) === "dark";
-
-  function toggle() {
-    const next = isDark ? "light" : "dark";
-    setTheme(next);
-    try { localStorage.setItem("wheeltracker.theme", next); } catch {}
-    try { document.cookie = `wheeltracker.theme=${next}; Path=/; Max-Age=31536000; SameSite=Lax`; } catch {}
-  }
-
-  const Icon = isDark ? Sun : Moon;
-  const label = isDark ? "Light mode" : "Dark mode";
-
-  return (
-    <WithTooltip label={label} enabled>
-      <button
-        onClick={toggle}
-        className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors flex-shrink-0"
-      >
-        <Icon className="h-4 w-4" />
-      </button>
-    </WithTooltip>
   );
 }
 
@@ -159,9 +136,7 @@ function PortfolioItem({
           onClick={onClick}
           className={cn(
             "flex justify-center items-center py-2 rounded-md transition-colors",
-            active
-              ? "bg-accent"
-              : "hover:bg-accent/50"
+            active ? "bg-accent" : "hover:bg-accent/50"
           )}
         >
           <div className={cn("w-2 h-2 rounded-full flex-shrink-0 transition-colors", dotColor)} />
@@ -192,6 +167,144 @@ function PortfolioItem({
   );
 }
 
+function UserMenuPopover({
+  user,
+  initials,
+  collapsed,
+  pathname,
+  onNavigate,
+}: {
+  user: { firstName?: string; lastName?: string; username?: string; email?: string; image?: string | null; isAdmin?: boolean } | undefined;
+  initials: string;
+  collapsed: boolean;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!user?.username) return null;
+
+  const isDark = mounted && (theme ?? resolvedTheme) === "dark";
+  const isAdmin = user.isAdmin ?? false;
+
+  function toggleTheme() {
+    const next = isDark ? "light" : "dark";
+    setTheme(next);
+    try { localStorage.setItem("wheeltracker.theme", next); } catch {}
+    try { document.cookie = `wheeltracker.theme=${next}; Path=/; Max-Age=31536000; SameSite=Lax`; } catch {}
+  }
+
+  const avatar = user.image ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={user.image} alt="avatar" className="h-7 w-7 rounded-full object-cover flex-shrink-0" />
+  ) : (
+    <div className="h-7 w-7 rounded-full bg-emerald-500 text-white grid place-items-center text-xs font-semibold flex-shrink-0">
+      {initials}
+    </div>
+  );
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "flex items-center w-full transition-colors hover:bg-accent/50 group",
+            collapsed ? "justify-center px-0 py-3" : "gap-2 px-3 py-3"
+          )}
+        >
+          {avatar}
+          {!collapsed && (
+            <>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-medium text-foreground truncate leading-tight">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+              </div>
+              <ChevronUp className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </>
+          )}
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        side={collapsed ? "right" : "top"}
+        align={collapsed ? "end" : "start"}
+        sideOffset={collapsed ? 8 : 0}
+        className="w-56 p-0 shadow-lg"
+      >
+        {/* User info */}
+        <div className="px-3 pt-3 pb-2.5">
+          <p className="text-sm font-semibold leading-tight">{user.firstName} {user.lastName}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">@{user.username}</p>
+        </div>
+
+        <div className="mx-1 h-px bg-border" />
+
+        {/* Nav links */}
+        <div className="p-1 space-y-0.5">
+          <Link
+            href="/settings"
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-2.5 px-2.5 py-1.5 text-sm rounded-md transition-colors w-full",
+              pathname === "/settings" ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent"
+            )}
+          >
+            <Settings className="h-4 w-4 text-muted-foreground" />
+            Profile &amp; Settings
+          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-2.5 px-2.5 py-1.5 text-sm rounded-md transition-colors w-full",
+                pathname.startsWith("/admin") ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-accent"
+              )}
+            >
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              Admin Panel
+            </Link>
+          )}
+        </div>
+
+        <div className="mx-1 h-px bg-border" />
+
+        {/* Theme */}
+        <div className="p-1">
+          {mounted && (
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm rounded-md transition-colors hover:bg-accent text-foreground w-full text-left"
+            >
+              {isDark
+                ? <Sun className="h-4 w-4 text-muted-foreground" />
+                : <Moon className="h-4 w-4 text-muted-foreground" />}
+              {isDark ? "Light mode" : "Dark mode"}
+            </button>
+          )}
+        </div>
+
+        <div className="mx-1 h-px bg-border" />
+
+        {/* Sign out */}
+        <div className="p-1">
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm rounded-md transition-colors hover:bg-destructive/10 text-destructive w-full text-left"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function NavContent({
   onNavigate,
   collapsed,
@@ -212,7 +325,8 @@ function NavContent({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Brand */}
+
+      {/* Brand + collapse toggle */}
       <div className={cn(
         "flex items-center flex-shrink-0 py-3",
         collapsed ? "justify-center px-0 py-4" : "pl-3 pr-2"
@@ -262,7 +376,7 @@ function NavContent({
 
       <Separator className="flex-shrink-0" />
 
-      {/* Portfolios — scrollable region */}
+      {/* Portfolios — scrollable */}
       <div className={cn("py-3 flex-1 overflow-y-auto min-h-0", collapsed ? "px-1.5" : "px-2")}>
         {collapsed ? (
           <WithTooltip label="Portfolios" enabled>
@@ -299,9 +413,7 @@ function NavContent({
             </>
           ) : portfolios.length === 0 ? (
             !collapsed && (
-              <p className="text-xs text-muted-foreground px-3 py-1">
-                No portfolios yet
-              </p>
+              <p className="text-xs text-muted-foreground px-3 py-1">No portfolios yet</p>
             )
           ) : (
             portfolios.map((p) => (
@@ -317,103 +429,38 @@ function NavContent({
         </div>
       </div>
 
-      {/* Utility strip — theme, settings, expand (collapsed only) */}
-      <Separator className="flex-shrink-0" />
-      <div className={cn(
-        "flex flex-shrink-0 py-1.5",
-        collapsed ? "flex-col items-center gap-0.5 px-1.5" : "flex-row items-center gap-0.5 px-2"
-      )}>
-        <ThemeIconButton />
-        <WithTooltip label="Settings" enabled={collapsed}>
-          <Link
-            href="/settings"
-            onClick={onNavigate}
-            className={cn(
-              "h-8 w-8 flex items-center justify-center rounded-md transition-colors flex-shrink-0",
-              pathname === "/settings"
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-            )}
-          >
-            <Settings className="h-4 w-4" />
-          </Link>
-        </WithTooltip>
-        {collapsed && (
-          <WithTooltip label="Expand sidebar" enabled>
-            <button
-              onClick={onToggleCollapse}
-              className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </button>
-          </WithTooltip>
-        )}
-      </div>
-
-      {/* User row */}
-      {user?.username && (
+      {/* Expand button — collapsed only */}
+      {collapsed && (
         <>
           <Separator className="flex-shrink-0" />
-          <div className={cn("py-3 flex-shrink-0", collapsed ? "flex justify-center" : "px-3")}>
-            {collapsed ? (
-              <WithTooltip label={`${user.firstName} ${user.lastName} (@${user.username})`} enabled>
-                <div>
-                  {user.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={user.image}
-                      alt="avatar"
-                      className="h-7 w-7 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-7 w-7 rounded-full bg-emerald-500 text-white grid place-items-center text-xs font-semibold">
-                      {initials}
-                    </div>
-                  )}
-                </div>
-              </WithTooltip>
-            ) : (
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {user.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={user.image}
-                      alt="avatar"
-                      className="h-7 w-7 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="h-7 w-7 rounded-full bg-emerald-500 text-white grid place-items-center text-xs font-semibold flex-shrink-0">
-                      {initials}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      @{user.username}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  title="Sign out"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
+          <div className="flex flex-col items-center py-1.5 px-1.5 flex-shrink-0">
+            <WithTooltip label="Expand sidebar" enabled>
+              <button
+                onClick={onToggleCollapse}
+                className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </button>
+            </WithTooltip>
           </div>
         </>
       )}
 
-      {/* Footer — version + copyright */}
+      {/* User menu popover */}
+      <Separator className="flex-shrink-0" />
+      <div className="flex-shrink-0">
+        <UserMenuPopover
+          user={user}
+          initials={initials}
+          collapsed={collapsed}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
+      </div>
+
+      {/* Footer */}
       {!collapsed && (
-        <div className="px-3 py-2.5 flex-shrink-0 flex items-center justify-between">
+        <div className="px-3 py-2 flex-shrink-0 flex items-center justify-between">
           <Link
             href="/changelog"
             onClick={onNavigate}
@@ -426,6 +473,7 @@ function NavContent({
           </span>
         </div>
       )}
+
     </div>
   );
 }

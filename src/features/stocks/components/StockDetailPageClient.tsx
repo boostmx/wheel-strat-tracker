@@ -18,7 +18,9 @@ import type { StockLot } from "@/types";
 import type { QuoteResult } from "@/app/api/quotes/route";
 import { CloseStockLotModal } from "./CloseStockModal";
 import { AddTradeModal } from "@/features/trades/components/AddTradeModal";
-import { ChevronRight } from "lucide-react";
+import { AdminEditStockModal } from "./AdminEditStockModal";
+import { ChevronRight, Shield } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type StockResponse = { stockLot: StockLot };
 
@@ -319,9 +321,13 @@ export default function StockDetailPageClient(props: {
   const { portfolioId, stockId } = props;
   const router = useRouter();
 
-  const [closeOpen, setCloseOpen] = React.useState<boolean>(false);
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.isAdmin ?? false;
 
-  const { data, error, isLoading } = useSWR<StockResponse>(
+  const [closeOpen, setCloseOpen] = React.useState<boolean>(false);
+  const [adminEditOpen, setAdminEditOpen] = React.useState(false);
+
+  const { data, error, isLoading, mutate } = useSWR<StockResponse>(
     `/api/stocks/${stockId}`,
     fetcher,
   );
@@ -437,6 +443,17 @@ export default function StockDetailPageClient(props: {
         </div>
 
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+              onClick={() => setAdminEditOpen(true)}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
           {!isClosed && sharesForContracts >= 1 ? (
             <AddTradeModal
               portfolioId={portfolioId}
@@ -682,6 +699,15 @@ export default function StockDetailPageClient(props: {
           avgCost={toNumber(s.avgCost)}
         />
       ) : null}
+
+      {isAdmin && stockLot && (
+        <AdminEditStockModal
+          stockLot={stockLot}
+          open={adminEditOpen}
+          onClose={() => setAdminEditOpen(false)}
+          onSaved={() => mutate()}
+        />
+      )}
     </div>
   );
 }

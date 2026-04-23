@@ -67,8 +67,59 @@ export async function PATCH(
     const id = params.id;
 
     const bodyUnknown: unknown = await req.json().catch(() => ({}));
-    const body = bodyUnknown as { closePrice?: number | string | null };
+    const body = bodyUnknown as {
+      closePrice?: number | string | null;
+      // Admin-only direct-edit fields
+      adminEdit?: boolean;
+      ticker?: string;
+      shares?: number | string;
+      avgCost?: number | string;
+      openedAt?: string;
+      notes?: string | null;
+      closedAt?: string | null;
+      realizedPnl?: number | string | null;
+    };
 
+    // Admin direct-edit path — correct individual fields without triggering close logic
+    if (isAdmin && body.adminEdit) {
+      const updates: Prisma.StockLotUpdateInput = {};
+      if (typeof body.ticker === "string" && body.ticker.trim()) {
+        updates.ticker = body.ticker.trim().toUpperCase();
+      }
+      if (body.shares !== undefined) {
+        const s = parseInt(String(body.shares), 10);
+        if (!isNaN(s) && s > 0) updates.shares = s;
+      }
+      if (body.avgCost !== undefined) {
+        const a = toNumber(body.avgCost);
+        if (Number.isFinite(a) && a >= 0) updates.avgCost = new Prisma.Decimal(a);
+      }
+      if (body.openedAt) {
+        const d = new Date(body.openedAt);
+        if (!isNaN(d.getTime())) updates.openedAt = d;
+      }
+      if (body.notes !== undefined) updates.notes = body.notes;
+      if (body.closedAt !== undefined) {
+        updates.closedAt = body.closedAt ? new Date(body.closedAt) : null;
+      }
+      if (body.closePrice !== undefined && body.closePrice !== null) {
+        const cp = toNumber(body.closePrice);
+        if (Number.isFinite(cp)) updates.closePrice = new Prisma.Decimal(cp);
+      }
+      if (body.realizedPnl !== undefined && body.realizedPnl !== null) {
+        const pnl = toNumber(body.realizedPnl);
+        if (Number.isFinite(pnl)) updates.realizedPnl = new Prisma.Decimal(pnl);
+      }
+
+      const updated = await prisma.stockLot.update({
+        where: { id },
+        data: updates,
+        include: { trades: { orderBy: { createdAt: "desc" } } },
+      });
+      return NextResponse.json({ stockLot: updated });
+    }
+
+    // Standard close path
     const closePriceNum = toNumber(body.closePrice);
     if (!Number.isFinite(closePriceNum) || closePriceNum <= 0) {
       return badRequest("closePrice must be a positive number");
