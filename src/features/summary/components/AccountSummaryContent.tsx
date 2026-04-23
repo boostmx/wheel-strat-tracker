@@ -5,13 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -448,7 +441,13 @@ function OpenPositionsCard({
   );
 }
 
-export default function AccountSummaryContent() {
+export default function AccountSummaryContent({
+  portfolioId,
+  embedded,
+}: {
+  portfolioId?: string;
+  embedded?: boolean;
+} = {}) {
   const { data, isLoading, error } = useSWR<SummaryResponse>(
     "/api/account/summary",
   );
@@ -568,7 +567,7 @@ export default function AccountSummaryContent() {
     };
   })();
 
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>("all");
+  const selectedPortfolioId = portfolioId ?? "all";
   const portfoliosArray = useMemo(
     () => (data ? Object.values(data.perPortfolio) : []),
     [data],
@@ -921,38 +920,25 @@ export default function AccountSummaryContent() {
   })();
 
   return (
-    <div className="max-w-6xl mx-auto py-6 sm:py-10 px-4 sm:px-6 space-y-5">
+    <div className={embedded ? "space-y-5" : "max-w-6xl mx-auto py-6 sm:py-10 px-4 sm:px-6 space-y-5"}>
 
-      {/* ── Header ── */}
-      <motion.div
-        className="flex items-center justify-between gap-4 flex-wrap"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Account Dashboard</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {selectedPortfolio ? selectedPortfolio.name : "All portfolios"} · as of today
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={selectedPortfolioId} onValueChange={setSelectedPortfolioId}>
-            <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
-              <SelectValue placeholder="All Accounts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Accounts</SelectItem>
-              {agg.perPortfolio.map((pp) => (
-                <SelectItem key={pp.id} value={pp.id}>
-                  {pp.name || pp.id.slice(0, 6)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </motion.div>
+      {/* ── Header — hidden when embedded in portfolio detail ── */}
+      {!embedded && (
+        <motion.div
+          className="flex items-center justify-between gap-4 flex-wrap"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28 }}
+          style={{ willChange: "opacity, transform" }}
+        >
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">All Accounts</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              All portfolios · as of today
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* ── KPI Strip ── */}
       <motion.div

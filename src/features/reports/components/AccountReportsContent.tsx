@@ -123,7 +123,13 @@ function calcTotalPL(r: ReportRow): number {
   return calcPremiumCaptured(r) + calcSharePL(r);
 }
 
-export function AccountsReportContent() {
+export function AccountsReportContent({
+  defaultPortfolioId,
+  embedded,
+}: {
+  defaultPortfolioId?: string;
+  embedded?: boolean;
+} = {}) {
   const [start, setStart] = useState<Date>(() => startOfDay(new Date()));
   const [end, setEnd] = useState<Date>(() => new Date());
 
@@ -133,7 +139,7 @@ export function AccountsReportContent() {
   }, []);
 
   const [selectedPortfolioId, setSelectedPortfolioId] =
-    useState<string>("all");
+    useState<string>(defaultPortfolioId ?? "all");
   const [selectedTicker, setSelectedTicker] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedCloseReason, setSelectedCloseReason] = useState<string>("all");
@@ -217,7 +223,7 @@ export function AccountsReportContent() {
   }, [selectedPortfolioId, start, end]);
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className={embedded ? "space-y-6" : "max-w-6xl mx-auto p-4 sm:p-6 space-y-6"}>
       <Header
         start={start}
         end={end}
@@ -239,6 +245,7 @@ export function AccountsReportContent() {
         types={availableTypes}
         selectedCloseReason={selectedCloseReason}
         setSelectedCloseReason={setSelectedCloseReason}
+        embedded={embedded}
       />
 
       {isLoading && <div>Loading…</div>}
@@ -287,6 +294,7 @@ function Header(props: {
   types: string[];
   selectedCloseReason: string;
   setSelectedCloseReason: (r: string) => void;
+  embedded?: boolean;
 }) {
   const {
     start,
@@ -300,6 +308,7 @@ function Header(props: {
     mounted,
     selectedTicker,
     selectedType,
+    embedded,
   } = props;
 
   const [fromLocal, setFromLocal] = useState<Date>(start);
@@ -316,17 +325,19 @@ function Header(props: {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Reports</h1>
-        <p className="text-sm text-muted-foreground">
-          {selectedPortfolioId === "all" ? "All portfolios" : "Selected portfolio"}
-          {selectedType !== "all" ? ` · ${selectedType}` : ""}
-          {selectedTicker !== "all" ? ` · ${selectedTicker}` : ""} · Closed trades
-          from{" "}
-          {mounted ? format(start, "MMM d, yyyy") : "—"} to{" "}
-          {mounted ? format(end, "MMM d, yyyy") : "—"}
-        </p>
-      </div>
+      {!embedded && (
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold">Reports</h1>
+          <p className="text-sm text-muted-foreground">
+            {selectedPortfolioId === "all" ? "All portfolios" : "Selected portfolio"}
+            {selectedType !== "all" ? ` · ${selectedType}` : ""}
+            {selectedTicker !== "all" ? ` · ${selectedTicker}` : ""} · Closed trades
+            from{" "}
+            {mounted ? format(start, "MMM d, yyyy") : "—"} to{" "}
+            {mounted ? format(end, "MMM d, yyyy") : "—"}
+          </p>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-border bg-card text-card-foreground p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-nowrap sm:items-center sm:gap-4">
@@ -421,23 +432,25 @@ function Header(props: {
               Apply
             </Button>
           </div>
-          {/* Portfolio */}
-          <div className="col-span-2 sm:col-span-1 flex justify-end gap-2 sm:ml-auto">
-            <select
-              id="portfolio"
-              className="border border-input bg-background text-foreground rounded-md px-2 py-1 w-full sm:w-[16rem]"
-              value={selectedPortfolioId}
-              onChange={(e) => setSelectedPortfolioId(e.target.value)}
-              disabled={portfoliosLoading || !!portfoliosError}
-            >
-              <option value="all">All portfolios</option>
-              {(portfolios ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Portfolio — hidden when embedded (pre-filtered to a specific portfolio) */}
+          {!embedded && (
+            <div className="col-span-2 sm:col-span-1 flex justify-end gap-2 sm:ml-auto">
+              <select
+                id="portfolio"
+                className="border border-input bg-background text-foreground rounded-md px-2 py-1 w-full sm:w-[16rem]"
+                value={selectedPortfolioId}
+                onChange={(e) => setSelectedPortfolioId(e.target.value)}
+                disabled={portfoliosLoading || !!portfoliosError}
+              >
+                <option value="all">All portfolios</option>
+                {(portfolios ?? []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
     </div>

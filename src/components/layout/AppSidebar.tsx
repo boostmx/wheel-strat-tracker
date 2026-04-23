@@ -170,7 +170,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem
           href="/summary"
           icon={LayoutDashboard}
-          label="Dashboard"
+          label="All Accounts"
           active={pathname === "/summary"}
           onClick={onNavigate}
         />
