@@ -7,6 +7,20 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-23",
+    version: "v2.6.0",
+    highlights: [
+      "Sign up page redesigned to match the login experience — split-panel layout, first and last name side by side, show/hide password toggles, and client-side length and match validation. Both pages now share the same copy and branding.",
+      "Settings page fully overhauled — profile header card with avatar, display name, member-since date, and Admin badge. Bio field added. Password section has show/hide toggles and an inline mismatch hint.",
+      "Admin gets its own dedicated /admin page with a tabbed layout, keeping user management completely separate from personal account settings.",
+      "User management: admins can impersonate any user (amber banner shows who you're viewing with a one-click Exit), reset passwords directly, delete users and all their data with a confirmation step, and toggle admin access.",
+      "Impersonation fully wires into the app — sidebar, dashboard, and all data routes switch to the target user's context instantly and revert cleanly on exit.",
+      "Admin trade editing: a Shield/Edit button on any trade detail page lets admins correct any field — ticker, type, strike, contract price, expiry, contracts, and for closed trades: close price, premium captured, P&L, and close reason.",
+      "Admin stock lot editing: same admin edit button on stock detail pages covers ticker, shares, avg cost, open date, notes, and for closed lots: close price, close date, and realized P&L.",
+      "Navigation modernized — the user avatar at the bottom of the sidebar is now a popover menu containing Profile & Settings, Admin Panel (admins only), theme toggle, and sign out. Removes the separate gear and theme icons from the utility strip.",
+    ],
+  },
+  {
+    date: "2026-04-23",
     version: "v2.5.2",
     highlights: [
       "Win rate on the All Accounts dashboard and Reports page is now color-coded — green when positive, red when zero, neutral dash when there's no data.",

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
 import { capitalUsedForTrade } from "@/lib/tradeMetrics";
+import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -33,10 +34,11 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
-    if (!userId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = await getEffectiveUserId(session.user.id, session.user.isAdmin ?? false);
+    const isAdmin = session.user.isAdmin ?? false;
 
     const { id: portfolioId } = await props.params;
 
@@ -44,9 +46,9 @@ export async function GET(
     const limitParam = url.searchParams.get("limit");
     const limit = Math.min(Math.max(Number.parseInt(limitParam || "3", 10) || 3, 1), 10);
 
-    // Ownership check + capital in one query
+    const portfolioWhere = isAdmin ? { id: portfolioId } : { id: portfolioId, userId };
     const portfolio = await prisma.portfolio.findFirst({
-      where: { id: portfolioId, userId },
+      where: portfolioWhere,
       select: { startingCapital: true, additionalCapital: true },
     });
     if (!portfolio) {
@@ -59,7 +61,7 @@ export async function GET(
     // Single parallel round trip for all trade data
     const [openTrades, closedTrades, openStockLots] = await Promise.all([
       prisma.trade.findMany({
-        where: { status: "open", portfolio: { id: portfolioId, userId } },
+        where: { status: "open", portfolio: isAdmin ? { id: portfolioId } : { id: portfolioId, userId } },
         select: {
           id: true,
           ticker: true,
@@ -73,7 +75,7 @@ export async function GET(
         orderBy: { createdAt: "desc" },
       }),
       prisma.trade.findMany({
-        where: { status: "closed", portfolio: { id: portfolioId, userId } },
+        where: { status: "closed", portfolio: isAdmin ? { id: portfolioId } : { id: portfolioId, userId } },
         select: {
           type: true,
           contractsOpen: true,
@@ -87,7 +89,7 @@ export async function GET(
         orderBy: { closedAt: "desc" },
       }),
       prisma.stockLot.findMany({
-        where: { status: "OPEN", portfolio: { id: portfolioId, userId } },
+        where: { status: "OPEN", portfolio: isAdmin ? { id: portfolioId } : { id: portfolioId, userId } },
         select: { shares: true, avgCost: true },
       }),
     ]);

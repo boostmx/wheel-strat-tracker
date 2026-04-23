@@ -51,10 +51,10 @@ export default function LoginPage() {
 
         <div className="space-y-5">
           <blockquote className="text-xl font-semibold leading-snug">
-            "Track your wheel trades, profits, and performance without the spreadsheets."
+            "Everything you need to track the wheel strategy — without the spreadsheets."
           </blockquote>
           <div className="space-y-2.5">
-            {["CSP & Covered Call tracking", "Assignment & expiry workflows", "Portfolio allocation insights"].map((feat) => (
+            {["Cash-secured puts & covered calls", "Assignment and expiry workflows", "Portfolio-wide P&L and win rate"].map((feat) => (
               <div key={feat} className="flex items-center gap-2 text-sm text-primary-foreground/80">
                 <div className="w-4 h-4 rounded-full bg-primary-foreground/30 flex items-center justify-center flex-shrink-0">
                   <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
 import { SWRConfig } from "swr";
 import { AppSidebar, MobileTopBar } from "@/components/layout/AppSidebar";
+import { ImpersonationBanner } from "@/features/admin/components/ImpersonationBanner";
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -29,6 +30,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             <div className="md:hidden">
               <MobileTopBar />
             </div>
+            <ImpersonationBanner />
             <main className="flex-1 overflow-y-auto bg-muted dark:bg-gray-950">
               {children}
             </main>

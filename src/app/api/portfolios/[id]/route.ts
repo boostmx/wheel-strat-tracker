@@ -4,6 +4,7 @@ import { auth } from "@/server/auth/auth";
 import { prisma } from "@/server/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 export async function GET(
   _req: Request,
@@ -17,12 +18,9 @@ export async function GET(
   }
 
   try {
-    const portfolio = await prisma.portfolio.findFirst({
-      where: {
-        id: params.id,
-        userId: session.user.id,
-      },
-    });
+    const uid = await getEffectiveUserId(session.user.id, session.user.isAdmin ?? false);
+    const where = session.user.isAdmin ? { id: params.id } : { id: params.id, userId: uid };
+    const portfolio = await prisma.portfolio.findFirst({ where });
 
     if (!portfolio) {
       return NextResponse.json(
@@ -54,12 +52,8 @@ export async function DELETE(
   }
 
   try {
-    await prisma.portfolio.deleteMany({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    });
+    const deleteWhere = session.user.isAdmin ? { id } : { id, userId: session.user.id };
+    await prisma.portfolio.deleteMany({ where: deleteWhere });
 
     return NextResponse.json({ message: "Portfolio deleted" });
   } catch {
@@ -86,11 +80,9 @@ export async function PATCH(
     const body = await req.json();
     const { name, startingCapital, additionalCapital, notes } = body;
 
+    const patchWhere = session.user.isAdmin ? { id } : { id, userId: session.user.id };
     const updated = await prisma.portfolio.updateMany({
-      where: {
-        id,
-        userId: session.user.id,
-      },
+      where: patchWhere,
       data: {
         ...(name !== undefined && { name }),
         ...(startingCapital !== undefined && {

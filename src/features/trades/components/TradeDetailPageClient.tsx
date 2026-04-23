@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import useSWR from "swr";
+import { useSession } from "next-auth/react";
 import type { QuoteResult } from "@/app/api/quotes/route";
 import { Trade } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,7 +9,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Shield } from "lucide-react";
 import type { Metrics } from "@/types";
 import {
   TradeNotesSimple,
@@ -16,6 +17,7 @@ import {
 } from "@/features/trades/components/TradeNotesSimple";
 import CloseTradeModal from "@/features/trades/components/CloseTradeModal";
 import AddToTradeModal from "@/features/trades/components/AddToTradeModal";
+import { AdminEditTradeModal } from "@/features/trades/components/AdminEditTradeModal";
 import { formatDateOnlyUTC, ensureUtcMidnight } from "@/lib/formatDateOnly";
 
 type Props = { portfolioId: string; tradeId: string };
@@ -159,8 +161,12 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
     dedupingInterval: 10_000,
   });
 
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.isAdmin ?? false;
+
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [adminEditOpen, setAdminEditOpen] = useState(false);
   const [notesEditing, setNotesEditing] = useState(false);
   const notesRef = useRef<TradeNotesHandle>(null);
 
@@ -277,16 +283,29 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
           <ChevronRight className="h-3 w-3 opacity-50" />
           <span className="text-foreground">{trade?.ticker ?? "Trade"}</span>
         </div>
-        {isOpen ? (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setCloseModalOpen(true)}>
-              Close Position
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+              onClick={() => setAdminEditOpen(true)}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              Edit
             </Button>
-            <Button size="sm" onClick={() => setAddModalOpen(true)}>
-              Add to Position
-            </Button>
-          </div>
-        ) : null}
+          )}
+          {isOpen && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setCloseModalOpen(true)}>
+                Close Position
+              </Button>
+              <Button size="sm" onClick={() => setAddModalOpen(true)}>
+                Add to Position
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Ticker + badges */}
@@ -465,6 +484,14 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       </Card>
 
       {/* Modals */}
+      {isAdmin && trade && (
+        <AdminEditTradeModal
+          trade={trade}
+          open={adminEditOpen}
+          onClose={() => setAdminEditOpen(false)}
+          onSaved={() => mutate()}
+        />
+      )}
       {isOpen ? (
         <>
           <CloseTradeModal

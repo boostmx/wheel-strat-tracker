@@ -3,6 +3,7 @@ import { prisma } from "@/server/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth/auth";
 import { capitalUsedForTrade } from "@/lib/tradeMetrics";
+import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -115,10 +116,10 @@ const sumRealized = (
 export async function GET() {
   // Resolve current user
   const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
-  if (!userId) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = await getEffectiveUserId(session.user.id, session.user.isAdmin ?? false);
 
   // 1) Load portfolios scoped to the current user
   const portfolios = await prisma.portfolio.findMany({

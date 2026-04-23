@@ -74,6 +74,7 @@ export const authOptions: NextAuthOptions = {
           email: token.email as string,
           bio: token.bio as string,
           avatarUrl: token.avatarUrl as string,
+          isAdmin: token.isAdmin as boolean,
         };
       }
       return session;
