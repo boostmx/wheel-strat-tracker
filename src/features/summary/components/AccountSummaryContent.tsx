@@ -7,8 +7,8 @@ import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { CreatePortfolioModal } from "@/features/portfolios/components/CreatePortfolioModal";
 
 const AccountsReportContent = dynamic(
   () =>
@@ -774,9 +774,13 @@ export default function AccountSummaryContent({
           start tracking trades and premiums and see your account summary here.
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
-          <Button asChild variant="default" size="lg">
-            <Link href="/portfolios">Go to Your Portfolios</Link>
-          </Button>
+          <CreatePortfolioModal
+            trigger={
+              <Button variant="default" size="lg">
+                Create Portfolio
+              </Button>
+            }
+          />
         </div>
       </div>
     );

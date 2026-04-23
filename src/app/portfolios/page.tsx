@@ -1,10 +1,5 @@
-import ProtectedPage from "@/features/auth/components/ProtectedPage";
-import PortfoliosOverviewContent from "@/features/portfolios/components/PortfoliosOverviewContent";
+import { redirect } from "next/navigation";
 
-export default function DashboardPage() {
-  return (
-    <ProtectedPage>
-      <PortfoliosOverviewContent />
-    </ProtectedPage>
-  );
+export default function PortfoliosPage() {
+  redirect("/summary");
 }

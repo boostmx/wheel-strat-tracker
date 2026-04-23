@@ -8,13 +8,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Info, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { Metrics } from "@/types";
 import {
   TradeNotesSimple,
@@ -242,6 +236,16 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       ? trade.entryPrice - trade.contractPrice
       : null;
 
+  const livePrice = quote?.price ?? null;
+  const otmPct =
+    isOpen && livePrice != null
+      ? isCashSecuredPut
+        ? ((livePrice - trade.strikePrice) / livePrice) * 100
+        : isCoveredCall
+          ? ((trade.strikePrice - livePrice) / livePrice) * 100
+          : null
+      : null;
+
   const dteTone: Tone =
     daysUntilExpiration == null
       ? "default"
@@ -265,7 +269,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link href="/portfolios" className="hover:text-foreground transition-colors">Portfolio Overview</Link>
+          <Link href="/summary" className="hover:text-foreground transition-colors">All Accounts</Link>
           <ChevronRight className="h-3 w-3 opacity-50" />
           <Link href={`/portfolios/${portfolioId}`} className="hover:text-foreground transition-colors">
             {portfolio?.name ?? "Portfolio"}
@@ -290,45 +294,6 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
         <h1 className="text-3xl font-semibold tracking-tight">{trade.ticker}</h1>
         <TypeBadge type={trade.type} />
         <StatusBadge status={trade.status} />
-        {isOpen && (
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Position details"
-                >
-                  <Info className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8} className="text-xs space-y-1">
-                <div>
-                  Open premium:{" "}
-                  <span className="font-medium">{fmt(openPremium)}</span>
-                </div>
-                {capitalInUse > 0 && (
-                  <div>
-                    Capital in use:{" "}
-                    <span className="font-medium">{fmt(capitalInUse)}</span>
-                  </div>
-                )}
-                {allocPct != null && (
-                  <div>
-                    Portfolio allocation:{" "}
-                    <span className="font-medium">{allocPct.toFixed(1)}%</span>
-                  </div>
-                )}
-                {breakeven != null && (
-                  <div>
-                    Breakeven:{" "}
-                    <span className="font-medium">{fmt(breakeven)}</span>
-                  </div>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
       </div>
 
       {/* Primary stat cards */}
@@ -420,15 +385,29 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
                 }
               />
               <DetailRow
-                label="Expiry"
+                label="Expiration Date"
                 value={
                   daysUntilExpiration != null
-                    ? `${formatDateOnlyUTC(trade.expirationDate)} · ${daysUntilExpiration === 0 ? "today" : `${daysUntilExpiration}d`}`
+                    ? `${formatDateOnlyUTC(trade.expirationDate)} · ${daysUntilExpiration === 0 ? "today" : `${daysUntilExpiration} days`}`
                     : formatDateOnlyUTC(trade.expirationDate)
                 }
                 tone={dteTone}
               />
               <DetailRow label="Opened" value={formatDateOnlyUTC(trade.createdAt)} />
+              {breakeven != null ? (
+                <DetailRow label="Breakeven" value={fmt(breakeven)} />
+              ) : null}
+              {otmPct != null ? (
+                <DetailRow
+                  label="Moneyness"
+                  value={
+                    otmPct < 0
+                      ? `ITM ${Math.abs(otmPct).toFixed(1)}%`
+                      : `${otmPct.toFixed(1)}% OTM`
+                  }
+                  tone={otmPct < 0 ? "danger" : "success"}
+                />
+              ) : null}
               {trade.entryPrice != null ? (
                 <DetailRow label="Stock Entry Price" value={fmt(trade.entryPrice)} />
               ) : null}
@@ -447,7 +426,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
               />
               <DetailRow
                 label="Days Held"
-                value={daysHeld != null ? `${daysHeld}d` : "—"}
+                value={daysHeld != null ? `${daysHeld} days` : "—"}
               />
               {closeReason ? (
                 <DetailRow label="Close Reason" value={closeReason} />

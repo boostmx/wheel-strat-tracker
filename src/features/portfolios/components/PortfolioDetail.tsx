@@ -111,8 +111,8 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
       >
         <div>
           <div className="flex items-center gap-1.5 mb-1">
-            <Link href="/portfolios" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Portfolio Overview
+            <Link href="/summary" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              All Accounts
             </Link>
             <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
             <span className="text-xs text-muted-foreground">{portfolio.name || "Unnamed Portfolio"}</span>
