@@ -427,7 +427,7 @@ export default function StockDetailPageClient(props: {
       {/* Page header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Link href="/portfolios" className="hover:text-foreground transition-colors">Portfolio Overview</Link>
+          <Link href="/summary" className="hover:text-foreground transition-colors">All Accounts</Link>
           <ChevronRight className="h-3 w-3 opacity-50" />
           <Link href={`/portfolios/${portfolioId}`} className="hover:text-foreground transition-colors">
             {portfolioData?.name ?? "Portfolio"}

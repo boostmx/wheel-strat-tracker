@@ -12,6 +12,12 @@ export const changelog: ChangelogEntry[] = [
       "Portfolio tabs now remember where you left off — navigating away and back lands you on the same tab instead of resetting to Overview.",
       "All write actions (adding trades, closing positions, updating stock lots, editing portfolios) now refresh the UI immediately without needing a manual page reload.",
       "Add-to-position notes now prepend to the top and use a cleaner date-first format: Apr 23, 2026: +3x @ $1.32.",
+      "Trade detail page now shows Breakeven price and live OTM/ITM status (green when out of the money, red when in the money) directly in the Details card — no need to calculate it yourself.",
+      "Expiration date on trade detail now shows the full day count (e.g. 14 days) instead of shorthand, and Days Held on closed trades follows the same pattern.",
+      "Removed the redundant info tooltip (ⓘ) from trade detail — the information it contained is already visible on the page.",
+      "The Portfolios list page has been retired — it was largely redundant with the All Accounts dashboard and individual portfolio overviews. Navigating to /portfolios now redirects to the dashboard. The sidebar 'Portfolios' label remains as a section header with direct links to each portfolio below it.",
+      "Empty state on the dashboard now has a direct 'Create Portfolio' button instead of sending you to a separate page.",
+      "Insert Timestamp removed from trade and portfolio notes — the markdown format didn't export cleanly to CSV.",
     ],
   },
   {
