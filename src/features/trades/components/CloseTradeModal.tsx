@@ -157,11 +157,15 @@ export function CloseTradeModal({
       }
 
       await Promise.allSettled([
+        mutate(`/api/trades/${id}`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=open`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`),
         mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`),
         mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`),
         mutate(`/api/portfolios/${portfolioId}/metrics`),
+        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
+        mutate("/api/account/summary"),
+        mutate("/api/portfolios"),
       ]);
 
       router.refresh();

@@ -134,7 +134,14 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <p className="mt-8 text-center text-[11px] text-muted-foreground/40"><VersionBadge /></p>
+          <p className="mt-8 text-center text-[11px] text-muted-foreground/40 flex items-center justify-center gap-2">
+            <span>© {new Date().getFullYear()} HL Financial Strategies</span>
+            <span className="opacity-40">·</span>
+            <a href="/changelog" className="hover:text-muted-foreground transition-colors flex items-center gap-1">
+              <VersionBadge />
+              <span>— What&apos;s new</span>
+            </a>
+          </p>
         </div>
       </div>
     </div>

@@ -62,9 +62,9 @@ export async function PATCH(
     day: "numeric",
     year: "numeric",
   });
-  const logEntry = `+${addedContracts}x @ $${addedContractPrice.toFixed(2)} — ${logDate}`;
+  const logEntry = `${logDate}: +${addedContracts}x @ $${addedContractPrice.toFixed(2)}`;
   const existingNotes = (trade as Trade & { notes?: string | null }).notes ?? "";
-  const newNotes = existingNotes ? `${existingNotes}\n${logEntry}` : logEntry;
+  const newNotes = existingNotes ? `${logEntry}\n${existingNotes}` : logEntry;
 
   const updated = await prisma.trade.update({
     where: { id },

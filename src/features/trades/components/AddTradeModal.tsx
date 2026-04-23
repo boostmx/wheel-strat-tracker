@@ -199,6 +199,12 @@ export function AddTradeModal({
       setOpen(false);
       mutate(`/api/trades?portfolioId=${portfolioId}&status=open`);
       mutate(`/api/portfolios/${portfolioId}/metrics`);
+      mutate(`/api/portfolios/${portfolioId}/detail-metrics`);
+      mutate("/api/account/summary");
+      mutate("/api/portfolios");
+      if (type === "CoveredCall" && stockLotId) {
+        mutate(`/api/stocks/${stockLotId}`);
+      }
     } catch (err) {
       toast.error("Failed to add trade");
       console.error(err);

@@ -93,8 +93,11 @@ export default function AddToTradeModal({
 
       await Promise.allSettled([
         mutate(`/api/trades/${tradeId}`),
-        mutate(`/api/portfolios/${portfolioId}/metrics`),
         mutate(`/api/trades?portfolioId=${portfolioId}&status=open`),
+        mutate(`/api/portfolios/${portfolioId}/metrics`),
+        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
+        mutate("/api/account/summary"),
+        mutate("/api/portfolios"),
       ]);
 
       onUpdated?.();

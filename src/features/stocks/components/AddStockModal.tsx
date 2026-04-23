@@ -83,8 +83,13 @@ export function AddStockModal({ portfolioId, open, onOpenChange }: Props) {
 
       await res.json();
 
-      const key = `/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`;
-      await mutate(key);
+      await Promise.allSettled([
+        mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`),
+        mutate(`/api/portfolios/${portfolioId}/metrics`),
+        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
+        mutate("/api/account/summary"),
+        mutate("/api/portfolios"),
+      ]);
 
       toast.success("Stock position added");
       onOpenChange(false);

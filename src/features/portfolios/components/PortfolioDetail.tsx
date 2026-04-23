@@ -76,7 +76,18 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const { trades: closedTrades, isLoading: loadingClosed } = useTrades(portfolio.id, "closed");
   const { data: m } = useDetailMetrics(portfolio.id);
 
-  const [activeTab, setActiveTab] = useState<Tab>("Overview");
+  const storageKey = `portfolio-tab-${portfolio.id}`;
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "Overview";
+    const saved = sessionStorage.getItem(storageKey);
+    return TABS.includes(saved as Tab) ? (saved as Tab) : "Overview";
+  });
+
+  function switchTab(tab: Tab) {
+    setActiveTab(tab);
+    sessionStorage.setItem(storageKey, tab);
+  }
+
   const [addStockOpen, setAddStockOpen] = useState(false);
 
   const starting = Number(portfolio.startingCapital ?? 0);
@@ -126,7 +137,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           <button
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => switchTab(tab)}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all",
               activeTab === tab

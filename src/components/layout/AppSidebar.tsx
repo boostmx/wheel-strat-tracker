@@ -23,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CreatePortfolioModal } from "@/features/portfolios/components/CreatePortfolioModal";
 import { useOverviewMetrics } from "@/features/portfolios/hooks/usePortfolioMetrics";
+import { VersionBadge } from "@/components/layout/VersionBadge";
 import type { Portfolio } from "@/types";
 
 function usePortfolios() {
@@ -284,6 +285,19 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         </>
       )}
+      {/* Footer — version + copyright */}
+      <div className="px-3 py-2.5 flex-shrink-0 flex items-center justify-between">
+        <Link
+          href="/changelog"
+          onClick={onNavigate}
+          className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+        >
+          <VersionBadge />
+        </Link>
+        <span className="text-[10px] text-muted-foreground/40">
+          © {new Date().getFullYear()} HLF
+        </span>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-23",
+    version: "v2.5.1",
+    highlights: [
+      "Portfolio tabs now remember where you left off — navigating away and back lands you on the same tab instead of resetting to Overview.",
+      "All write actions (adding trades, closing positions, updating stock lots, editing portfolios) now refresh the UI immediately without needing a manual page reload.",
+      "Add-to-position notes now prepend to the top and use a cleaner date-first format: Apr 23, 2026: +3x @ $1.32.",
+    ],
+  },
+  {
     date: "2026-04-22",
     version: "v2.5.0",
     highlights: [

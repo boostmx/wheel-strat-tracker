@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { mutate } from "swr";
 import { useForm, Controller } from "react-hook-form";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -133,7 +134,13 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
       setNotesEditing(false);
 
       toast.success("Portfolio updated");
-      // Optional: still refresh to sync any other server-driven bits
+      await Promise.allSettled([
+        mutate("/api/portfolios"),
+        mutate(`/api/portfolios/${portfolio.id}`),
+        mutate(`/api/portfolios/${portfolio.id}/metrics`),
+        mutate(`/api/portfolios/${portfolio.id}/detail-metrics`),
+        mutate("/api/account/summary"),
+      ]);
       router.refresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Update failed";
@@ -148,6 +155,10 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
       });
       if (!res.ok) throw new Error("Failed to delete portfolio");
       toast.success("Portfolio deleted");
+      await Promise.allSettled([
+        mutate("/api/portfolios"),
+        mutate("/api/account/summary"),
+      ]);
       router.push("/portfolios");
       router.refresh();
     } catch (err: unknown) {

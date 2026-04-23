@@ -82,10 +82,15 @@ export function CloseStockLotModal({
       onOpenChange(false);
       setClosePrice({ formatted: "", raw: 0 });
 
-      await Promise.all([
+      await Promise.allSettled([
         mutate(`/api/stocks/${stockId}`),
         mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=open`),
         mutate(`/api/stocks?portfolioId=${encodeURIComponent(portfolioId)}&status=closed`),
+        mutate(`/api/trades?portfolioId=${portfolioId}&status=closed`),
+        mutate(`/api/portfolios/${portfolioId}/metrics`),
+        mutate(`/api/portfolios/${portfolioId}/detail-metrics`),
+        mutate("/api/account/summary"),
+        mutate("/api/portfolios"),
       ]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to close stock lot";

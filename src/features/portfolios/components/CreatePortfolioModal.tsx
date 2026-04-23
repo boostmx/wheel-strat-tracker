@@ -39,6 +39,7 @@ export function CreatePortfolioModal({ trigger }: { trigger?: React.ReactNode } 
     if (res.ok) {
       toast.success("Portfolio created!");
       mutate("/api/portfolios");
+      mutate("/api/account/summary");
       setOpen(false);
       setName("");
       setCapital({ formatted: "", raw: 0 });
