@@ -161,7 +161,7 @@ function Stats({ rows }: { rows: ReportRow[] }) {
         {/* Win Rate */}
         <div className="rounded-xl border bg-card p-4">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Win Rate</p>
-          <p className={`mt-1 text-xl font-bold tabular-nums ${winRate != null && winRate >= 0.5 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+          <p className={`mt-1 text-xl font-bold tabular-nums ${winRate != null && winRate > 0 ? "text-emerald-600 dark:text-emerald-400" : winRate != null ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
             {winRate != null ? `${(winRate * 100).toFixed(0)}%` : "—"}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -512,7 +512,7 @@ export function AccountsReportContent({
   const showPortfolio = selectedPortfolioId === "all";
 
   return (
-    <div className={cn(embedded ? "space-y-5" : "max-w-6xl mx-auto p-4 sm:p-6 space-y-5")}>
+    <div className={cn(embedded ? "space-y-5" : "p-4 sm:p-6 space-y-5")}>
       {!embedded && (
         <div>
           <h1 className="text-2xl font-bold text-foreground">Reports</h1>
