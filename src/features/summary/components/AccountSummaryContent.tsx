@@ -5,8 +5,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+const AccountsReportContent = dynamic(
+  () =>
+    import("@/features/reports/components/AccountReportsContent").then(
+      (m) => m.AccountsReportContent,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted-foreground py-8 text-center">Loading report…</p>
+    ),
+  },
+);
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
@@ -682,6 +697,7 @@ export default function AccountSummaryContent({
       : (data?.pnlSeriesYearly ?? []);
   }, [selectedPortfolio, data]);
 
+  const [accountTab, setAccountTab] = useState<"Overview" | "Report">("Overview");
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly" | "yearly" | "ytd" | "alltime">("daily");
   const [dailyWindow, setDailyWindow] = useState<"mtd" | "30d" | "90d">("mtd");
   const [showAllPremium, setShowAllPremium] = useState(false);
@@ -939,6 +955,36 @@ export default function AccountSummaryContent({
           </div>
         </motion.div>
       )}
+
+      {/* ── Account-level tab switcher (standalone page only) ── */}
+      {!embedded && (
+        <>
+          <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+            {(["Overview", "Report"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setAccountTab(tab)}
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+                  accountTab === tab
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          {accountTab === "Report" && (
+            <div className="rounded-xl border border-border bg-card overflow-hidden p-5 sm:p-6">
+              <AccountsReportContent embedded />
+            </div>
+          )}
+        </>
+      )}
+
+      <div className={cn("space-y-5", !embedded && accountTab !== "Overview" && "hidden")}>
 
       {/* ── KPI Strip ── */}
       <motion.div
@@ -1232,6 +1278,8 @@ export default function AccountSummaryContent({
           </CardContent>
         </Card>
       </motion.div>
+
+      </div>{/* end overview wrapper */}
     </div>
   );
 }
