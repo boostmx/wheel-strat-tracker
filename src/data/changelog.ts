@@ -7,6 +7,19 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-23",
+    version: "v2.6.0",
+    highlights: [
+      "Sign up page redesigned to match the login experience — split-panel layout, first and last name side by side, show/hide toggles on password fields, and client-side validation for length and confirmation match.",
+      "Settings page fully overhauled with a profile header card showing your avatar, display name, member-since date, and an Admin badge when applicable.",
+      "Bio field added to your profile — stored in the database and editable from Settings.",
+      "Password fields in Settings now have show/hide toggles, a side-by-side new/confirm layout, and an inline mismatch hint.",
+      "Admin panel added to Settings (visible to admins only) — lists all registered users with their portfolio count and join date, with one-click Make/Remove Admin controls per user.",
+      "Admin status is now correctly surfaced in the session and across the UI after sign-in — previously it was stored in the database but not passed through.",
+      "Sign out button uses a destructive style to make the action clearer and harder to hit accidentally.",
+    ],
+  },
+  {
+    date: "2026-04-23",
     version: "v2.5.2",
     highlights: [
       "Win rate on the All Accounts dashboard and Reports page is now color-coded — green when positive, red when zero, neutral dash when there's no data.",
