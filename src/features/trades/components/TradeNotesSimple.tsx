@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -32,8 +32,6 @@ export const TradeNotesSimple = forwardRef<TradeNotesHandle, Props>(
     const [notes, setNotes] = useState(initialNotes ?? "");
     const [draft, setDraft] = useState(initialNotes ?? "");
     const [busy, setBusy] = useState(false);
-    const taRef = useRef<HTMLTextAreaElement | null>(null);
-
     function setEditingWithCallback(value: boolean) {
       setEditing(value);
       onEditingChange?.(value);
@@ -69,25 +67,6 @@ export const TradeNotesSimple = forwardRef<TradeNotesHandle, Props>(
       } finally {
         setBusy(false);
       }
-    }
-
-    function insertTimestamp() {
-      const ts = new Date();
-      const stamp = `**[${ts.toLocaleDateString()} ${ts.toLocaleTimeString()}]**`;
-      const el = taRef.current;
-      if (!el) {
-        setDraft((d) => (d ?? "") + stamp);
-        return;
-      }
-      const start = el.selectionStart ?? draft.length;
-      const end = el.selectionEnd ?? draft.length;
-      const next =
-        (draft ?? "").slice(0, start) + stamp + (draft ?? "").slice(end);
-      setDraft(next);
-      requestAnimationFrame(() => {
-        el.selectionStart = el.selectionEnd = start + stamp.length;
-        el.focus();
-      });
     }
 
     return (
@@ -144,7 +123,6 @@ export const TradeNotesSimple = forwardRef<TradeNotesHandle, Props>(
         {editing && (
           <div className={hideHeader ? "" : "p-3"}>
             <Textarea
-              ref={taRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               className="min-h-[180px]"
@@ -156,10 +134,7 @@ export const TradeNotesSimple = forwardRef<TradeNotesHandle, Props>(
                 }
               }}
             />
-            <div className="mt-2 flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={insertTimestamp}>
-                Insert timestamp
-              </Button>
+            <div className="mt-2 flex items-center justify-end gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">⌘/Ctrl+Enter to save</span>
                 <Button

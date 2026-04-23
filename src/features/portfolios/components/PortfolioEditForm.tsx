@@ -94,13 +94,6 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
 
   const [notesEditing, setNotesEditing] = useState(false);
 
-  function insertTimestamp() {
-    const stamp = `**[${new Date().toLocaleString()}]**`;
-    const current = getValues("notes") ?? "";
-    const next = current ? `${stamp}\n${current}\n` : stamp;
-    setValue("notes", next, { shouldDirty: true, shouldValidate: false });
-  }
-
   async function onSubmit(values: FormValues) {
     try {
       // Compose notes with auto capital adjustment line when applicable
@@ -315,15 +308,7 @@ export function EditPortfolioForm({ portfolio }: { portfolio: Portfolio }) {
                         }
                       }}
                     />
-                    <div className="mt-2 flex items-center justify-between">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={insertTimestamp}
-                      >
-                        Insert timestamp
-                      </Button>
+                    <div className="mt-2 flex items-center justify-end">
                       <span className="text-xs text-muted-foreground">
                         ⌘/Ctrl+Enter to save
                       </span>
