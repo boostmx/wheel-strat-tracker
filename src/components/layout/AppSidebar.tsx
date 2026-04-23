@@ -8,7 +8,6 @@ import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
-  BarChart3,
   Briefcase,
   Settings,
   LogOut,
@@ -170,15 +169,8 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
         <NavItem
           href="/summary"
           icon={LayoutDashboard}
-          label="Dashboard"
+          label="All Accounts"
           active={pathname === "/summary"}
-          onClick={onNavigate}
-        />
-        <NavItem
-          href="/reports"
-          icon={BarChart3}
-          label="Reports"
-          active={pathname === "/reports"}
           onClick={onNavigate}
         />
       </div>

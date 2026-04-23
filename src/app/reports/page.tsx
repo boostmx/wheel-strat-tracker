@@ -1,10 +1,5 @@
-import ProtectedPage from "@/features/auth/components/ProtectedPage";
-import AccountReportsContent from "@/features/reports/components/AccountReportsContent";
+import { redirect } from "next/navigation";
 
 export default function ReportsPage() {
-  return (
-    <ProtectedPage>
-      <AccountReportsContent />
-    </ProtectedPage>
-  );
+  redirect("/summary");
 }

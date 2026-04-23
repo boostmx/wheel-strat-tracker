@@ -7,37 +7,15 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-22",
-    version: "v2.4.3",
+    version: "v2.5.0",
     highlights: [
-      "Replaced the top navigation bar with a persistent left sidebar — click directly into any portfolio from anywhere in the app without going through the overview page first.",
-      "Portfolio health dots in the sidebar show green, amber, or red at a glance based on deployment level, expiring trades, and P&L — no need to open a portfolio to know its status.",
-    ],
-  },
-  {
-    date: "2026-04-22",
-    version: "v2.4.2",
-    highlights: [
-      "Closed trades table cleaned up — the messy Details column is replaced with separate Strike/Cost and Qty columns; P/L and % P/L are merged into a single column showing dollar amount with percentage below.",
-      "Trade detail page for closed positions now shows the close price as a primary stat card alongside the avg open price, making it easy to see exactly what you received vs. what you paid to close. Expiration date added to the details section.",
-      "Live stock price added to the Open Positions table on the portfolio detail page — shows current price with day change % and a color-coded OTM % column so you can see at a glance how far each option is from being in the money.",
-      "Stock lots table expanded to full width on the portfolio detail page with two new columns: Live Price (with day change %) and Unrealized P/L (dollar and percent) so you can track your share positions alongside your options.",
-      "Performance stats (Win Rate, Avg P/L, Open Premium, etc.) moved from a side card to a compact horizontal strip, giving the stock lots table full width to breathe.",
-      "Dashboard P&L bar chart hover fixed — the highlighted bar now correctly tracks the cursor position using the SVG coordinate matrix instead of a manual screen-to-viewBox calculation.",
-      "Daily P&L chart defaults to the current month (MTD) instead of 90 days — a new MTD / 30d / 90d sub-filter appears when on the Daily tab so you can expand the window when needed.",
-      "Modal UI updates for a cleaner, more consistent look across the app"
-    ],
-  },
-  {
-    date: "2026-04-22",
-    version: "v2.4.0",
-    highlights: [
-      "Trade detail page fully redesigned — primary stats (Strike, Avg Price, Capital In Use or Premium Captured) each get their own prominent card, while secondary info (Contracts, Expiry, DTE, Opened, Days Held, Close Reason) is consolidated into a clean Details card.",
-      "Trade type badges are now color-coded on the trade detail page: Covered Calls in violet, Cash-Secured Puts in blue, Calls in green, Puts in amber — consistent with the rest of the app.",
-      "Adding to a position now automatically appends a log entry to the trade notes (e.g. +2x @ $0.85 — Apr 22, 2026) so your add history is captured without any manual steps. Edit the note afterwards if you want to add context.",
-      "Notes card on the trade detail page has a dedicated header with an Edit button in the top right — clicking it opens inline editing without disrupting the rest of the page.",
-      "Live ticker price now appears as a fourth primary stat card on the trade detail page, refreshing every 60 seconds.",
-      "Live ticker price also appears in the stock lot detail stat cards, showing the current price alongside your avg cost and cost basis.",
-      "When the market is closed, the price card label updates automatically to Last Close, Pre-Market, or After Hours instead of Live Price — applies to the trade detail, stock lot detail, and the dashboard Open Positions table.",
+      "Major navigation overhaul (rolled up from the 2.4.x series) — the top nav bar is replaced by a persistent left sidebar with direct links to every portfolio, color-coded health dots (green/amber/red), and expiry count badges so you can read portfolio status without clicking in.",
+      "Portfolio detail is now fully tabbed: Overview (the full per-portfolio dashboard with KPIs, charts, and open positions), Positions (stock lots + open trades with open premium strip), Activity (closed trade log), and Report (filtered report view scoped to this portfolio).",
+      "All Accounts page gains an Overview / Report tab of its own — the standalone Reports page is retired and now lives inside the dashboard, eliminating the redundant nav item.",
+      "Reports completely redesigned — stat cards match the app style, trade type badges replace plain text, a Portfolio column appears automatically when viewing all accounts, and the table is cleaner with compact dates, stacked P/L, days-held, and color-coded close reason badges.",
+      "CSV export overhauled for monthly review: includes Portfolio, human-readable dates, Total P/L, % Return, Days Held, Close Reason, and Notes — all the fields that matter for a month-end review.",
+      "Trade detail page rebuilt with stat cards for Strike, Avg Price, Capital/Premium, and a live ticker price that refreshes every 60 seconds and labels itself correctly as Live, Pre-Market, After Hours, or Last Close depending on market state.",
+      "Adding to a position auto-logs the add (+2x @ $0.85) in the trade notes, and notes have a dedicated inline edit mode. Breadcrumbs added across portfolio, trade, and stock detail pages for easier navigation.",
     ],
   },
   {

@@ -28,14 +28,23 @@ export async function GET(req: NextRequest) {
   // Build list of portfolio IDs to query. If none provided or "all",
   // include all portfolios owned by the authenticated user.
   const portfolioIds: string[] = [];
+  const portfolioNameMap: Record<string, string> = {};
   if (!portfolioId || portfolioId === "all") {
     const mine = await prisma.portfolio.findMany({
       where: { userId: session.user.id },
-      select: { id: true },
+      select: { id: true, name: true },
     });
-    for (const p of mine) portfolioIds.push(p.id);
+    for (const p of mine) {
+      portfolioIds.push(p.id);
+      portfolioNameMap[p.id] = p.name ?? "Unnamed";
+    }
   } else {
     portfolioIds.push(portfolioId);
+    const p = await prisma.portfolio.findFirst({
+      where: { id: portfolioId, userId: session.user.id },
+      select: { name: true },
+    });
+    portfolioNameMap[portfolioId] = p?.name ?? "Unnamed";
   }
 
   const now = new Date();
@@ -176,18 +185,17 @@ export async function GET(req: NextRequest) {
   };
 
   type ReportRow = ReportSourceRow & {
+    portfolioName: string;
     premiumReceived: number;
     premiumPaidToClose: number;
-    premiumCapturedComputed: number; // computed fallback if premiumCaptured is null
-    pctPLOnPremium: number; // computed from received/captured
+    premiumCapturedComputed: number;
+    pctPLOnPremium: number;
     holdingDays: number;
-    contractsClosed: number; // derived for convenience in CSV/UI
-    sharesClosed: number; // derived for convenience in CSV/UI
-
-    // UI/CSV parity fields
-    totalPL: number; // premiumCaptured + sharePL
-    investedCapital: number; // stock lots: entryPrice*shares, trades: strike*100*contracts
-    pctPLOnTotal: number; // totalPL / investedCapital
+    contractsClosed: number;
+    sharesClosed: number;
+    totalPL: number;
+    investedCapital: number;
+    pctPLOnTotal: number;
   };
 
   const allRows: ReportSourceRow[] = [
@@ -290,6 +298,7 @@ export async function GET(req: NextRequest) {
 
     return {
       ...r,
+      portfolioName: portfolioNameMap[r.portfolioId] ?? "Unnamed",
       premiumReceived,
       premiumPaidToClose,
       premiumCapturedComputed,
@@ -311,80 +320,60 @@ export async function GET(req: NextRequest) {
   });
 
   if (format === "csv") {
-    // Headers aligned with Reports table (exact order)
+    const fmtDate = (d: Date | string | null | undefined): string => {
+      if (!d) return "";
+      const dt = typeof d === "string" ? new Date(d) : d;
+      if (Number.isNaN(dt.getTime())) return "";
+      return dt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    };
+
     const headers = [
-      "createdAt",
-      "closedAt",
-      "ticker",
-      "strikePrice",
-      "entryPrice",
-      "type",
-      "expirationDate",
-      "contractsInitial",
-      "sharesClosed",
-      "pl",
-      "percentPL",
-      "notes",
+      "Portfolio",
+      "Date Opened",
+      "Date Closed",
+      "Ticker",
+      "Type",
+      "Strike",
+      "Entry Price",
+      "Expiry",
+      "Contracts",
+      "Shares Closed",
+      "Total P/L",
+      "% Return",
+      "Days Held",
+      "Close Reason",
+      "Notes",
     ];
 
     const lines: string[] = [];
     lines.push(headers.join(","));
 
     for (const r of enrichedSorted) {
-      const createdAt =
-        typeof r.createdAt === "string"
-          ? r.createdAt
-          : new Date(r.createdAt).toISOString();
-      const closedAt = r.closedAt
-        ? typeof r.closedAt === "string"
-          ? r.closedAt
-          : new Date(r.closedAt).toISOString()
-        : "";
       const contractsInitial = r.contractsInitial ?? r.contracts ?? 0;
+      const closeReasonLabels: Record<string, string> = {
+        expiredWorthless: "Expired Worthless",
+        assigned: "Assigned",
+        manual: "Manual Close",
+      };
+      const closeReason = (r as Record<string, unknown>).closeReason as string | undefined;
 
       const line = [
-        createdAt,
-        closedAt,
+        r.portfolioName,
+        fmtDate(r.createdAt),
+        fmtDate(r.closedAt),
         r.ticker ?? "",
-        String(r.strikePrice ?? 0),
-        r.entryPrice == null ? "" : String(r.entryPrice),
         r.type ?? "",
-        typeof r.expirationDate === "string"
-          ? r.expirationDate
-          : new Date(r.expirationDate).toISOString(),
-        String(contractsInitial),
-        String(r.sharesClosed ?? 0),
-        String(
-          r.type === "STOCK_LOT"
-            ? (getOptionalNumber(r, "realizedPnl") ?? 0)
-            : (typeof r.premiumCaptured === "number" && Number.isFinite(r.premiumCaptured)
-                ? r.premiumCaptured
-                : 0),
-        ),
-        String(
-          r.type === "STOCK_LOT"
-            ? (() => {
-                const realized = getOptionalNumber(r, "realizedPnl") ?? 0;
-                const shares =
-                  typeof r.sharesClosed === "number" &&
-                  Number.isFinite(r.sharesClosed)
-                    ? r.sharesClosed
-                    : 0;
-                const entry =
-                  typeof r.entryPrice === "number" &&
-                  Number.isFinite(r.entryPrice)
-                    ? r.entryPrice
-                    : 0;
-                const basis = Math.abs(entry * shares);
-                const pct = basis > 0 ? realized / basis : 0;
-                return pct * 100;
-              })()
-            : (typeof r.percentPL === "number" && Number.isFinite(r.percentPL)
-                ? r.percentPL
-                : 0),
-        ),
+        r.strikePrice ? String(r.strikePrice) : "",
+        r.entryPrice != null ? String(r.entryPrice) : "",
+        fmtDate(r.expirationDate),
+        r.type === "STOCK_LOT" ? "" : String(contractsInitial),
+        r.type === "STOCK_LOT" ? String(r.sharesClosed ?? 0) : "",
+        r.totalPL.toFixed(2),
+        (r.pctPLOnTotal * 100).toFixed(2) + "%",
+        String(r.holdingDays),
+        closeReason ? (closeReasonLabels[closeReason] ?? closeReason) : "",
         r.notes ?? "",
-      ].map((v) => csvEscape(v));
+      ].map((v) => csvEscape(String(v)));
 
       lines.push(line.join(","));
     }

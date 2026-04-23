@@ -17,6 +17,28 @@ const ClosedTradesTable = dynamic(
     ),
   },
 );
+const AccountSummaryContent = dynamic(
+  () => import("@/features/summary/components/AccountSummaryContent"),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>
+    ),
+  },
+);
+
+const AccountsReportContent = dynamic(
+  () =>
+    import("@/features/reports/components/AccountReportsContent").then(
+      (m) => m.AccountsReportContent,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted-foreground py-8 text-center">Loading report…</p>
+    ),
+  },
+);
 
 import { Portfolio } from "@/types";
 import { useTrades } from "@/features/trades/hooks/useTrades";
@@ -26,6 +48,7 @@ import { useState } from "react";
 import { Settings, Plus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 function dollars(n: number | null | undefined) {
   if (n == null || Number.isNaN(n)) return "—";
@@ -45,43 +68,15 @@ function compact(n: number) {
   }).format(n);
 }
 
-function SectionHeader({
-  label,
-  count,
-  action,
-}: {
-  label: string;
-  count?: number;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between mb-2.5">
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-          {label}
-        </span>
-        {count != null && (
-          <span className="text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full leading-none">
-            {count}
-          </span>
-        )}
-      </div>
-      {action}
-    </div>
-  );
-}
+const TABS = ["Overview", "Positions", "Activity", "Report"] as const;
+type Tab = (typeof TABS)[number];
 
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
-  const { trades: openTrades, isLoading: loadingOpen } = useTrades(
-    portfolio.id,
-    "open",
-  );
-  const { trades: closedTrades, isLoading: loadingClosed } = useTrades(
-    portfolio.id,
-    "closed",
-  );
+  const { trades: openTrades, isLoading: loadingOpen } = useTrades(portfolio.id, "open");
+  const { trades: closedTrades, isLoading: loadingClosed } = useTrades(portfolio.id, "closed");
   const { data: m } = useDetailMetrics(portfolio.id);
 
+  const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [addStockOpen, setAddStockOpen] = useState(false);
 
   const starting = Number(portfolio.startingCapital ?? 0);
@@ -89,43 +84,13 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const base = starting + addl;
 
   const currentCapital =
-    m?.currentCapital != null
-      ? Number(m.currentCapital)
-      : base + Number(m?.totalProfit ?? 0);
-
-  const cashAvailable =
-    m?.cashAvailable != null ? Number(m.cashAvailable) : null;
-  const capitalUsed = m?.capitalUsed != null ? Number(m.capitalUsed) : null;
-  const pctDeployed =
-    m?.percentCapitalDeployed != null
-      ? Number(m.percentCapitalDeployed)
-      : null;
-  const totalProfit = m?.totalProfit != null ? Number(m.totalProfit) : null;
-  const realizedMTD = m?.realizedMTD != null ? Number(m.realizedMTD) : null;
-  const realizedYTD = m?.realizedYTD != null ? Number(m.realizedYTD) : null;
-  const potentialPremium =
-    m?.potentialPremium != null ? Number(m.potentialPremium) : null;
-  const avgPLPercent =
-    m?.avgPLPercent != null ? Number(m.avgPLPercent) : null;
-  const winRate = m?.winRate != null ? Number(m.winRate) : null;
-  const avgDaysInTrade =
-    m?.avgDaysInTrade != null ? Number(m.avgDaysInTrade) : null;
-
-  const profitPos = totalProfit != null && totalProfit >= 0;
-  const cashNeg = cashAvailable != null && cashAvailable < 0;
-  const barColor =
-    pctDeployed == null
-      ? "bg-emerald-500"
-      : pctDeployed >= 85
-        ? "bg-red-500"
-        : pctDeployed >= 60
-          ? "bg-amber-500"
-          : "bg-emerald-500";
+    m?.currentCapital != null ? Number(m.currentCapital) : base + Number(m?.totalProfit ?? 0);
+  const potentialPremium = m?.potentialPremium != null ? Number(m.potentialPremium) : null;
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-5">
 
-      {/* ── Header ── */}
+      {/* ── Header — always visible ── */}
       <motion.div
         className="flex items-start justify-between gap-3"
         initial={{ opacity: 0, y: 5 }}
@@ -149,256 +114,125 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
           </p>
         </div>
         <Link href={`/portfolios/${portfolio.id}/settings`}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 mt-0.5"
-            title="Portfolio settings"
-          >
+          <Button variant="ghost" size="icon" className="h-8 w-8 mt-0.5" title="Portfolio settings">
             <Settings className="h-4 w-4" />
           </Button>
         </Link>
       </motion.div>
 
-      {/* ── KPI Strip ── */}
-      <motion.div
-        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.05 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            Current Capital
-          </p>
-          <p className="mt-1 text-xl font-bold text-foreground tabular-nums">
-            {dollars(currentCapital)}
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {totalProfit != null
-              ? `${profitPos ? "+" : ""}${compact(totalProfit)} profit`
-              : ""}
-          </p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            Cash Available
-          </p>
-          <p
-            className={`mt-1 text-xl font-bold tabular-nums ${
-              cashNeg
-                ? "text-red-500 dark:text-red-400"
-                : "text-emerald-600 dark:text-emerald-400"
-            }`}
+      {/* ── Pill tab switcher ── */}
+      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+              activeTab === tab
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
           >
-            {cashAvailable != null ? dollars(cashAvailable) : "—"}
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {capitalUsed != null ? `${compact(capitalUsed)} in use` : ""}
-          </p>
-        </div>
+            {tab}
+            {tab === "Positions" && openTrades.length > 0 && (
+              <span className="text-[10px] font-semibold bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 leading-none">
+                {openTrades.length}
+              </span>
+            )}
+            {tab === "Activity" && closedTrades.length > 0 && (
+              <span className="text-[10px] font-semibold bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 leading-none">
+                {closedTrades.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            Deployed
-          </p>
-          <p
-            className={`mt-1 text-xl font-bold tabular-nums ${
-              pctDeployed == null
-                ? "text-foreground"
-                : pctDeployed >= 85
-                  ? "text-red-500"
-                  : pctDeployed >= 60
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-foreground"
-            }`}
-          >
-            {pctDeployed != null ? `${pctDeployed.toFixed(1)}%` : "—"}
-          </p>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
-            {pctDeployed != null && (
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                style={{ width: `${Math.min(pctDeployed, 100)}%` }}
-              />
+      {/* ── Tab content panel ── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+
+        {activeTab === "Overview" && (
+          <div className="p-5 sm:p-6">
+            <AccountSummaryContent portfolioId={portfolio.id} embedded />
+          </div>
+        )}
+
+        {activeTab === "Positions" && (
+          <div className="p-5 sm:p-6 space-y-5">
+            {potentialPremium != null && (
+              <div className="rounded-xl border bg-card px-4 py-3 flex items-center gap-6">
+                <div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Open Premium</p>
+                  <p className="text-sm font-bold text-teal-600 dark:text-teal-400 tabular-nums">{compact(potentialPremium)}</p>
+                </div>
+                {openTrades.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    across <span className="font-medium text-foreground">{openTrades.length}</span> open position{openTrades.length !== 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Stock Lots</span>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setAddStockOpen(true)}>
+                  <Plus className="h-3 w-3" />
+                  Add Stock
+                </Button>
+              </div>
+              <StocksTable portfolioId={portfolio.id} />
+            </div>
+            <AddStockModal portfolioId={portfolio.id} open={addStockOpen} onOpenChange={setAddStockOpen} />
+
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Open Positions</span>
+                  {openTrades.length > 0 && (
+                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full leading-none">
+                      {openTrades.length}
+                    </span>
+                  )}
+                </div>
+                <AddTradeModal portfolioId={portfolio.id} />
+              </div>
+              <div className="rounded-xl border bg-card overflow-hidden">
+                {loadingOpen ? (
+                  <div className="p-10 text-center text-sm text-muted-foreground">Loading positions…</div>
+                ) : openTrades.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 p-12 text-center">
+                    <p className="text-sm text-muted-foreground">No open option positions yet.</p>
+                    <AddTradeModal portfolioId={portfolio.id} />
+                  </div>
+                ) : (
+                  <OpenTradesTable trades={openTrades} portfolioId={portfolio.id} totalCapital={currentCapital} />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Activity" && (
+          <div className="bg-card overflow-hidden">
+            {loadingClosed ? (
+              <div className="p-10 text-center text-sm text-muted-foreground">Loading activity…</div>
+            ) : closedTrades.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">No closed trades yet.</div>
+            ) : (
+              <ClosedTradesTable trades={closedTrades} portfolioId={portfolio.id} />
             )}
           </div>
-        </div>
+        )}
 
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            Total P&L
-          </p>
-          <p
-            className={`mt-1 text-xl font-bold tabular-nums ${
-              profitPos
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-red-500 dark:text-red-400"
-            }`}
-          >
-            {totalProfit != null
-              ? `${profitPos ? "+" : ""}${compact(totalProfit)}`
-              : "—"}
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            {realizedMTD != null
-              ? `MTD ${realizedMTD >= 0 ? "+" : ""}${compact(realizedMTD)}`
-              : ""}
-          </p>
-        </div>
-      </motion.div>
-
-      {/* ── Performance strip ── */}
-      {(potentialPremium != null || winRate != null || avgPLPercent != null || avgDaysInTrade != null || realizedYTD != null || realizedMTD != null) && (
-        <motion.div
-          className="rounded-xl border bg-card shadow-sm px-4 py-3 flex flex-wrap gap-x-6 gap-y-3"
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, delay: 0.08 }}
-          style={{ willChange: "opacity, transform" }}
-        >
-          {potentialPremium != null && (
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Open Premium</p>
-              <p className="text-sm font-bold text-teal-600 dark:text-teal-400 tabular-nums">{compact(potentialPremium)}</p>
-            </div>
-          )}
-          {winRate != null && (
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Win Rate</p>
-              <p className={`text-sm font-bold tabular-nums ${winRate >= 0.5 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}`}>
-                {(winRate * 100).toFixed(0)}%
-              </p>
-            </div>
-          )}
-          {avgPLPercent != null && (
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Avg P/L</p>
-              <p className={`text-sm font-bold tabular-nums ${avgPLPercent >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
-                {avgPLPercent >= 0 ? "+" : ""}{avgPLPercent.toFixed(1)}%
-              </p>
-            </div>
-          )}
-          {avgDaysInTrade != null && (
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Avg Days</p>
-              <p className="text-sm font-bold text-foreground tabular-nums">{avgDaysInTrade.toFixed(0)}</p>
-            </div>
-          )}
-          {realizedYTD != null && (
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">YTD Realized</p>
-              <p className={`text-sm font-bold tabular-nums ${realizedYTD >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
-                {realizedYTD >= 0 ? "+" : ""}{compact(realizedYTD)}
-              </p>
-            </div>
-          )}
-          {realizedMTD != null && (
-            <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">MTD Realized</p>
-              <p className={`text-sm font-bold tabular-nums ${realizedMTD >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
-                {realizedMTD >= 0 ? "+" : ""}{compact(realizedMTD)}
-              </p>
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* ── Stock Lots ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.1 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-              Stock Lots
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs gap-1.5"
-              onClick={() => setAddStockOpen(true)}
-            >
-              <Plus className="h-3 w-3" />
-              Add Stock
-            </Button>
+        {activeTab === "Report" && (
+          <div className="p-5 sm:p-6">
+            <AccountsReportContent defaultPortfolioId={portfolio.id} embedded />
           </div>
-          <StocksTable portfolioId={portfolio.id} />
-        </div>
-        <AddStockModal
-          portfolioId={portfolio.id}
-          open={addStockOpen}
-          onOpenChange={setAddStockOpen}
-        />
-      </motion.div>
+        )}
 
-      {/* ── Open Positions ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.11 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        <SectionHeader
-          label="Open Positions"
-          count={openTrades.length}
-          action={<AddTradeModal portfolioId={portfolio.id} />}
-        />
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          {loadingOpen ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              Loading positions…
-            </div>
-          ) : openTrades.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 p-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                No open option positions yet.
-              </p>
-              <AddTradeModal portfolioId={portfolio.id} />
-            </div>
-          ) : (
-            <OpenTradesTable
-              trades={openTrades}
-              portfolioId={portfolio.id}
-              totalCapital={currentCapital}
-            />
-          )}
-        </div>
-      </motion.div>
-
-      {/* ── Closed Trades ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, delay: 0.14 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        <SectionHeader
-          label="Closed Trades"
-          count={closedTrades.length}
-        />
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-          {loadingClosed ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              Loading closed trades…
-            </div>
-          ) : closedTrades.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No closed trades yet.
-            </div>
-          ) : (
-            <ClosedTradesTable
-              trades={closedTrades}
-              portfolioId={portfolio.id}
-            />
-          )}
-        </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

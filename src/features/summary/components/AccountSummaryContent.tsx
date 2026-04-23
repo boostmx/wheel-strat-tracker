@@ -5,15 +5,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+const AccountsReportContent = dynamic(
+  () =>
+    import("@/features/reports/components/AccountReportsContent").then(
+      (m) => m.AccountsReportContent,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted-foreground py-8 text-center">Loading report…</p>
+    ),
+  },
+);
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
@@ -448,7 +456,13 @@ function OpenPositionsCard({
   );
 }
 
-export default function AccountSummaryContent() {
+export default function AccountSummaryContent({
+  portfolioId,
+  embedded,
+}: {
+  portfolioId?: string;
+  embedded?: boolean;
+} = {}) {
   const { data, isLoading, error } = useSWR<SummaryResponse>(
     "/api/account/summary",
   );
@@ -568,7 +582,7 @@ export default function AccountSummaryContent() {
     };
   })();
 
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>("all");
+  const selectedPortfolioId = portfolioId ?? "all";
   const portfoliosArray = useMemo(
     () => (data ? Object.values(data.perPortfolio) : []),
     [data],
@@ -683,6 +697,7 @@ export default function AccountSummaryContent() {
       : (data?.pnlSeriesYearly ?? []);
   }, [selectedPortfolio, data]);
 
+  const [accountTab, setAccountTab] = useState<"Overview" | "Report">("Overview");
   const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly" | "yearly" | "ytd" | "alltime">("daily");
   const [dailyWindow, setDailyWindow] = useState<"mtd" | "30d" | "90d">("mtd");
   const [showAllPremium, setShowAllPremium] = useState(false);
@@ -921,38 +936,55 @@ export default function AccountSummaryContent() {
   })();
 
   return (
-    <div className="max-w-6xl mx-auto py-6 sm:py-10 px-4 sm:px-6 space-y-5">
+    <div className={embedded ? "space-y-5" : "max-w-6xl mx-auto py-6 sm:py-10 px-4 sm:px-6 space-y-5"}>
 
-      {/* ── Header ── */}
-      <motion.div
-        className="flex items-center justify-between gap-4 flex-wrap"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 }}
-        style={{ willChange: "opacity, transform" }}
-      >
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Account Dashboard</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {selectedPortfolio ? selectedPortfolio.name : "All portfolios"} · as of today
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={selectedPortfolioId} onValueChange={setSelectedPortfolioId}>
-            <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
-              <SelectValue placeholder="All Accounts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Accounts</SelectItem>
-              {agg.perPortfolio.map((pp) => (
-                <SelectItem key={pp.id} value={pp.id}>
-                  {pp.name || pp.id.slice(0, 6)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </motion.div>
+      {/* ── Header — hidden when embedded in portfolio detail ── */}
+      {!embedded && (
+        <motion.div
+          className="flex items-center justify-between gap-4 flex-wrap"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28 }}
+          style={{ willChange: "opacity, transform" }}
+        >
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">All Accounts</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              All portfolios · as of today
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Account-level tab switcher (standalone page only) ── */}
+      {!embedded && (
+        <>
+          <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+            {(["Overview", "Report"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setAccountTab(tab)}
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+                  accountTab === tab
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          {accountTab === "Report" && (
+            <div className="rounded-xl border border-border bg-card overflow-hidden p-5 sm:p-6">
+              <AccountsReportContent embedded />
+            </div>
+          )}
+        </>
+      )}
+
+      <div className={cn("space-y-5", !embedded && accountTab !== "Overview" && "hidden")}>
 
       {/* ── KPI Strip ── */}
       <motion.div
@@ -1246,6 +1278,8 @@ export default function AccountSummaryContent() {
           </CardContent>
         </Card>
       </motion.div>
+
+      </div>{/* end overview wrapper */}
     </div>
   );
 }
