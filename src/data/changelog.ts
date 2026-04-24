@@ -7,6 +7,19 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-23",
+    version: "v2.7.0",
+    highlights: [
+      "Watchlist added — a dedicated page showing live prices for all your open positions alongside any tickers you manually track, so you never have to bounce between tabs.",
+      "Positions are auto-populated from your open trades and stock lots grouped by ticker. Each position appears as a clickable chip showing the type badge, strike, expiry, contracts, OTM/ITM %, and the portfolio it belongs to — clicking goes straight to that trade or stock detail.",
+      "My Watchlist lets you add any ticker with one-click removal. Tickers are validated against Yahoo Finance before being saved so invalid symbols are rejected upfront.",
+      "Manual watchlist entries show price, day change, a 52-week range progress bar indicating where the current price sits between the yearly low and high, and today's volume — all refreshing automatically every 60 seconds.",
+      "If a manually-tracked ticker also has an open position it's flagged with a Position badge so you can see the overlap at a glance.",
+      "Watchlist is fully mobile-responsive — positions and watchlist entries collapse into readable card views on phones instead of overflowing horizontal tables.",
+      "Quote data extended across the app to include 52-week high/low, daily high/low, and volume pulled from the existing Yahoo Finance integration.",
+    ],
+  },
+  {
+    date: "2026-04-23",
     version: "v2.6.0",
     highlights: [
       "Sign up page redesigned to match the login experience — split-panel layout, first and last name side by side, show/hide password toggles, and client-side length and match validation. Both pages now share the same copy and branding.",

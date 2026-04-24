@@ -11,6 +11,7 @@ import {
   Briefcase,
   Settings,
   Shield,
+  Eye,
   LogOut,
   Moon,
   Sun,
@@ -369,6 +370,14 @@ function NavContent({
           icon={LayoutDashboard}
           label="All Accounts"
           active={pathname === "/summary"}
+          onClick={onNavigate}
+          collapsed={collapsed}
+        />
+        <NavItem
+          href="/watchlist"
+          icon={Eye}
+          label="Watchlist"
+          active={pathname === "/watchlist"}
           onClick={onNavigate}
           collapsed={collapsed}
         />

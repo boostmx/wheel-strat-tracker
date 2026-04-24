@@ -8,17 +8,29 @@ datasource db {
 }
 
 model User {
-  id         String      @id @default(cuid())
-  firstName  String
-  lastName   String
-  email      String      @unique
-  bio        String?
-  avatarUrl  String?
-  isAdmin    Boolean     @default(false)
-  username   String      @unique
-  password   String
-  createdAt  DateTime    @default(now())
-  portfolios Portfolio[]
+  id             String          @id @default(cuid())
+  firstName      String
+  lastName       String
+  email          String          @unique
+  bio            String?
+  avatarUrl      String?
+  isAdmin        Boolean         @default(false)
+  username       String          @unique
+  password       String
+  createdAt      DateTime        @default(now())
+  portfolios     Portfolio[]
+  watchlistItems WatchlistItem[]
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  ticker    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ticker])
+  @@index([userId])
 }
 
 model Portfolio {
