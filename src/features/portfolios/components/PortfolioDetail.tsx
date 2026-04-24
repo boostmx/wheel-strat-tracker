@@ -183,20 +183,6 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
 
         {activeTab === "Positions" && (
           <div className="p-5 sm:p-6 space-y-5">
-            {potentialPremium != null && (
-              <div className="rounded-xl border bg-card px-4 py-3 flex items-center gap-6">
-                <div>
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Open Premium</p>
-                  <p className="text-sm font-bold text-teal-600 dark:text-teal-400 tabular-nums">{compact(potentialPremium)}</p>
-                </div>
-                {openTrades.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    across <span className="font-medium text-foreground">{openTrades.length}</span> open position{openTrades.length !== 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
-            )}
-
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-4 pt-4 pb-2.5">
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">Stock Lots</span>
@@ -216,6 +202,11 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                   {openTrades.length > 0 && (
                     <span className="text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full leading-none">
                       {openTrades.length}
+                    </span>
+                  )}
+                  {potentialPremium != null && potentialPremium > 0 && (
+                    <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full leading-none tabular-nums">
+                      {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(potentialPremium)} open premium
                     </span>
                   )}
                 </div>

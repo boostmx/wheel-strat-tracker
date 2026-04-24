@@ -275,6 +275,11 @@ function OpenPositionsCard({
   const expiringSoon = trades.filter((t) => dte(t.expirationDate) <= 14);
   const displayed = posTab === "expiring" ? expiringSoon : trades;
 
+  const totalOpenPremium = trades.reduce(
+    (sum, t) => sum + t.contractsOpen * t.contractPrice * 100,
+    0,
+  );
+
   const formatPrice = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
@@ -292,9 +297,14 @@ function OpenPositionsCard({
     <Card className="rounded-xl">
       <CardContent className="p-5">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-base font-semibold text-foreground">Open Positions</h2>
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{trades.length} active</span>
+            {totalOpenPremium > 0 && (
+              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full tabular-nums">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(totalOpenPremium)} open premium
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             {([["expiring", `Expiring Soon (${expiringSoon.length})`], ["all", "All"]] as const).map(([tab, label]) => (
@@ -355,9 +365,9 @@ function OpenPositionsCard({
                         <p className="text-xs font-medium text-foreground">{t.expirationDate.slice(5).replace("-", "/")}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] text-muted-foreground mb-0.5">Collateral</p>
-                        <p className="text-xs font-medium text-foreground tabular-nums">
-                          {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(t.collateral)}
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Open Premium</p>
+                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
+                          {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(t.contractsOpen * t.contractPrice * 100)}
                         </p>
                       </div>
                     </div>
@@ -397,7 +407,7 @@ function OpenPositionsCard({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50">
-                    {["Ticker", "Type", "Strike", "Expiry", "Contracts", "Collateral", marketLabel, "OTM %"].map((h) => (
+                    {["Ticker", "Type", "Strike", "Expiry", "Contracts", "Open Premium", marketLabel, "OTM %"].map((h) => (
                       <th key={h} className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide pb-2 pr-4 last:pr-0 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -437,8 +447,8 @@ function OpenPositionsCard({
                           </div>
                         </td>
                         <td className="py-2.5 pr-4 tabular-nums text-foreground">{t.contractsOpen}</td>
-                        <td className="py-2.5 pr-4 tabular-nums text-foreground">
-                          {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(t.collateral)}
+                        <td className="py-2.5 pr-4 tabular-nums text-emerald-700 dark:text-emerald-400 font-medium">
+                          {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(t.contractsOpen * t.contractPrice * 100)}
                         </td>
                         <td className="py-2.5 pr-4">
                           {quotesLoading && !price ? (

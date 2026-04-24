@@ -99,8 +99,7 @@ const calcBreakeven = (t: Trade) => {
   return undefined;
 };
 
-const buildTooltipContent = (t: Trade, totalCapital?: number) => {
-  const allocPct = totalCapital != null ? calcAllocationPct(t, totalCapital) : null;
+const buildTooltipContent = (t: Trade) => {
   return (
   <div className="text-xs space-y-1">
     {calcCapitalInUse(t) > 0 && (
@@ -109,20 +108,6 @@ const buildTooltipContent = (t: Trade, totalCapital?: number) => {
         <span className="font-medium">{formatUSD(calcCapitalInUse(t))}</span>
       </div>
     )}
-    {allocPct != null && (
-      <div>
-        Portfolio allocation:{" "}
-        <span className="font-medium">{allocPct.toFixed(1)}%</span>
-      </div>
-    )}
-    <div>
-      Open premium (total):{" "}
-      {typeof calcOpenPremium(t) === "number" ? (
-        <span className="font-medium">{formatUSD(calcOpenPremium(t) as number)}</span>
-      ) : (
-        <span className="font-medium">-</span>
-      )}
-    </div>
     {typeof t.entryPrice === "number" && isFinite(t.entryPrice) && (
       <div>
         Entry Price:{" "}
@@ -171,7 +156,7 @@ const getTradeOpenDate = (t: Trade): Date | undefined => {
   return toDate(t.createdAt);
 };
 
-const makeInfoColumn = (totalCapital?: number): ColumnDef<Trade> => ({
+const makeInfoColumn = (): ColumnDef<Trade> => ({
   id: "info",
   header: "",
   enableSorting: false,
@@ -197,10 +182,27 @@ const makeInfoColumn = (totalCapital?: number): ColumnDef<Trade> => ({
         collisionPadding={8}
         className="max-w-xs"
       >
-        {buildTooltipContent(row.original, totalCapital)}
+        {buildTooltipContent(row.original)}
       </TooltipContent>
     </Tooltip>
   ),
+});
+
+const makeOpenPremiumColumn = (): ColumnDef<Trade> => ({
+  id: "openPremium",
+  header: "Open Premium",
+  enableSorting: true,
+  accessorFn: (row) => calcOpenPremium(row) ?? -1,
+  cell: ({ row }) => {
+    const v = calcOpenPremium(row.original);
+    if (typeof v !== "number") return <span className="text-muted-foreground">—</span>;
+    return (
+      <span className="tabular-nums font-medium text-emerald-700 dark:text-emerald-400">
+        {formatUSD(v)}
+      </span>
+    );
+  },
+  meta: { align: "right" },
 });
 
 const makeAllocationColumn = (totalCapital: number): ColumnDef<Trade> => ({
@@ -329,10 +331,11 @@ export function OpenTradesTable({
 
   const columns = useMemo(() => {
     const base = makeOpenColumns() as ColumnDef<Trade, unknown>[];
-    const cols: ColumnDef<Trade, unknown>[] = [makeInfoColumn(totalCapital), ...base];
+    const cols: ColumnDef<Trade, unknown>[] = [makeInfoColumn(), ...base];
     if (totalCapital != null && totalCapital > 0) {
       cols.push(makeAllocationColumn(totalCapital));
     }
+    cols.push(makeOpenPremiumColumn());
     cols.push(makePriceColumn(quotes, quotesLoading));
     cols.push(makeOtmColumn(quotes));
     return cols;
@@ -357,17 +360,6 @@ export function OpenTradesTable({
   const start = pageIndex * pageSize;
   const end = start + pageSize;
   const pageRows = allRows.slice(start, end);
-
-  // Metrics for header (client-side, uses visible rows)
-  const metrics = useMemo(() => {
-    const originals = allRows.map((r) => r.original as Trade);
-    const count = originals.length;
-    const totalOpenPremium = originals.reduce((sum, t) => {
-      const v = calcOpenPremium(t);
-      return sum + (typeof v === "number" ? v : 0);
-    }, 0);
-    return { count, totalOpenPremium };
-  }, [allRows]);
 
   return (
     <div className="w-full overflow-x-auto">
@@ -502,25 +494,6 @@ export function OpenTradesTable({
           </div>
         </div>
 
-        {/* Metrics summary */}
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground w-full sm:w-auto">
-          <div>
-            <div className="uppercase text-[11px] tracking-wide">
-              Open trades
-            </div>
-            <div className="text-base font-semibold text-foreground">
-              {metrics.count}
-            </div>
-          </div>
-          <div>
-            <div className="uppercase text-[11px] tracking-wide">
-              Open premium (total)
-            </div>
-            <div className="text-base font-semibold text-foreground">
-              {formatUSD(metrics.totalOpenPremium)}
-            </div>
-          </div>
-        </div>
       </div>
       {/* Mobile cards (shown on <md) */}
       <div className="md:hidden space-y-2">
