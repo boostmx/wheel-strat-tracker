@@ -12,7 +12,19 @@ export type QuoteResult = {
   changePct: number | null;
   previousClose: number | null;
   marketState: "REGULAR" | "PRE" | "POST" | "CLOSED" | string | null;
+  // Extended market data
+  volume: number | null;
+  dayHigh: number | null;
+  dayLow: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
 };
+
+const NULL_RESULT = (ticker: string): QuoteResult => ({
+  ticker, price: null, change: null, changePct: null,
+  previousClose: null, marketState: null, volume: null,
+  dayHigh: null, dayLow: null, fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null,
+});
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -24,9 +36,7 @@ export async function GET(request: Request) {
   const tickersParam = searchParams.get("tickers") ?? "";
   const tickers = [...new Set(tickersParam.split(",").map((t) => t.trim().toUpperCase()).filter(Boolean))].slice(0, 25);
 
-  if (tickers.length === 0) {
-    return NextResponse.json({});
-  }
+  if (tickers.length === 0) return NextResponse.json({});
 
   const results = await Promise.all(
     tickers.map(async (ticker): Promise<QuoteResult> => {
@@ -42,21 +52,33 @@ export async function GET(request: Request) {
             signal: AbortSignal.timeout(8000),
           },
         );
-        if (!res.ok) return { ticker, price: null, change: null, changePct: null, previousClose: null, marketState: null };
+        if (!res.ok) return NULL_RESULT(ticker);
         const json = await res.json();
         const meta = json?.chart?.result?.[0]?.meta;
-        if (!meta) return { ticker, price: null, change: null, changePct: null, previousClose: null, marketState: null };
+        if (!meta) return NULL_RESULT(ticker);
 
         const price: number | null = meta.regularMarketPrice ?? null;
         const prev: number | null = meta.chartPreviousClose ?? meta.previousClose ?? null;
         const change = price != null && prev != null ? price - prev : null;
         const changePct = change != null && prev ? (change / prev) * 100 : null;
         const rawMarketState: string | null = meta.marketState ?? null;
-        // Yahoo returns "None" as a string when market state is unavailable
         const marketState = rawMarketState && rawMarketState !== "None" ? rawMarketState : null;
-        return { ticker, price, change, changePct, previousClose: prev, marketState };
+
+        return {
+          ticker,
+          price,
+          change,
+          changePct,
+          previousClose: prev,
+          marketState,
+          volume: meta.regularMarketVolume ?? null,
+          dayHigh: meta.regularMarketDayHigh ?? null,
+          dayLow: meta.regularMarketDayLow ?? null,
+          fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? null,
+          fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? null,
+        };
       } catch {
-        return { ticker, price: null, change: null, changePct: null, previousClose: null, marketState: null };
+        return NULL_RESULT(ticker);
       }
     }),
   );
