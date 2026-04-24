@@ -61,15 +61,6 @@ function dollars(n: number | null | undefined) {
   });
 }
 
-function compact(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(n);
-}
-
 const TABS = ["Overview", "Positions", "Activity", "Report"] as const;
 type Tab = (typeof TABS)[number];
 
