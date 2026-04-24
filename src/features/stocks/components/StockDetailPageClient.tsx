@@ -29,6 +29,7 @@ type CoveredCallRow = {
   expirationDate: string | Date;
   strikePrice: number;
   contracts: number;
+  contractsOpen: number;
   contractPrice: number;
   status: string;
   premiumCaptured: number | null;
@@ -349,6 +350,7 @@ export default function StockDetailPageClient(props: {
         expirationDate: t.expirationDate,
         strikePrice: safeNumber(t.strikePrice),
         contracts: safeNumber(t.contracts ?? t.contractsInitial),
+        contractsOpen: safeNumber(t.contractsOpen ?? t.contracts ?? t.contractsInitial),
         contractPrice: safeNumber(t.contractPrice),
         status: String(t.status),
         premiumCaptured:
@@ -404,6 +406,14 @@ export default function StockDetailPageClient(props: {
 
     return { totalCaptured, pendingPremium, openCount: open.length, closedCount: closed.length };
   }, [coveredCalls]);
+
+  const openCcShares = React.useMemo(
+    () =>
+      coveredCalls
+        .filter((cc) => cc.status.toLowerCase() === "open")
+        .reduce((sum, cc) => sum + cc.contractsOpen * 100, 0),
+    [coveredCalls],
+  );
 
   if (isLoading) {
     return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
@@ -462,13 +472,14 @@ export default function StockDetailPageClient(props: {
                 ticker: s.ticker,
                 type: "CoveredCall",
                 stockLotId: s.id,
-                contracts: Math.max(1, sharesForContracts),
               }}
               lockPrefill
+              defaultContracts={sharesForContracts}
+              maxContracts={sharesForContracts}
             />
           ) : null}
           {!isClosed ? (
-            <Button size="sm" onClick={() => setCloseOpen(true)}>Close Stock Lot</Button>
+            <Button size="sm" onClick={() => setCloseOpen(true)}>Sell Shares</Button>
           ) : null}
         </div>
       </div>
@@ -520,6 +531,13 @@ export default function StockDetailPageClient(props: {
               value={s.closedAt ? new Date(s.closedAt).toLocaleDateString() : "—"}
             />
           </>
+        ) : realizedPnl !== 0 ? (
+          <LotStat
+            label="Realized P/L (partial)"
+            value={formatMoney(realizedPnl)}
+            tone={realizedPnl > 0 ? "success" : realizedPnl < 0 ? "danger" : "default"}
+            sub="from partial sells"
+          />
         ) : null}
       </div>
 
@@ -697,6 +715,7 @@ export default function StockDetailPageClient(props: {
           ticker={s.ticker}
           shares={shares}
           avgCost={toNumber(s.avgCost)}
+          openCcShares={openCcShares}
         />
       ) : null}
 

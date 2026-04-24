@@ -18,6 +18,9 @@ type CloseTradePayload = {
   assignment?: boolean;
   assigned?: boolean;
   closeReason?: "manual" | "expiredWorthless" | "assigned";
+  // Optional: also sell shares from the linked stock lot in the same transaction
+  sellSharesPrice?: number;
+  sharesToSell?: number;
 };
 
 //helpers to interpret trade types
@@ -262,6 +265,15 @@ export async function PATCH(
   const isFull =
     typeof fullCloseFlag === "boolean" ? fullCloseFlag : remaining <= 0;
 
+  const sellSharesPriceNum =
+    body.sellSharesPrice != null && Number.isFinite(Number(body.sellSharesPrice))
+      ? Number(body.sellSharesPrice)
+      : null;
+  const sharesToSellNum =
+    body.sharesToSell != null && Number.isFinite(Number(body.sharesToSell))
+      ? Math.round(Number(body.sharesToSell))
+      : contractsToClose * CONTRACT_MULTIPLIER;
+
   if (isFull) {
     // FULL CLOSE: accumulate P&L and mark closed
     const newPremiumCaptured = (trade.premiumCaptured ?? 0) + realizedNow;
@@ -302,6 +314,65 @@ export async function PATCH(
               await tx.stockLot.update({
                 where: { id: stockLotId },
                 data: { avgCost: safeAvgCost },
+              });
+            }
+          }
+        }
+
+        // Optional: also sell shares from the lot in the same transaction.
+        // We re-fetch the lot so the P&L uses the avgCost AFTER premium reduction above.
+        if (sellSharesPriceNum != null && sellSharesPriceNum > 0) {
+          const lotAfter = await tx.stockLot.findUnique({
+            where: { id: stockLotId },
+            select: {
+              shares: true,
+              avgCost: true,
+              realizedPnl: true,
+              status: true,
+              trades: {
+                where: { type: "CoveredCall", status: "open" },
+                select: { contractsOpen: true },
+              },
+            },
+          });
+
+          if (lotAfter && lotAfter.status !== "CLOSED") {
+            const lotSharesInt = Number(lotAfter.shares);
+            // Shares still covered by OTHER open CCs on this lot
+            const otherCcShares = lotAfter.trades.reduce(
+              (sum, t) => sum + t.contractsOpen * 100,
+              0,
+            );
+            const maxSellable = lotSharesInt - otherCcShares;
+            const actualSell = Math.min(sharesToSellNum, maxSellable);
+
+            if (actualSell > 0) {
+              const lotAvgCost = new Prisma.Decimal(lotAfter.avgCost);
+              const sellPrice = new Prisma.Decimal(sellSharesPriceNum);
+              const shareRealizedNow = sellPrice
+                .sub(lotAvgCost)
+                .mul(new Prisma.Decimal(actualSell));
+              const accumulated = lotAfter.realizedPnl
+                ? new Prisma.Decimal(lotAfter.realizedPnl)
+                : new Prisma.Decimal(0);
+              const newRealizedPnl = accumulated.add(shareRealizedNow);
+              const newShares = lotSharesInt - actualSell;
+
+              await tx.stockLot.update({
+                where: { id: stockLotId },
+                data:
+                  newShares <= 0
+                    ? {
+                        shares: 0,
+                        status: "CLOSED",
+                        closedAt: new Date(),
+                        closePrice: sellPrice,
+                        realizedPnl: newRealizedPnl,
+                      }
+                    : {
+                        shares: newShares,
+                        realizedPnl: newRealizedPnl,
+                      },
               });
             }
           }
@@ -367,6 +438,63 @@ export async function PATCH(
               await tx.stockLot.update({
                 where: { id: stockLotId },
                 data: { avgCost: safeAvgCost },
+              });
+            }
+          }
+        }
+
+        // Optional: also sell shares (same logic as full close path)
+        if (sellSharesPriceNum != null && sellSharesPriceNum > 0) {
+          const lotAfter = await tx.stockLot.findUnique({
+            where: { id: stockLotId },
+            select: {
+              shares: true,
+              avgCost: true,
+              realizedPnl: true,
+              status: true,
+              trades: {
+                where: { type: "CoveredCall", status: "open" },
+                select: { contractsOpen: true },
+              },
+            },
+          });
+
+          if (lotAfter && lotAfter.status !== "CLOSED") {
+            const lotSharesInt = Number(lotAfter.shares);
+            const otherCcShares = lotAfter.trades.reduce(
+              (sum, t) => sum + t.contractsOpen * 100,
+              0,
+            );
+            const maxSellable = lotSharesInt - otherCcShares;
+            const actualSell = Math.min(sharesToSellNum, maxSellable);
+
+            if (actualSell > 0) {
+              const lotAvgCost = new Prisma.Decimal(lotAfter.avgCost);
+              const sellPrice = new Prisma.Decimal(sellSharesPriceNum);
+              const shareRealizedNow = sellPrice
+                .sub(lotAvgCost)
+                .mul(new Prisma.Decimal(actualSell));
+              const accumulated = lotAfter.realizedPnl
+                ? new Prisma.Decimal(lotAfter.realizedPnl)
+                : new Prisma.Decimal(0);
+              const newRealizedPnl = accumulated.add(shareRealizedNow);
+              const newShares = lotSharesInt - actualSell;
+
+              await tx.stockLot.update({
+                where: { id: stockLotId },
+                data:
+                  newShares <= 0
+                    ? {
+                        shares: 0,
+                        status: "CLOSED",
+                        closedAt: new Date(),
+                        closePrice: sellPrice,
+                        realizedPnl: newRealizedPnl,
+                      }
+                    : {
+                        shares: newShares,
+                        realizedPnl: newRealizedPnl,
+                      },
               });
             }
           }

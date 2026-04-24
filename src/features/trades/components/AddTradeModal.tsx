@@ -82,6 +82,8 @@ type AddTradeModalProps = {
   trigger?: React.ReactNode;
   prefill?: AddTradePrefill;
   lockPrefill?: boolean;
+  defaultContracts?: number;
+  maxContracts?: number;
 };
 
 export function AddTradeModal({
@@ -89,6 +91,8 @@ export function AddTradeModal({
   trigger,
   prefill,
   lockPrefill = false,
+  defaultContracts,
+  maxContracts,
 }: AddTradeModalProps) {
   const [open, setOpen] = useState(false);
   const [ticker, setTicker] = useState<string>(prefill?.ticker ?? "");
@@ -133,6 +137,7 @@ export function AddTradeModal({
       }
       if (prefill?.stockLotId != null) setStockLotId(prefill.stockLotId);
       if (prefill?.contracts != null) setContracts(prefill.contracts);
+      else if (defaultContracts != null) setContracts(defaultContracts);
       return;
     }
 
@@ -145,7 +150,7 @@ export function AddTradeModal({
     setContractPrice({ formatted: "", raw: 0 });
     setEntryPrice({ formatted: "", raw: 0 });
     setIsLoading(false);
-  }, [open, prefill]);
+  }, [open, prefill, defaultContracts]);
 
   function handleTypeChange(nextType: string) {
     if (lockPrefill && prefill?.type) return;
@@ -347,6 +352,7 @@ export function AddTradeModal({
                 type="number"
                 inputMode="numeric"
                 min={1}
+                max={maxContracts ?? undefined}
                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 value={contracts === 0 ? "" : contracts.toString()}
                 disabled={lockPrefill && !!prefill?.contracts}
@@ -359,6 +365,11 @@ export function AddTradeModal({
                 }}
                 required
               />
+              {maxContracts != null && (
+                <p className="text-xs text-muted-foreground">
+                  Up to {maxContracts} contract{maxContracts !== 1 ? "s" : ""} ({maxContracts * 100} shares)
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">

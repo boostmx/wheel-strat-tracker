@@ -69,6 +69,7 @@ export async function PATCH(
     const bodyUnknown: unknown = await req.json().catch(() => ({}));
     const body = bodyUnknown as {
       closePrice?: number | string | null;
+      sharesToClose?: number | string | null;
       // Admin-only direct-edit fields
       adminEdit?: boolean;
       ticker?: string;
@@ -125,7 +126,7 @@ export async function PATCH(
       return badRequest("closePrice must be a positive number");
     }
 
-    // Load lot with ownership + current basis
+    // Load lot with ownership + current basis + open CC trades for validation
     const lot = await prisma.stockLot.findFirst({
       where: {
         id,
@@ -136,6 +137,11 @@ export async function PATCH(
         status: true,
         shares: true,
         avgCost: true,
+        realizedPnl: true,
+        trades: {
+          where: { type: "CoveredCall", status: "open" },
+          select: { contractsOpen: true },
+        },
       },
     });
 
@@ -152,12 +158,57 @@ export async function PATCH(
       return badRequest("StockLot has no shares to close");
     }
 
-    // realizedPnl = (closePrice - avgCost) * shares
-    const shares = new Prisma.Decimal(sharesInt);
+    const openCcShares = lot.trades.reduce((sum, t) => sum + t.contractsOpen * 100, 0);
+    const maxSellable = sharesInt - openCcShares;
+
+    const sharesToCloseRaw = body.sharesToClose != null ? Number(body.sharesToClose) : null;
+    const sharesToClose =
+      sharesToCloseRaw != null && Number.isFinite(sharesToCloseRaw)
+        ? Math.round(sharesToCloseRaw)
+        : sharesInt;
+
+    if (sharesToClose <= 0) {
+      return badRequest("sharesToClose must be a positive number");
+    }
+    if (sharesToClose > sharesInt) {
+      return badRequest("Cannot sell more shares than available");
+    }
+    if (sharesToClose > maxSellable) {
+      return badRequest(
+        `${openCcShares} shares are covered by open covered calls. Maximum sellable: ${maxSellable} shares.`,
+      );
+    }
+
     const avgCost = new Prisma.Decimal(lot.avgCost);
     const closePrice = new Prisma.Decimal(closePriceNum);
+    const accumulatedPnl = lot.realizedPnl
+      ? new Prisma.Decimal(lot.realizedPnl)
+      : new Prisma.Decimal(0);
 
-    const realizedPnl = closePrice.sub(avgCost).mul(shares);
+    const isPartialClose = sharesToClose < sharesInt;
+
+    if (isPartialClose) {
+      // Partial sell: reduce shares, accumulate realized P&L, keep lot OPEN
+      const soldShares = new Prisma.Decimal(sharesToClose);
+      const realizedNow = closePrice.sub(avgCost).mul(soldShares);
+      const newRealizedPnl = accumulatedPnl.add(realizedNow);
+
+      const updated = await prisma.stockLot.update({
+        where: { id: lot.id },
+        data: {
+          shares: sharesInt - sharesToClose,
+          realizedPnl: newRealizedPnl,
+        },
+        include: { trades: { orderBy: { createdAt: "desc" } } },
+      });
+
+      return NextResponse.json({ stockLot: updated });
+    }
+
+    // Full close: set status CLOSED, include any accumulated partial P&L
+    const remainingShares = new Prisma.Decimal(sharesInt);
+    const realizedNow = closePrice.sub(avgCost).mul(remainingShares);
+    const totalRealizedPnl = accumulatedPnl.add(realizedNow);
 
     const updated = await prisma.stockLot.update({
       where: { id: lot.id },
@@ -165,7 +216,7 @@ export async function PATCH(
         status: "CLOSED",
         closedAt: new Date(),
         closePrice: closePrice,
-        realizedPnl: realizedPnl,
+        realizedPnl: totalRealizedPnl,
       },
       include: {
         trades: {
