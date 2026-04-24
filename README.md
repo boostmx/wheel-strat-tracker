@@ -1,39 +1,53 @@
 # 🌀 Wheel Strategy Tracker
 
-**Developed by HL Financial Strategies**  
-Track and manage your Wheel Strategy trades — monitor puts, calls, covered calls, capital used, and percent returns, all in one dashboard.
+**Developed by HL Financial Strategies**
+
+A purpose-built app for options traders running the Wheel Strategy. Track every position across multiple portfolios, monitor capital deployment in real time, and review your performance — all without a spreadsheet.
 
 ---
 
-## Features
+## What It Does
 
-- Secure authentication (NextAuth with credentials provider)
-- Track open and closed positions by portfolio
-- Multiple portfolio support
-- Capture contract price, expiration, strike, premium, and P/L
-- Close trades partially or fully with real-time metrics
-- Clean dashboard with modals
-- Custom domain support: `wheeltracker.hlfinancialstrategies.com`
-- Upcoming features to include: real time dashboard updates, monitoring, trade details, and more
+Most brokerage platforms aren't built for Wheel traders. They show you positions but not the full picture — how much of your capital is deployed, what your average hold time is, whether you're actually profitable after all your covered calls. This app fills that gap.
+
+You get a clean dashboard that knows what a Cash Secured Put is, what Assigned means, and how a covered call ties back to the stock lot underneath it. Every metric is calculated the way a Wheel trader would calculate it.
+
+---
+
+## Highlights
+
+**Real-time Portfolio Dashboard**  
+Current capital, cash available, deployment percentage, and total P&L at a glance. A P&L chart with six time views (Daily through All Time) shows exactly when you made money and when you didn't.
+
+**Full Position Lifecycle**  
+Open a CSP, get assigned, write covered calls against the lot — every step is tracked and linked. Close trades as Expired Worthless, Assigned, or Manual, and the numbers update instantly. Add to an existing position and it auto-logs the entry in the trade notes.
+
+**Stock Lot Tracking**  
+Covered calls are attached to their underlying stock lot. A cost basis reduction card shows your original average cost, your running average after all the premiums you've collected, and what your projected average will be if current CCs expire worthless.
+
+**Capital Management**  
+Set a starting capital per portfolio, then log deposits and withdrawals as they happen. Every transaction is dated, noted, and kept in a clean history — so your capital base always reflects what's actually in the account, not a number you manually updated once.
+
+**Watchlist**  
+A dedicated watchlist page shows live prices, day change, 52-week range, and volume for all your open positions and any tickers you're monitoring. Positions auto-populate from your trades. Prices refresh every 60 seconds.
+
+**Reports & CSV Export**  
+Filter closed trades by portfolio and date range, see win rate with full W/L breakdown, best and worst trade, average hold time, and close reason summary. Export everything to CSV formatted for a monthly review.
+
+**Built for Mobile**  
+Every page has a proper mobile layout — positions, tables, modals, and charts all work on a phone without horizontal scrolling or tiny tap targets.
 
 ---
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
-- **Database**: PostgreSQL (hosted via Railway)
-- **ORM**: Prisma
-- **Authentication**: NextAuth
-- **Data Fetching**: SWR
-- **Styling/UI**: TailwindCSS, ShadCN
-- **Deployment**: Vercel
-- **Package Manager**: pnpm
+- **Next.js 15** (App Router) — **PostgreSQL** via Railway — **Prisma** ORM  
+- **NextAuth** authentication — **SWR** data fetching — **Tailwind CSS** + **shadcn/ui**  
+- Deployed on **Vercel** at `wheeltracker.hlfinancialstrategies.com`
 
 ---
 
-## Getting Started (Local Setup)
-
-### 1. Clone the repo
+## Local Setup
 
 ```bash
 git clone https://github.com/yourusername/wheel-strategy-tracker.git
@@ -41,9 +55,7 @@ cd wheel-strategy-tracker
 pnpm install
 ```
 
-### 2. Set up your `.env` file
-
-Create a `.env` file in the project root and add:
+Create a `.env` file:
 
 ```env
 DATABASE_URL=postgresql://your-db-url
@@ -51,78 +63,24 @@ NEXTAUTH_SECRET=your-random-secret
 NEXTAUTH_URL=http://localhost:3000
 ```
 
-You can generate a secure secret using:
+Set up the database and seed sample data:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+npx prisma db push
+npx prisma generate
+pnpm tsx prisma/seed.ts
 ```
 
-### 3. Set up the database
-
-```bash
-pnpm prisma migrate dev --name init
-pnpm prisma generate
-```
-
-### 4. Seed production data (admin user only)
-
-```bash
-pnpm ts-node prisma/seed.production.ts
-```
-
-This script will:
-
-- Clear existing trades and portfolios
-- Create a new admin user based on env vars
-
----
-
-## 🧪 Running the App
+Run the app:
 
 ```bash
 pnpm dev
 ```
 
-Then visit [http://localhost:3000](http://localhost:3000)
+Visit [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Environment Variables
-
-| Variable          | Description                   |
-| ----------------- | ----------------------------- |
-| `DATABASE_URL`    | PostgreSQL connection string  |
-| `NEXTAUTH_SECRET` | Session encryption secret     |
-| `NEXTAUTH_URL`    | Required in production        |
-| `ADMIN_EMAIL`     | Used during seeding           |
-| `ADMIN_PASSWORD`  | Used during seeding           |
-| `ADMIN_USERNAME`  | Optional, defaults to `admin` |
-
----
-
-## Deployment (Vercel + Railway)
-
-1. Push your code to GitHub
-2. Import project into [Vercel](https://vercel.com)
-3. Add required env variables under Project → Settings
-4. Link to your PostgreSQL instance in [Railway](https://railway.app)
-5. Set your domain (`wheeltracker.hlfinancialstrategies.com`) as **primary**
-6. Deploy
-
----
-
-## Project Structure
-
-```
-/app               → App Router pages and layouts
-/components        → UI and logic components
-/lib               → Auth, utils, Prisma
-/prisma            → Schema and seed scripts
-/public            → Static assets
-```
-
----
-
-## 🪪 License
+## License
 
 MIT License © 2025 HL Financial Strategies
