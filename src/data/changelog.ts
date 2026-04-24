@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-24",
+    version: "v2.9.0",
+    highlights: [
+      "Partial covered calls from stock lot — the Sell Covered Call button now defaults to the max contracts for your share count but lets you choose any quantity, with an 'Up to N contracts' hint shown inline.",
+      "Partial share sells on stock lots — the new Sell Shares modal lets you sell any number of shares from an open lot instead of forcing an all-or-nothing close. Shares covered by open covered calls are automatically blocked from sale and shown clearly in the modal.",
+      "Combined CC close + share sell — when closing a covered call (expired worthless, manual buy-to-close, or partial), a new 'Also sell N shares at close' checkbox lets you sell the underlying shares in the same transaction. The share price pre-fills with the strike price and is editable. Share P&L is calculated using the lot's cost basis after the CC premium has already been applied.",
+      "Open lots with accumulated realized P&L from partial sells now show a 'Realized P/L (partial)' stat card so you can see your running total even before the lot is fully closed.",
+    ],
+  },
+  {
     date: "2026-04-23",
     version: "v2.8.0",
     highlights: [

@@ -64,6 +64,9 @@ export function CloseTradeModal({
   const [contractsTouched, setContractsTouched] = useState(false);
   const [priceTouched, setPriceTouched] = useState(false);
 
+  const [sellShares, setSellShares] = useState(false);
+  const [sharesSellPrice, setSharesSellPrice] = useState({ formatted: "", raw: 0 });
+
   useEffect(() => {
     if (isOpen) {
       setFullClose(true);
@@ -74,6 +77,8 @@ export function CloseTradeModal({
       setSubmitting(false);
       setContractsTouched(false);
       setPriceTouched(false);
+      setSellShares(false);
+      setSharesSellPrice({ formatted: "", raw: 0 });
     }
   }, [isOpen, contracts]);
 
@@ -112,7 +117,12 @@ export function CloseTradeModal({
     Number(effectiveContracts) <= contracts;
   const forcedZero = assigned || expiredWorthless;
   const priceValid = forcedZero ? Number(closingPrice.raw) >= 0 : Number(closingPrice.raw) > 0;
-  const canSubmit = contractsValid && priceValid;
+  const sharesToSell = Number(effectiveContracts) * 100;
+  const sharesSellValid =
+    !sellShares ||
+    !isCC ||
+    (Number.isFinite(sharesSellPrice.raw) && sharesSellPrice.raw > 0);
+  const canSubmit = contractsValid && priceValid && sharesSellValid;
 
   const contractsErr = !contractsValid
     ? !isPositiveInt(effectiveContracts)
@@ -148,6 +158,8 @@ export function CloseTradeModal({
           fullClose: forcedZero ? true : fullClose,
           assignment: assigned ? true : undefined,
           closeReason: assigned ? "assigned" : expiredWorthless ? "expiredWorthless" : "manual",
+          sellSharesPrice: sellShares && isCC && !assigned ? sharesSellPrice.raw : undefined,
+          sharesToSell: sellShares && isCC && !assigned ? sharesToSell : undefined,
         }),
       });
 
@@ -372,6 +384,45 @@ export function CloseTradeModal({
             </p>
           )}
         </div>
+
+        {/* Sell shares alongside CC close */}
+        {isCC && !assigned && (
+          <div className="border-t pt-3 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={sellShares}
+                onCheckedChange={(v) => {
+                  setSellShares(!!v);
+                  if (v) {
+                    setSharesSellPrice({
+                      formatted: strikePrice.toFixed(2),
+                      raw: strikePrice,
+                    });
+                  } else {
+                    setSharesSellPrice({ formatted: "", raw: 0 });
+                  }
+                }}
+              />
+              <span className="text-xs text-muted-foreground">
+                Also sell {sharesToSell} shares at close
+              </span>
+            </label>
+
+            {sellShares && (
+              <div className="pl-6 space-y-1.5">
+                <Label>Share Sell Price</Label>
+                <CurrencyInput
+                  value={sharesSellPrice}
+                  onChange={setSharesSellPrice}
+                  placeholder="e.g. 155.25"
+                />
+                <p className="text-xs text-muted-foreground">
+                  P&amp;L uses the lot&apos;s avg cost after this premium is applied.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={submitting}>
