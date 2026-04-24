@@ -195,7 +195,7 @@ export function PortfolioSettings({ portfolio }: { portfolio: Portfolio }) {
 
       {/* ── Capital Management ── */}
       <section className="rounded-xl border border-border bg-card p-5 space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
           <h3 className="text-sm font-semibold">Capital Management</h3>
           <p className="text-xs text-muted-foreground">
             Starting: <span className="font-medium text-foreground">{formatUSD(Number(portfolio.startingCapital))}</span>
@@ -231,7 +231,7 @@ export function PortfolioSettings({ portfolio }: { portfolio: Portfolio }) {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {/* Amount */}
             <div className="space-y-1.5">
               <Label>Amount</Label>
@@ -265,7 +265,7 @@ export function PortfolioSettings({ portfolio }: { portfolio: Portfolio }) {
                     {txDate ? format(txDate, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0" align="start" side="bottom" sideOffset={4}>
                   <Calendar
                     mode="single"
                     selected={txDate}

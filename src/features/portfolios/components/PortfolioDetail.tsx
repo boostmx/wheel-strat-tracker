@@ -131,11 +131,11 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
               <Settings className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent className="overflow-y-auto">
-            <SheetHeader className="pb-2">
+          <SheetContent className="flex flex-col overflow-hidden w-full sm:max-w-[480px]">
+            <SheetHeader className="pb-2 shrink-0">
               <SheetTitle>Portfolio Settings</SheetTitle>
             </SheetHeader>
-            <div className="px-4 pb-6">
+            <div className="flex-1 overflow-y-auto px-4 pb-6">
               <PortfolioSettings portfolio={portfolio} />
             </div>
           </SheetContent>
