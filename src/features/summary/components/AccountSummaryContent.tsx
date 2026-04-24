@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CreatePortfolioModal } from "@/features/portfolios/components/CreatePortfolioModal";
+import { useRouter } from "next/navigation";
 
 const AccountsReportContent = dynamic(
   () =>
@@ -261,11 +262,14 @@ function OpenPositionsCard({
   trades,
   quotes,
   quotesLoading,
+  showPortfolio = false,
 }: {
   trades: OpenTradeSummary[];
   quotes: QuoteMap;
   quotesLoading: boolean;
+  showPortfolio?: boolean;
 }) {
+  const router = useRouter();
   const [posTab, setPosTab] = useState<"expiring" | "all">("all");
 
   const expiringSoon = trades.filter((t) => dte(t.expirationDate) <= 14);
@@ -324,11 +328,20 @@ function OpenPositionsCard({
                 }
                 const isITM = otmPct != null && otmPct < 0;
                 return (
-                  <div key={t.id} className="rounded-lg border border-border/50 p-3 space-y-2.5">
+                  <div
+                    key={t.id}
+                    className="rounded-lg border border-border/50 p-3 space-y-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => router.push(`/portfolios/${t.portfolioId}/trades/${t.id}`)}
+                  >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="font-semibold text-foreground text-sm">{t.ticker}</span>
                         <TypeBadge type={t.type} />
+                        {showPortfolio && (
+                          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded truncate max-w-[80px]">
+                            {t.portfolioName}
+                          </span>
+                        )}
                       </div>
                       <DteBadge days={d} />
                     </div>
@@ -404,8 +417,17 @@ function OpenPositionsCard({
                     }
                     const isITM = otmPct != null && otmPct < 0;
                     return (
-                      <tr key={t.id} className="border-b border-border/30 last:border-0 hover:bg-muted/40 transition-colors">
-                        <td className="py-2.5 pr-4 font-semibold text-foreground">{t.ticker}</td>
+                      <tr
+                        key={t.id}
+                        className="border-b border-border/30 last:border-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/portfolios/${t.portfolioId}/trades/${t.id}`)}
+                      >
+                        <td className="py-2.5 pr-4">
+                          <span className="font-semibold text-foreground">{t.ticker}</span>
+                          {showPortfolio && (
+                            <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{t.portfolioName}</div>
+                          )}
+                        </td>
                         <td className="py-2.5 pr-4"><TypeBadge type={t.type} /></td>
                         <td className="py-2.5 pr-4 tabular-nums text-foreground">{formatPrice(t.strikePrice)}</td>
                         <td className="py-2.5 pr-4">
@@ -1124,7 +1146,12 @@ export default function AccountSummaryContent({
       >
         {/* Open Positions — takes 2 of 3 columns */}
         <div className="lg:col-span-2">
-          <OpenPositionsCard trades={openTrades} quotes={quotes} quotesLoading={quotesLoading} />
+          <OpenPositionsCard
+            trades={openTrades}
+            quotes={quotes}
+            quotesLoading={quotesLoading}
+            showPortfolio={!selectedPortfolio}
+          />
         </div>
 
         {/* Right panel: Exposures on top, Premium below */}
