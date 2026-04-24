@@ -79,7 +79,6 @@ async function main() {
       name: "Test Portfolio",
       userId: user.id,
       startingCapital: 500000,
-      additionalCapital: 0,
     },
   });
 

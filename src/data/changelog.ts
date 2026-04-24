@@ -7,6 +7,17 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-23",
+    version: "v2.8.0",
+    highlights: [
+      "Portfolio capital management overhauled — deposits and withdrawals are now tracked as individual transactions with an amount, date, and optional note, replacing the single 'additional capital' field.",
+      "Every deposit and withdrawal is logged in a persistent history with a running total of deposits, withdrawals, and net adjustment shown below the transaction list.",
+      "Portfolio settings moved out of the main tab bar and into a slide-out drawer triggered by the gear icon in the portfolio header — keeps the tabs focused on viewing your positions and keeps destructive actions out of the main flow.",
+      "Settings drawer covers portfolio name editing, all capital transaction management, notes, and the danger zone in one scrollable panel.",
+      "All inputs in the settings panel now match the rest of the app — the date field uses the same Popover + Calendar picker used in trade forms, and text fields use the standard Input component with proper labels.",
+    ],
+  },
+  {
+    date: "2026-04-23",
     version: "v2.7.0",
     highlights: [
       "Watchlist added — a dedicated page showing live prices for all your open positions alongside any tickers you manually track, so you never have to bounce between tabs.",

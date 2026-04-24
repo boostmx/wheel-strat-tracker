@@ -128,7 +128,7 @@ export async function GET() {
       id: true,
       name: true,
       startingCapital: true,
-      additionalCapital: true,
+      capitalTransactions: { select: { type: true, amount: true } },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -641,8 +641,11 @@ export async function GET() {
 
       // Capital figures
       const starting = Number(p.startingCapital ?? 0);
-      const additional = Number(p.additionalCapital ?? 0);
-      const capitalBase = starting + additional;
+      const netCapitalAdj = p.capitalTransactions.reduce(
+        (sum, t) => sum + (t.type === "deposit" ? Number(t.amount) : -Number(t.amount)),
+        0,
+      );
+      const capitalBase = starting + netCapitalAdj;
       const currentCapital = capitalBase + totalProfitAll; // realized adjusts the base
       const cashAvailable = currentCapital - capitalInUse;
 
@@ -652,7 +655,7 @@ export async function GET() {
           portfolioId: p.id,
           name: p.name,
           startingCapital: starting,
-          additionalCapital: additional,
+          additionalCapital: netCapitalAdj,
           capitalBase,
           currentCapital,
           totalProfitAll,
