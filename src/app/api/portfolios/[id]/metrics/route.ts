@@ -49,14 +49,20 @@ export async function GET(
     const portfolioWhere = isAdmin ? { id: portfolioId } : { id: portfolioId, userId };
     const portfolio = await prisma.portfolio.findFirst({
       where: portfolioWhere,
-      select: { startingCapital: true, additionalCapital: true },
+      select: {
+        startingCapital: true,
+        capitalTransactions: { select: { type: true, amount: true } },
+      },
     });
     if (!portfolio) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const capitalBase =
-      Number(portfolio.startingCapital ?? 0) + Number(portfolio.additionalCapital ?? 0);
+    const netCapitalAdj = portfolio.capitalTransactions.reduce(
+      (sum, t) => sum + (t.type === "deposit" ? Number(t.amount) : -Number(t.amount)),
+      0,
+    );
+    const capitalBase = Number(portfolio.startingCapital ?? 0) + netCapitalAdj;
 
     // Single parallel round trip for all trade data
     const [openTrades, closedTrades, openStockLots] = await Promise.all([

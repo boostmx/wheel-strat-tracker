@@ -2,7 +2,6 @@
 // This file handles operations for a specific portfolio identified by its ID.
 import { auth } from "@/server/auth/auth";
 import { prisma } from "@/server/prisma";
-import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
@@ -78,19 +77,13 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const { name, startingCapital, additionalCapital, notes } = body;
+    const { name, notes } = body;
 
     const patchWhere = session.user.isAdmin ? { id } : { id, userId: session.user.id };
     const updated = await prisma.portfolio.updateMany({
       where: patchWhere,
       data: {
         ...(name !== undefined && { name }),
-        ...(startingCapital !== undefined && {
-          startingCapital: new Prisma.Decimal(startingCapital),
-        }),
-        ...(additionalCapital !== undefined && {
-          additionalCapital: new Prisma.Decimal(additionalCapital),
-        }),
         ...(notes !== undefined && { notes }),
       },
     });

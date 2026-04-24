@@ -26,8 +26,17 @@ export interface Portfolio {
   id: string;
   name: string | null;
   startingCapital: number;
-  additionalCapital: number;
   notes?: string | null;
+}
+
+export interface CapitalTransaction {
+  id: string;
+  portfolioId: string;
+  type: "deposit" | "withdrawal";
+  amount: number;
+  note: string | null;
+  date: string;
+  createdAt: string;
 }
 
 export interface Metrics {

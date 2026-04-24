@@ -43,6 +43,8 @@ const AccountsReportContent = dynamic(
 import { Portfolio } from "@/types";
 import { useTrades } from "@/features/trades/hooks/useTrades";
 import { useDetailMetrics } from "@/features/portfolios/hooks/useDetailMetrics";
+import { PortfolioSettings } from "@/features/portfolios/components/PortfolioSettings";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Settings, Plus, ChevronRight } from "lucide-react";
@@ -91,11 +93,9 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const [addStockOpen, setAddStockOpen] = useState(false);
 
   const starting = Number(portfolio.startingCapital ?? 0);
-  const addl = Number(portfolio.additionalCapital ?? 0);
-  const base = starting + addl;
-
+  const capitalBase = m?.capitalBase != null ? Number(m.capitalBase) : starting;
   const currentCapital =
-    m?.currentCapital != null ? Number(m.currentCapital) : base + Number(m?.totalProfit ?? 0);
+    m?.currentCapital != null ? Number(m.currentCapital) : capitalBase + Number(m?.totalProfit ?? 0);
   const potentialPremium = m?.potentialPremium != null ? Number(m.potentialPremium) : null;
 
   return (
@@ -121,25 +121,37 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
             {portfolio.name || "Unnamed Portfolio"}
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Base capital {dollars(base)}
+            Base capital {dollars(capitalBase)}
           </p>
         </div>
-        <Link href={`/portfolios/${portfolio.id}/settings`}>
-          <Button variant="ghost" size="icon" className="h-8 w-8 mt-0.5" title="Portfolio settings">
-            <Settings className="h-4 w-4" />
-          </Button>
-        </Link>
+
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 mt-0.5 shrink-0" title="Portfolio settings">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="overflow-y-auto">
+            <SheetHeader className="pb-2">
+              <SheetTitle>Portfolio Settings</SheetTitle>
+            </SheetHeader>
+            <div className="px-4 pb-6">
+              <PortfolioSettings portfolio={portfolio} />
+            </div>
+          </SheetContent>
+        </Sheet>
+
       </motion.div>
 
       {/* ── Pill tab switcher ── */}
-      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => switchTab(tab)}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap",
               activeTab === tab
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
