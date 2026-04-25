@@ -72,7 +72,8 @@ function baseCSPTrade(overrides?: object) {
 
 function setupTx(txOverrides?: Parameters<typeof makeTxMock>[0]) {
   const tx = makeTxMock(txOverrides);
-  mockPrismaTransaction.mockImplementation(async (cb: (tx: typeof tx) => Promise<unknown>) => cb(tx));
+  type TxType = typeof tx;
+  mockPrismaTransaction.mockImplementation(async (cb: (t: TxType) => Promise<unknown>) => cb(tx));
   return tx;
 }
 
@@ -225,7 +226,7 @@ describe("CSP assignment", () => {
     const lotCreate = vi.fn().mockResolvedValue({ id: "new-lot-1" });
     const tradeUpdate = vi.fn().mockResolvedValue({});
     const tx = { stockLot: { create: lotCreate }, trade: { update: tradeUpdate } };
-    mockPrismaTransaction.mockImplementation(async (cb: (tx: typeof tx) => Promise<unknown>) => cb(tx));
+    mockPrismaTransaction.mockImplementation(async (cb: (t: typeof tx) => Promise<unknown>) => cb(tx));
 
     const res = await PATCH(makeRequest({ closingContracts: 4, assignment: true }), makeParams("trade-2"));
     expect(res.status).toBe(200);
@@ -252,7 +253,7 @@ describe("CC non-assignment full close", () => {
         update: lotUpdate,
       },
     });
-    mockPrismaTransaction.mockImplementation(async (cb: (tx: typeof tx) => Promise<unknown>) => cb(tx));
+    mockPrismaTransaction.mockImplementation(async (cb: (t: typeof tx) => Promise<unknown>) => cb(tx));
 
     // Buy back at $1.00 → profit = (2.50 - 1.00) × 4 × 100 = 600
     await PATCH(makeRequest({ closingContracts: 4, closingPrice: 1.0, fullClose: true }), makeParams("trade-1"));
@@ -273,7 +274,7 @@ describe("CC non-assignment full close", () => {
         update: lotUpdate,
       },
     });
-    mockPrismaTransaction.mockImplementation(async (cb: (tx: typeof tx) => Promise<unknown>) => cb(tx));
+    mockPrismaTransaction.mockImplementation(async (cb: (t: typeof tx) => Promise<unknown>) => cb(tx));
 
     // Expired worthless: 5.00 × 4 × 100 = 2000 > 0.50 × 400 = 200 total basis
     await PATCH(
@@ -303,7 +304,7 @@ describe("CC non-assignment partial close", () => {
         update: vi.fn().mockResolvedValue({}),
       },
     };
-    mockPrismaTransaction.mockImplementation(async (cb: (tx: typeof tx) => Promise<unknown>) => cb(tx));
+    mockPrismaTransaction.mockImplementation(async (cb: (t: typeof tx) => Promise<unknown>) => cb(tx));
 
     await PATCH(makeRequest({ closingContracts: 2, closingPrice: 1.0 }), makeParams("trade-1"));
 
