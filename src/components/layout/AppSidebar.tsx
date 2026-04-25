@@ -2,7 +2,6 @@
 
 import useSWR from "swr";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
@@ -20,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ChevronUp,
+  TrendingUp,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -337,13 +337,9 @@ function NavContent({
           onClick={onNavigate}
           className={cn("flex items-center gap-2.5", !collapsed && "flex-1 min-w-0")}
         >
-          <Image
-            src="/logo.png"
-            alt="HL Financial Strategies"
-            width={28}
-            height={28}
-            className="flex-shrink-0"
-          />
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-4 h-4 text-primary-foreground" />
+          </div>
           {!collapsed && (
             <span className="font-semibold text-sm text-foreground leading-tight whitespace-nowrap">
               Wheel Trade Tracker
@@ -523,12 +519,9 @@ export function MobileTopBar() {
   return (
     <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-background flex-shrink-0">
       <Link href="/summary" className="flex items-center gap-2">
-        <Image
-          src="/logo.png"
-          alt="HL Financial Strategies"
-          width={26}
-          height={26}
-        />
+        <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+          <TrendingUp className="w-4 h-4 text-primary-foreground" />
+        </div>
         <span className="font-semibold text-sm text-foreground">
           Wheel Trade Tracker
         </span>

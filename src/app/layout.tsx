@@ -17,10 +17,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Wheel Trade Tracker",
   description: "Created by HL Financial Strategies",
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-32x32.png",
-  },
 };
 
 // Script to set initial theme before React hydration
