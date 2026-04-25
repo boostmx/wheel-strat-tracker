@@ -340,6 +340,23 @@ Current latest: **v2.9.1** (2026-04-25)
 
 ## Recent Work (Session History)
 
+### v2.9.1 — 2026-04-25
+**Bug fixes + test suite + icon refresh**
+
+1. **CC assignment partial lot bug** (`/api/trades/[id]/close/route.ts`)
+   - Fixed: assigning a CC on a partial lot (e.g. 4 contracts, 800-share lot) now only sells the covered shares (400), leaving the remainder open. Previously closed the entire lot.
+
+2. **Test suite** (`src/__tests__/`)
+   - Vitest + `@vitest/coverage-v8` installed; `pnpm test` / `pnpm test:watch` / `pnpm test:coverage` scripts added
+   - 248 tests across 24 files — 91.7% statement coverage, 93.8% line coverage
+   - Coverage includes all API routes, lib utilities, and a dedicated security suite
+   - Security tests (`src/__tests__/security/authorization.test.ts`): auth guards on every route, cross-user data isolation, admin-only route enforcement, admin self-protection, impersonation security
+
+3. **Icon + favicon refresh** (`AppSidebar.tsx`, `src/app/icon.svg`)
+   - Replaced `logo.png` (1.9 MB) with inline `TrendingUp` lucide icon in a `bg-primary` rounded container — matches login page style exactly
+   - New `src/app/icon.svg` favicon: rounded green square with trending-up chart path
+   - Removed all unused `public/` assets (favicon PNGs, Next.js default SVGs, logo.png)
+
 ### v2.9.0 — 2026-04-24
 **Partial CC sells + partial share sells + combined close**
 
