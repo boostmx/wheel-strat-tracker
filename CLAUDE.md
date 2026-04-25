@@ -334,7 +334,7 @@ Release history lives in `src/data/changelog.ts`. **Always add a new entry when 
 }
 ```
 
-Current latest: **v2.9.0** (2026-04-24)
+Current latest: **v2.9.1** (2026-04-25)
 
 ---
 

@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-25",
+    version: "v2.9.1",
+    highlights: [
+      "Fixed a bug where assigning a covered call on a partial stock lot would incorrectly close the entire lot instead of only selling the shares covered by the contracts. For example, assigning a 4-contract CC on an 800-share lot now sells 400 shares and leaves the remaining 400 shares open.",
+    ],
+  },
+  {
     date: "2026-04-24",
     version: "v2.9.0",
     highlights: [
