@@ -315,6 +315,59 @@ describe("CC non-assignment partial close", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Combined CC close + share sell (sellSharesPrice provided)
+// ---------------------------------------------------------------------------
+
+describe("CC close + simultaneous share sell (full close)", () => {
+  it("sells shares from the lot in the same transaction", async () => {
+    mockTradeFindFirst.mockResolvedValue(baseCCTrade());
+
+    const lotUpdate = vi.fn().mockResolvedValue({});
+    const tx = makeTxMock({
+      trade: { update: vi.fn().mockResolvedValue({}) },
+      stockLot: {
+        findUnique: vi.fn()
+          .mockResolvedValueOnce({ shares: 400, avgCost: new Prisma.Decimal("300.00") })       // avgCost reduction
+          .mockResolvedValueOnce({ shares: 400, avgCost: new Prisma.Decimal("298.50"), realizedPnl: null, status: "OPEN", trades: [] }), // share sell
+        update: lotUpdate,
+      },
+    });
+    mockPrismaTransaction.mockImplementation(async (cb: (t: typeof tx) => Promise<unknown>) => cb(tx));
+
+    const res = await PATCH(
+      makeRequest({ closingContracts: 4, closingPrice: 1.0, fullClose: true, sellSharesPrice: 344, sharesToSell: 400 }),
+      makeParams("trade-1"),
+    );
+    expect(res.status).toBe(200);
+    // lotUpdate called twice: avgCost reduction + share sell close
+    expect(lotUpdate.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("also sells shares on partial CC close when sellSharesPrice is set", async () => {
+    mockTradeFindFirst.mockResolvedValue(baseCCTrade({ contractsOpen: 4 }));
+
+    const lotUpdate = vi.fn().mockResolvedValue({});
+    const tx = {
+      trade: { update: vi.fn().mockResolvedValue({}), create: vi.fn().mockResolvedValue({}) },
+      stockLot: {
+        findUnique: vi.fn()
+          .mockResolvedValueOnce({ shares: 400, avgCost: new Prisma.Decimal("300.00") })
+          .mockResolvedValueOnce({ shares: 400, avgCost: new Prisma.Decimal("298.50"), realizedPnl: null, status: "OPEN", trades: [] }),
+        update: lotUpdate,
+      },
+    };
+    mockPrismaTransaction.mockImplementation(async (cb: (t: typeof tx) => Promise<unknown>) => cb(tx));
+
+    const res = await PATCH(
+      makeRequest({ closingContracts: 2, closingPrice: 1.0, sellSharesPrice: 344, sharesToSell: 200 }),
+      makeParams("trade-1"),
+    );
+    expect(res.status).toBe(200);
+    expect(lotUpdate).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Validation errors
 // ---------------------------------------------------------------------------
 
@@ -334,5 +387,25 @@ describe("validation", () => {
     mockTradeFindFirst.mockResolvedValue(baseCCTrade({ contractsOpen: 2 }));
     const res = await PATCH(makeRequest({ closingContracts: 4, assignment: true }), makeParams("trade-1"));
     expect(res.status).toBe(400);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Backward-compat POST handler
+// ---------------------------------------------------------------------------
+
+describe("POST /api/trades/[id]/close (backward compat)", () => {
+  it("POST behaves identically to PATCH", async () => {
+    mockTradeFindFirst.mockResolvedValue(baseCCTrade());
+    setupTx({
+      stockLot: {
+        findUnique: vi.fn().mockResolvedValue({ shares: 400, avgCost: new Prisma.Decimal("300"), realizedPnl: null }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+    });
+
+    const { POST } = await import("@/app/api/trades/[id]/close/route");
+    const res = await POST(makeRequest({ closingContracts: 4, assignment: true }), makeParams("trade-1"));
+    expect(res.status).toBe(200);
   });
 });
