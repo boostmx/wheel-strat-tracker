@@ -9,10 +9,12 @@ import { makeParams, mockSession } from "../../helpers/mocks";
 const {
   mockGetServerSession,
   mockStockLotFindFirst,
+  mockStockLotFindUnique,
   mockStockLotUpdate,
 } = vi.hoisted(() => ({
   mockGetServerSession: vi.fn(),
   mockStockLotFindFirst: vi.fn(),
+  mockStockLotFindUnique: vi.fn(),
   mockStockLotUpdate: vi.fn(),
 }));
 
@@ -21,16 +23,20 @@ vi.mock("@/server/auth/auth", () => ({ authOptions: {} }));
 vi.mock("next/headers", () => ({
   cookies: vi.fn().mockResolvedValue({ get: () => undefined }),
 }));
+vi.mock("@/server/auth/getEffectiveUserId", () => ({
+  getEffectiveUserId: vi.fn().mockResolvedValue("user-1"),
+}));
 vi.mock("@/server/prisma", () => ({
   prisma: {
     stockLot: {
       findFirst: mockStockLotFindFirst,
+      findUnique: mockStockLotFindUnique,
       update: mockStockLotUpdate,
     },
   },
 }));
 
-import { PATCH } from "@/app/api/stocks/[id]/route";
+import { GET, PATCH } from "@/app/api/stocks/[id]/route";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,6 +66,47 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetServerSession.mockResolvedValue(mockSession());
   mockStockLotUpdate.mockResolvedValue({ id: "lot-1", trades: [] });
+  mockStockLotFindUnique.mockResolvedValue({ id: "lot-1", trades: [] });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/stocks/[id]
+// ---------------------------------------------------------------------------
+
+describe("GET /api/stocks/[id]", () => {
+  it("returns 401 when no session", async () => {
+    mockGetServerSession.mockResolvedValue(null);
+    const res = await GET(new Request("http://localhost"), makeParams("lot-1"));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 when lot not found", async () => {
+    mockStockLotFindFirst.mockResolvedValue(null);
+    const res = await GET(new Request("http://localhost"), makeParams("lot-1"));
+    expect(res.status).toBe(404);
+  });
+
+  it("returns stock lot data", async () => {
+    mockStockLotFindFirst.mockResolvedValue({ id: "lot-1", trades: [] });
+    const res = await GET(new Request("http://localhost"), makeParams("lot-1"));
+    expect(res.status).toBe(200);
+    const body = await res.json() as { stockLot: { id: string } };
+    expect(body.stockLot.id).toBe("lot-1");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Admin edit path
+// ---------------------------------------------------------------------------
+
+describe("PATCH /api/stocks/[id] — admin edit", () => {
+  it("updates ticker, shares, avgCost directly without close logic", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "admin-1", isAdmin: true } });
+    const res = await PATCH(makeReq({ adminEdit: true, ticker: "googl", shares: "200", avgCost: "250.50" }), makeParams("lot-1"));
+    expect(res.status).toBe(200);
+    const updateCall = mockStockLotUpdate.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(updateCall.data.ticker).toBe("GOOGL");
+  });
 });
 
 // ---------------------------------------------------------------------------

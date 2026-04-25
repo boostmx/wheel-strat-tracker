@@ -60,9 +60,16 @@ describe("formatDateOnlyUTC", () => {
   it("formats YYYY-MM-DD → MM/DD/YYYY", () => {
     expect(formatDateOnlyUTC("2025-06-20")).toBe("06/20/2025");
   });
-  it("formats a Date-only string passed as Date equivalent", () => {
-    // Use a date-only string to avoid local timezone shifting the day
+  it("formats a Date-only string", () => {
     expect(formatDateOnlyUTC("2025-06-20")).toBe("06/20/2025");
+  });
+
+  it("formats a Date object via UTC fallback path", () => {
+    // Force the non-string branch by passing a Date
+    const d = new Date("2025-03-15T12:00:00Z");
+    const result = formatDateOnlyUTC(d);
+    // result is timezone-dependent but must be a MM/DD/YYYY string
+    expect(result).toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
   });
   it("pads single-digit months and days", () => {
     expect(formatDateOnlyUTC("2025-01-05")).toBe("01/05/2025");
