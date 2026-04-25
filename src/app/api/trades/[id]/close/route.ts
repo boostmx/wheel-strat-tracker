@@ -174,7 +174,7 @@ export async function PATCH(
       await prisma.$transaction(async (tx) => {
         const lot = await tx.stockLot.findUnique({
           where: { id: stockLotId },
-          select: { shares: true, avgCost: true },
+          select: { shares: true, avgCost: true, realizedPnl: true },
         });
 
         await tx.trade.update({
@@ -193,19 +193,31 @@ export async function PATCH(
           },
         });
 
-        // Close the stock lot: shares sold at strike price
-        const lotShares = lot ? Number(lot.shares) : shares;
+        // Only sell the shares covered by this CC (contractsToClose * 100)
+        const assignedShares = contractsToClose * CONTRACT_MULTIPLIER;
+        const lotShares = lot ? Number(lot.shares) : assignedShares;
         const lotAvgCost = lot ? Number(lot.avgCost) : 0;
-        const stockRealizedPnl = (strike - lotAvgCost) * lotShares;
+        const stockRealizedPnl = (strike - lotAvgCost) * assignedShares;
+        const remainingShares = lotShares - assignedShares;
+        const accumulatedPnl = lot?.realizedPnl
+          ? new Prisma.Decimal(lot.realizedPnl)
+          : new Prisma.Decimal(0);
+        const newRealizedPnl = accumulatedPnl.add(new Prisma.Decimal(stockRealizedPnl));
 
         await tx.stockLot.update({
           where: { id: stockLotId },
-          data: {
-            status: "CLOSED",
-            closedAt: now,
-            closePrice: new Prisma.Decimal(strike),
-            realizedPnl: new Prisma.Decimal(stockRealizedPnl),
-          },
+          data:
+            remainingShares <= 0
+              ? {
+                  status: "CLOSED",
+                  closedAt: now,
+                  closePrice: new Prisma.Decimal(strike),
+                  realizedPnl: newRealizedPnl,
+                }
+              : {
+                  shares: remainingShares,
+                  realizedPnl: newRealizedPnl,
+                },
         });
       });
 
