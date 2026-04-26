@@ -26,6 +26,7 @@ model WatchlistItem {
   id        String   @id @default(cuid())
   userId    String
   ticker    String
+  order     Int      @default(0)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

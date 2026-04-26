@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-26",
+    version: "v2.10.0",
+    highlights: [
+      "Watchlist reordering — drag and drop tickers in your watchlist to set a custom order. The order is saved automatically and persists across sessions.",
+      "Positions portfolio filter — when you have positions across multiple portfolios, a dropdown appears in the Positions section so you can filter to see only one portfolio at a time.",
+    ],
+  },
+  {
     date: "2026-04-25",
     version: "v2.9.1",
     highlights: [

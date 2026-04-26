@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { Plus, X, TrendingUp, RefreshCw, ArrowUpRight, Loader2 } from "lucide-react";
+import { Reorder, useDragControls } from "framer-motion";
+import { Plus, X, TrendingUp, RefreshCw, ArrowUpRight, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -99,10 +101,17 @@ function PositionChip({ href, children }: { href: string; children: React.ReactN
   );
 }
 
-function positionChips(pos: WatchlistPosition, quote: QuoteResult | undefined) {
+function positionChips(pos: WatchlistPosition, quote: QuoteResult | undefined, activeFilter: Set<string> | null) {
+  const filteredTrades = activeFilter
+    ? pos.trades.filter((t) => activeFilter.has(t.portfolioId))
+    : pos.trades;
+  const filteredLots = activeFilter
+    ? pos.stockLots.filter((l) => activeFilter.has(l.portfolioId))
+    : pos.stockLots;
+
   return (
     <div className="flex flex-wrap gap-1.5">
-      {pos.trades.map((t) => {
+      {filteredTrades.map((t) => {
         const ty = t.type.toLowerCase().replace(/[\s_-]/g, "");
         const isCSP = ty === "cashsecuredput";
         const isCC = ty === "coveredcall";
@@ -128,7 +137,7 @@ function positionChips(pos: WatchlistPosition, quote: QuoteResult | undefined) {
           </PositionChip>
         );
       })}
-      {pos.stockLots.map((lot) => {
+      {filteredLots.map((lot) => {
         const unrealized = quote?.price != null ? (quote.price - lot.avgCost) * lot.shares : null;
         return (
           <PositionChip key={lot.id} href={`/portfolios/${lot.portfolioId}/stocks/${lot.id}`}>
@@ -147,12 +156,93 @@ function positionChips(pos: WatchlistPosition, quote: QuoteResult | undefined) {
   );
 }
 
-function PositionsTable({ positions, quotes }: { positions: WatchlistPosition[]; quotes: Record<string, QuoteResult> }) {
+function PositionsTable({
+  positions,
+  quotes,
+}: {
+  positions: WatchlistPosition[];
+  quotes: Record<string, QuoteResult>;
+}) {
+  const [selectedPortfolios, setSelectedPortfolios] = useState<Set<string>>(new Set());
+
+  const portfolioOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const pos of positions) {
+      for (const t of pos.trades) map.set(t.portfolioId, t.portfolioName);
+      for (const l of pos.stockLots) map.set(l.portfolioId, l.portfolioName);
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [positions]);
+
+  const togglePortfolio = (id: string) => {
+    setSelectedPortfolios((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const activeFilter = selectedPortfolios.size > 0 ? selectedPortfolios : null;
+
+  const filteredPositions = useMemo(() => {
+    if (!activeFilter) return positions;
+    return positions.filter(
+      (pos) =>
+        pos.trades.some((t) => activeFilter.has(t.portfolioId)) ||
+        pos.stockLots.some((l) => activeFilter.has(l.portfolioId))
+    );
+  }, [positions, activeFilter]);
+
   if (positions.length === 0) return null;
+
+  const unselectedOptions = portfolioOptions.filter((p) => !selectedPortfolios.has(p.id));
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Positions</h2>
+      <div className="flex items-center gap-3 flex-wrap">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Positions</h2>
+        {portfolioOptions.length > 1 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Active filter pills */}
+            {[...selectedPortfolios].map((id) => {
+              const name = portfolioOptions.find((p) => p.id === id)?.name ?? id;
+              return (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20"
+                >
+                  {name}
+                  <button
+                    onClick={() => togglePortfolio(id)}
+                    className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                    title={`Remove ${name} filter`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })}
+            {/* Add portfolio filter dropdown — only shown when unselected options remain */}
+            {unselectedOptions.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed text-xs text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors">
+                    <Plus className="h-3 w-3" />
+                    {selectedPortfolios.size === 0 ? "Filter portfolio" : "Add portfolio"}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[160px]">
+                  {unselectedOptions.map((p) => (
+                    <DropdownMenuItem key={p.id} onSelect={() => togglePortfolio(p.id)}>
+                      {p.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
+      </div>
       <div className="rounded-xl border bg-card overflow-hidden">
 
         {/* Desktop table */}
@@ -167,7 +257,7 @@ function PositionsTable({ positions, quotes }: { positions: WatchlistPosition[];
               </tr>
             </thead>
             <tbody className="divide-y">
-              {positions.map((pos) => {
+              {filteredPositions.map((pos) => {
                 const quote = quotes[pos.ticker];
                 const up = (quote?.change ?? 0) >= 0;
                 return (
@@ -186,7 +276,7 @@ function PositionsTable({ positions, quotes }: { positions: WatchlistPosition[];
                         </span>
                       ) : <span className="text-sm text-muted-foreground">—</span>}
                     </td>
-                    <td className="px-4 py-3">{positionChips(pos, quote)}</td>
+                    <td className="px-4 py-3">{positionChips(pos, quote, activeFilter)}</td>
                   </tr>
                 );
               })}
@@ -196,7 +286,7 @@ function PositionsTable({ positions, quotes }: { positions: WatchlistPosition[];
 
         {/* Mobile cards */}
         <div className="md:hidden divide-y">
-          {positions.map((pos) => {
+          {filteredPositions.map((pos) => {
             const quote = quotes[pos.ticker];
             return (
               <div key={pos.ticker} className="px-4 py-3 space-y-2.5">
@@ -204,7 +294,7 @@ function PositionsTable({ positions, quotes }: { positions: WatchlistPosition[];
                   <span className="font-semibold text-base">{pos.ticker}</span>
                   <QuoteSummary quote={quote} align="right" />
                 </div>
-                {positionChips(pos, quote)}
+                {positionChips(pos, quote, activeFilter)}
               </div>
             );
           })}
@@ -215,16 +305,143 @@ function PositionsTable({ positions, quotes }: { positions: WatchlistPosition[];
   );
 }
 
+function DraggableWatchlistRow({
+  ticker,
+  positionTickers,
+  quotes,
+  onRemove,
+}: {
+  ticker: string;
+  positionTickers: Set<string>;
+  quotes: Record<string, QuoteResult>;
+  onRemove: (ticker: string) => void;
+}) {
+  const controls = useDragControls();
+  const quote = quotes[ticker];
+  const up = (quote?.change ?? 0) >= 0;
+
+  return (
+    <Reorder.Item
+      as="tr"
+      value={ticker}
+      dragListener={false}
+      dragControls={controls}
+      className="hover:bg-muted/40 transition-colors"
+      style={{ position: "relative" }}
+    >
+      <td className="px-2 py-3 w-8">
+        <button
+          onPointerDown={(e) => controls.start(e)}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors touch-none"
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm">{ticker}</span>
+          {positionTickers.has(ticker) && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Position</span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold tabular-nums">{quote?.price != null ? fmt(quote.price) : "—"}</span>
+          <MarketStateBadge state={quote?.marketState} />
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        {quote?.change != null && quote?.changePct != null ? (
+          <span className={cn("text-sm tabular-nums font-medium", up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+            {up ? "+" : ""}{fmt(quote.change)} ({up ? "+" : ""}{quote.changePct.toFixed(2)}%)
+          </span>
+        ) : <span className="text-sm text-muted-foreground">—</span>}
+      </td>
+      <td className="px-4 py-3">
+        <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} />
+      </td>
+      <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">
+        {fmtVolume(quote?.volume)}
+      </td>
+      <td className="px-4 py-3">
+        <button onClick={() => onRemove(ticker)} className="text-muted-foreground hover:text-destructive transition-colors" title={`Remove ${ticker}`}>
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </td>
+    </Reorder.Item>
+  );
+}
+
+function DraggableMobileRow({
+  ticker,
+  positionTickers,
+  quotes,
+  onRemove,
+}: {
+  ticker: string;
+  positionTickers: Set<string>;
+  quotes: Record<string, QuoteResult>;
+  onRemove: (ticker: string) => void;
+}) {
+  const controls = useDragControls();
+  const quote = quotes[ticker];
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={ticker}
+      dragListener={false}
+      dragControls={controls}
+      className="px-4 py-3 space-y-2.5 border-b last:border-b-0"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onPointerDown={(e) => controls.start(e)}
+            className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors touch-none"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="font-semibold text-base">{ticker}</span>
+          {positionTickers.has(ticker) && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Position</span>
+          )}
+        </div>
+        <div className="flex items-start gap-2">
+          <QuoteSummary quote={quote} align="right" />
+          <button onClick={() => onRemove(ticker)} className="text-muted-foreground hover:text-destructive transition-colors mt-0.5 flex-shrink-0">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">52W Range</p>
+          <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} />
+        </div>
+        <div className="space-y-1">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Volume</p>
+          <p className="text-sm tabular-nums text-muted-foreground">{fmtVolume(quote?.volume)}</p>
+        </div>
+      </div>
+    </Reorder.Item>
+  );
+}
+
 function ManualWatchlistTable({
   tickers,
   positionTickers,
   quotes,
   onRemove,
+  onReorder,
 }: {
   tickers: string[];
   positionTickers: Set<string>;
   quotes: Record<string, QuoteResult>;
   onRemove: (ticker: string) => void;
+  onReorder: (newOrder: string[]) => void;
 }) {
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
@@ -234,6 +451,7 @@ function ManualWatchlistTable({
         <table className="w-full">
           <thead>
             <tr className="border-b">
+              <TH className="w-8" />
               <TH className="w-24">Ticker</TH>
               <TH>Price</TH>
               <TH>Change</TH>
@@ -242,84 +460,33 @@ function ManualWatchlistTable({
               <TH />
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {tickers.map((ticker) => {
-              const quote = quotes[ticker];
-              const up = (quote?.change ?? 0) >= 0;
-              return (
-                <tr key={ticker} className="hover:bg-muted/40 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{ticker}</span>
-                      {positionTickers.has(ticker) && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Position</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold tabular-nums">{quote?.price != null ? fmt(quote.price) : "—"}</span>
-                      <MarketStateBadge state={quote?.marketState} />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {quote?.change != null && quote?.changePct != null ? (
-                      <span className={cn("text-sm tabular-nums font-medium", up ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
-                        {up ? "+" : ""}{fmt(quote.change)} ({up ? "+" : ""}{quote.changePct.toFixed(2)}%)
-                      </span>
-                    ) : <span className="text-sm text-muted-foreground">—</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} />
-                  </td>
-                  <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">
-                    {fmtVolume(quote?.volume)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => onRemove(ticker)} className="text-muted-foreground hover:text-destructive transition-colors" title={`Remove ${ticker}`}>
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
+          <Reorder.Group as="tbody" axis="y" values={tickers} onReorder={onReorder} className="divide-y">
+            {tickers.map((ticker) => (
+              <DraggableWatchlistRow
+                key={ticker}
+                ticker={ticker}
+                positionTickers={positionTickers}
+                quotes={quotes}
+                onRemove={onRemove}
+              />
+            ))}
+          </Reorder.Group>
         </table>
       </div>
 
       {/* Mobile cards */}
-      <div className="md:hidden divide-y">
-        {tickers.map((ticker) => {
-          const quote = quotes[ticker];
-          return (
-            <div key={ticker} className="px-4 py-3 space-y-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-base">{ticker}</span>
-                  {positionTickers.has(ticker) && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Position</span>
-                  )}
-                </div>
-                <div className="flex items-start gap-2">
-                  <QuoteSummary quote={quote} align="right" />
-                  <button onClick={() => onRemove(ticker)} className="text-muted-foreground hover:text-destructive transition-colors mt-0.5 flex-shrink-0">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">52W Range</p>
-                  <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Volume</p>
-                  <p className="text-sm tabular-nums text-muted-foreground">{fmtVolume(quote?.volume)}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="md:hidden">
+        <Reorder.Group as="div" axis="y" values={tickers} onReorder={onReorder}>
+          {tickers.map((ticker) => (
+            <DraggableMobileRow
+              key={ticker}
+              ticker={ticker}
+              positionTickers={positionTickers}
+              quotes={quotes}
+              onRemove={onRemove}
+            />
+          ))}
+        </Reorder.Group>
       </div>
 
     </div>
@@ -329,12 +496,26 @@ function ManualWatchlistTable({
 export default function WatchlistPageContent() {
   const { data: watchlist, mutate } = useSWR<WatchlistResponse>("/api/watchlist", fetcher);
 
+  const [localTickers, setLocalTickers] = useState<string[] | null>(null);
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const tickers = localTickers ?? watchlist?.manual ?? [];
+
+  // Sync local state when server data arrives (but not while a drag is pending)
+  const prevManual = useRef<string[] | null>(null);
+  if (watchlist?.manual && watchlist.manual !== prevManual.current) {
+    prevManual.current = watchlist.manual;
+    if (localTickers === null) {
+      // no pending local reorder — nothing to do
+    }
+  }
+
   const allTickers = useMemo(() => {
     const set = new Set<string>();
     watchlist?.positions?.forEach((p) => set.add(p.ticker));
-    watchlist?.manual?.forEach((t) => set.add(t));
+    tickers.forEach((t) => set.add(t));
     return [...set];
-  }, [watchlist]);
+  }, [watchlist, tickers]);
 
   const tickerParam = allTickers.join(",");
   const { data: quotes = {}, mutate: refreshQuotes, isValidating } = useSWR<Record<string, QuoteResult>>(
@@ -356,7 +537,7 @@ export default function WatchlistPageContent() {
     const ticker = input.trim().toUpperCase();
     if (!ticker) return;
 
-    if (watchlist?.manual?.includes(ticker)) {
+    if (tickers.includes(ticker)) {
       toast.error(`${ticker} is already in your watchlist`);
       return;
     }
@@ -377,6 +558,7 @@ export default function WatchlistPageContent() {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setInput("");
+      setLocalTickers(null);
       await mutate();
       inputRef.current?.focus();
     } catch (e) {
@@ -388,11 +570,33 @@ export default function WatchlistPageContent() {
 
   async function removeTicker(ticker: string) {
     await fetch(`/api/watchlist/${ticker}`, { method: "DELETE" });
+    setLocalTickers(null);
     await mutate();
   }
 
+  const handleReorder = useCallback(
+    (newOrder: string[]) => {
+      setLocalTickers(newOrder);
+      if (persistTimer.current) clearTimeout(persistTimer.current);
+      persistTimer.current = setTimeout(async () => {
+        try {
+          await fetch("/api/watchlist", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tickers: newOrder }),
+          });
+          await mutate();
+          setLocalTickers(null);
+        } catch {
+          toast.error("Failed to save order");
+        }
+      }, 600);
+    },
+    [mutate],
+  );
+
   const hasPositions = (watchlist?.positions?.length ?? 0) > 0;
-  const hasManual = (watchlist?.manual?.length ?? 0) > 0;
+  const hasManual = tickers.length > 0;
 
   return (
     <div className="py-6 px-4 sm:px-6 space-y-6">
@@ -444,10 +648,11 @@ export default function WatchlistPageContent() {
           </div>
         ) : (
           <ManualWatchlistTable
-            tickers={watchlist!.manual}
+            tickers={tickers}
             positionTickers={positionTickers}
             quotes={quotes}
             onRemove={removeTicker}
+            onReorder={handleReorder}
           />
         )}
       </section>

@@ -334,11 +334,27 @@ Release history lives in `src/data/changelog.ts`. **Always add a new entry when 
 }
 ```
 
-Current latest: **v2.9.1** (2026-04-25)
+Current latest: **v2.10.0** (2026-04-26)
 
 ---
 
 ## Recent Work (Session History)
+
+### v2.10.0 — 2026-04-26
+**Watchlist drag-and-drop reordering + Positions portfolio filter**
+
+1. **Watchlist drag-and-drop reordering** (`WatchlistPageContent.tsx`, `prisma/schema.prisma`, `/api/watchlist/route.ts`)
+   - Added `order Int @default(0)` to `WatchlistItem` model with migration + backfill
+   - `GET /api/watchlist` now sorts by `order` (then `createdAt`)
+   - `POST /api/watchlist` assigns `maxOrder + 1` to new items
+   - New `PATCH /api/watchlist` accepts `{ tickers: string[] }` and bulk-updates order positions
+   - UI: `GripVertical` drag handles using framer-motion `Reorder.Group`/`Reorder.Item` (no new dependencies)
+   - Optimistic local state updates; order persisted after 600ms debounce
+
+2. **Positions portfolio filter** (`WatchlistPageContent.tsx`)
+   - Portfolio dropdown appears in the Positions section header when the user has positions across multiple portfolios
+   - Filters both the visible position rows and the chips within each row
+   - "All Portfolios" default; derived dynamically from the positions data
 
 ### v2.9.1 — 2026-04-25
 **Bug fixes + test suite + icon refresh**
