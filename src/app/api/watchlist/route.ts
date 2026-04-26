@@ -40,7 +40,7 @@ export async function GET() {
   const [manualItems, portfolios, openTrades, openStocks] = await Promise.all([
     prisma.watchlistItem.findMany({
       where: { userId },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
       select: { ticker: true },
     }),
     prisma.portfolio.findMany({
@@ -130,10 +130,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid ticker" }, { status: 400 });
   }
 
+  const maxItem = await prisma.watchlistItem.findFirst({
+    where: { userId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const nextOrder = (maxItem?.order ?? -1) + 1;
+
   try {
-    await prisma.watchlistItem.create({ data: { userId, ticker: clean } });
+    await prisma.watchlistItem.create({ data: { userId, ticker: clean, order: nextOrder } });
     return NextResponse.json({ ticker: clean }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Ticker already in watchlist" }, { status: 409 });
   }
+}
+
+export async function PATCH(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = await getEffectiveUserId(session.user.id, session.user.isAdmin ?? false);
+
+  const { tickers } = await req.json();
+  if (!Array.isArray(tickers) || !tickers.every((t) => typeof t === "string")) {
+    return NextResponse.json({ error: "tickers must be a string array" }, { status: 400 });
+  }
+
+  await prisma.$transaction(
+    tickers.map((ticker, index) =>
+      prisma.watchlistItem.updateMany({
+        where: { userId, ticker },
+        data: { order: index },
+      })
+    )
+  );
+
+  return NextResponse.json({ ok: true });
 }
