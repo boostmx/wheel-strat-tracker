@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { Reorder, useDragControls } from "framer-motion";
-import { AreaChart, Area } from "recharts";
+import { AreaChart, Area, YAxis } from "recharts";
 import { Plus, X, TrendingUp, RefreshCw, ArrowUpRight, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,7 @@ function Sparkline({
   const data = closes.map((v) => ({ v }));
   return (
     <AreaChart width={130} height={40} data={data} margin={{ top: 3, right: 2, bottom: 3, left: 2 }}>
+      <YAxis domain={["auto", "auto"]} hide />
       <Area
         type="monotone"
         dataKey="v"
@@ -478,6 +479,7 @@ function DraggableMobileRow({
                 data={chartData.closes.map((v) => ({ v }))}
                 margin={{ top: 3, right: 2, bottom: 3, left: 2 }}
               >
+                <YAxis domain={["auto", "auto"]} hide />
                 <Area
                   type="monotone"
                   dataKey="v"
