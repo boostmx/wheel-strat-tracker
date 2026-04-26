@@ -33,7 +33,9 @@ export async function GET(request: Request) {
     tickers.map(async (ticker): Promise<[string, ChartData]> => {
       try {
         const res = await fetch(
-          `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=5m&range=1d&includePrePost=false`,
+          // 5d range so we can fall back to the last trading session on
+          // weekends / holidays / pre-market when today has no data yet
+          `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=5m&range=5d&includePrePost=false`,
           {
             headers: {
               "User-Agent": "Mozilla/5.0",
@@ -53,13 +55,28 @@ export async function GET(request: Request) {
         const rawCloses: (number | null)[] =
           result.indicators?.quote?.[0]?.close ?? [];
 
-        const closes: number[] = [];
-        const timestamps: number[] = [];
+        // Bucket valid points by UTC day (86400s), then pick the most
+        // recent day that has enough points to draw a meaningful line.
+        const dayMap = new Map<number, { closes: number[]; timestamps: number[] }>();
         for (let i = 0; i < rawTimestamps.length; i++) {
           const c = rawCloses[i];
-          if (c != null && Number.isFinite(c)) {
-            closes.push(c);
-            timestamps.push(rawTimestamps[i]);
+          if (c == null || !Number.isFinite(c)) continue;
+          const dayKey = Math.floor(rawTimestamps[i] / 86400);
+          if (!dayMap.has(dayKey)) dayMap.set(dayKey, { closes: [], timestamps: [] });
+          const bucket = dayMap.get(dayKey)!;
+          bucket.closes.push(c);
+          bucket.timestamps.push(rawTimestamps[i]);
+        }
+
+        const sortedDays = [...dayMap.keys()].sort((a, b) => b - a);
+        let closes: number[] = [];
+        let timestamps: number[] = [];
+        for (const day of sortedDays) {
+          const bucket = dayMap.get(day)!;
+          if (bucket.closes.length >= 3) {
+            closes = bucket.closes;
+            timestamps = bucket.timestamps;
+            break;
           }
         }
 
