@@ -45,6 +45,19 @@ export async function GET(req: Request) {
         portfolioId,
         ...(status ? { status } : {}),
       },
+      select: {
+        id: true,
+        portfolioId: true,
+        ticker: true,
+        shares: true,
+        avgCost: true,
+        status: true,
+        openedAt: true,
+        closedAt: true,
+        closePrice: true,
+        realizedPnl: true,
+        notes: true,
+      },
       orderBy: { createdAt: "desc" },
     });
 

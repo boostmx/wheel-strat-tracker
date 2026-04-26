@@ -132,12 +132,30 @@ export async function GET(req: Request) {
 
   try {
     const trades = await db.trade.findMany({
-      where: {
-        status,
-        portfolioId,
+      where: { status, portfolioId },
+      select: {
+        id: true,
+        ticker: true,
+        type: true,
+        strikePrice: true,
+        expirationDate: true,
+        contracts: true,
+        contractsInitial: true,
+        contractsOpen: true,
+        contractPrice: true,
+        entryPrice: true,
+        status: true,
+        portfolioId: true,
+        stockLotId: true,
+        createdAt: true,
+        // closed-only fields
+        closedAt: true,
+        closingPrice: true,
+        premiumCaptured: true,
+        percentPL: true,
+        closeReason: true,
       },
-      orderBy:
-        status === "closed" ? { closedAt: "desc" } : { createdAt: "asc" },
+      orderBy: status === "closed" ? { closedAt: "desc" } : { createdAt: "asc" },
     });
 
     return NextResponse.json(trades);

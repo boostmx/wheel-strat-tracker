@@ -93,6 +93,7 @@ model Trade {
   stockLotId       String?
 
   @@index([status, portfolioId])
+  @@index([portfolioId, status, closedAt])
   @@index([expirationDate, portfolioId])
   @@index([ticker, portfolioId])
 }
@@ -141,6 +142,7 @@ model StockLot {
 
   @@index([portfolioId, ticker])
   @@index([portfolioId, status])
+  @@index([portfolioId, closedAt])
 }
 
 enum StockLotStatus {

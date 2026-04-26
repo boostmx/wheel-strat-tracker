@@ -66,7 +66,6 @@ type Tab = (typeof TABS)[number];
 
 export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
   const { trades: openTrades, isLoading: loadingOpen } = useTrades(portfolio.id, "open");
-  const { trades: closedTrades, isLoading: loadingClosed } = useTrades(portfolio.id, "closed");
   const { data: m } = useDetailMetrics(portfolio.id);
 
   const storageKey = `portfolio-tab-${portfolio.id}`;
@@ -154,11 +153,6 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
                 {openTrades.length}
               </span>
             )}
-            {tab === "Activity" && closedTrades.length > 0 && (
-              <span className="text-[10px] font-semibold bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 leading-none">
-                {closedTrades.length}
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -221,13 +215,7 @@ export function PortfolioDetail({ portfolio }: { portfolio: Portfolio }) {
 
         {activeTab === "Activity" && (
           <div className="bg-card overflow-hidden">
-            {loadingClosed ? (
-              <div className="p-10 text-center text-sm text-muted-foreground">Loading activity…</div>
-            ) : closedTrades.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">No closed trades yet.</div>
-            ) : (
-              <ClosedTradesTable trades={closedTrades} portfolioId={portfolio.id} />
-            )}
+            <ClosedTradesTable portfolioId={portfolio.id} />
           </div>
         )}
 
