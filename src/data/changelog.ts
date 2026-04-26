@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-26",
+    version: "v2.11.0",
+    highlights: [
+      "Performance: the Activity tab now loads only the current page of closed trades from the server instead of fetching your entire history upfront. Switching timeframes or pages makes a targeted request rather than filtering thousands of rows in the browser.",
+      "Performance: added database indexes on Trade and StockLot for date-range queries, making closed-trade lookups significantly faster as your history grows.",
+      "Performance: the closed trades report no longer issues one database query per portfolio — all portfolios are queried in a single round trip.",
+      "Performance: all list API routes now request only the fields they actually display, reducing JSON payload size.",
+    ],
+  },
+  {
+    date: "2026-04-26",
     version: "v2.10.0",
     highlights: [
       "Watchlist reordering — drag and drop tickers in your watchlist to set a custom order. The order is saved automatically and persists across sessions.",

@@ -2,33 +2,33 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mockSession } from "../../helpers/mocks";
 import { NextRequest } from "next/server";
 
-const { mockAuth, mockGetEffectiveUserId, mockPortfolioFindMany, mockPortfolioFindFirst, mockStockLotFindMany, mockGetClosedTradesInRange } = vi.hoisted(() => ({
+const {
+  mockAuth,
+  mockGetEffectiveUserId,
+  mockPortfolioFindMany,
+  mockPortfolioFindFirst,
+  mockTradeFindMany,
+  mockStockLotFindMany,
+} = vi.hoisted(() => ({
   mockAuth: vi.fn(),
   mockGetEffectiveUserId: vi.fn().mockResolvedValue("user-1"),
   mockPortfolioFindMany: vi.fn(),
   mockPortfolioFindFirst: vi.fn(),
+  mockTradeFindMany: vi.fn(),
   mockStockLotFindMany: vi.fn(),
-  mockGetClosedTradesInRange: vi.fn(),
 }));
 
 vi.mock("@/server/auth/auth", () => ({ authOptions: {}, auth: mockAuth }));
 vi.mock("@/server/auth/getEffectiveUserId", () => ({ getEffectiveUserId: mockGetEffectiveUserId }));
-vi.mock("@/features/reports/hooks/getClosedTradesRange", () => ({
-  getClosedTradesInRange: mockGetClosedTradesInRange,
-}));
 vi.mock("@/server/db", () => ({
   prisma: {
-    portfolio: {
-      findMany: mockPortfolioFindMany,
-      findFirst: mockPortfolioFindFirst,
-    },
+    portfolio: { findMany: mockPortfolioFindMany, findFirst: mockPortfolioFindFirst },
+    trade: { findMany: mockTradeFindMany },
     stockLot: { findMany: mockStockLotFindMany },
   },
   db: {
-    portfolio: {
-      findMany: mockPortfolioFindMany,
-      findFirst: mockPortfolioFindFirst,
-    },
+    portfolio: { findMany: mockPortfolioFindMany, findFirst: mockPortfolioFindFirst },
+    trade: { findMany: mockTradeFindMany },
     stockLot: { findMany: mockStockLotFindMany },
   },
 }));
@@ -41,11 +41,11 @@ const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 const sampleTrade = {
   id: "t1", portfolioId: "port-1", ticker: "AAPL",
   type: "CashSecuredPut", strikePrice: 200, entryPrice: 198,
-  expirationDate: now.toISOString(),
+  expirationDate: now,
   contracts: 2, contractsInitial: 2, contractsOpen: 0,
   contractPrice: 3.5, closingPrice: 0.5,
-  createdAt: thirtyDaysAgo.toISOString(),
-  closedAt: now.toISOString(),
+  createdAt: thirtyDaysAgo,
+  closedAt: now,
   premiumCaptured: 600,
   percentPL: 85.71,
   notes: null, status: "closed", closeReason: "expiredWorthless",
@@ -57,7 +57,7 @@ beforeEach(() => {
   mockGetEffectiveUserId.mockResolvedValue("user-1");
   mockPortfolioFindMany.mockResolvedValue([{ id: "port-1", name: "My Portfolio" }]);
   mockPortfolioFindFirst.mockResolvedValue({ name: "My Portfolio" });
-  mockGetClosedTradesInRange.mockResolvedValue([sampleTrade]);
+  mockTradeFindMany.mockResolvedValue([sampleTrade]);
   mockStockLotFindMany.mockResolvedValue([]);
 });
 
@@ -93,6 +93,16 @@ describe("GET /api/reports/closed", () => {
     expect(mockPortfolioFindMany).toHaveBeenCalledOnce();
   });
 
+  it("uses a single trade.findMany with portfolioId:in for all portfolios", async () => {
+    await GET(makeReq("?portfolioId=all"));
+    expect(mockTradeFindMany).toHaveBeenCalledOnce();
+    expect(mockTradeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ portfolioId: { in: ["port-1"] } }),
+      }),
+    );
+  });
+
   it("returns CSV format when format=csv", async () => {
     const res = await GET(makeReq("?portfolioId=port-1&format=csv"));
     expect(res.status).toBe(200);
@@ -112,7 +122,7 @@ describe("GET /api/reports/closed", () => {
   });
 
   it("includes closed stock lots in results", async () => {
-    mockGetClosedTradesInRange.mockResolvedValue([]);
+    mockTradeFindMany.mockResolvedValue([]);
     mockStockLotFindMany.mockResolvedValue([{
       id: "lot-1", portfolioId: "port-1", ticker: "GOOGL",
       openedAt: thirtyDaysAgo, closedAt: now, shares: 100,

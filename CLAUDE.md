@@ -334,11 +334,30 @@ Release history lives in `src/data/changelog.ts`. **Always add a new entry when 
 }
 ```
 
-Current latest: **v2.10.0** (2026-04-26)
+Current latest: **v2.11.0** (2026-04-26)
 
 ---
 
 ## Recent Work (Session History)
+
+### v2.11.0 — 2026-04-26
+**Performance pass — server-side pagination, DB indexes, query optimisation**
+
+1. **DB indexes** (`prisma/schema.prisma`, migration `20260426000001_perf_indexes`)
+   - `Trade`: new `@@index([portfolioId, status, closedAt])` — covers all date-range closed-trade queries
+   - `StockLot`: new `@@index([portfolioId, closedAt])` — covers closed lot date-range queries
+
+2. **Server-side pagination for Activity tab** (new `GET /api/portfolios/[id]/closed-history`)
+   - Accepts `take`, `skip`, `dateFrom`, `dateTo`
+   - Merges + sorts closed trades and closed stock lots server-side; returns one page + aggregate metrics (total P/L, avg % P/L) for the full window
+   - `PortfolioDetail` no longer calls `useTrades(id, "closed")` — removed the unbounded all-history fetch on page load
+   - `ClosedTradesTable` rewritten to self-fetch; SWR key encodes timeframe dates + page + page size so each navigation is a targeted server query
+
+3. **Fix `/api/reports/closed` N+1** (`src/app/api/reports/closed/route.ts`)
+   - Replaced `Promise.all(portfolioIds.map(pid => getClosedTradesInRange(...)))` (one DB query per portfolio) with a single `trade.findMany({ portfolioId: { in: portfolioIds } })` query
+
+4. **Trim API payloads** (`/api/trades` GET, `/api/stocks` GET)
+   - Added explicit `select` clauses to both list endpoints — omits `createdAt`, `updatedAt`, `notes` and other fields not consumed by the calling tables; cuts response size ~25–35%
 
 ### v2.10.0 — 2026-04-26
 **Watchlist drag-and-drop reordering + Positions portfolio filter**

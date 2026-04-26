@@ -1,7 +1,6 @@
 import { prisma } from "@/server/db";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/server/auth/auth";
-import { getClosedTradesInRange } from "@/features/reports/hooks/getClosedTradesRange";
 import { getEffectiveUserId } from "@/server/auth/getEffectiveUserId";
 
 function parseDateOrFallback(value: string | null, fallback: Date): Date {
@@ -57,17 +56,59 @@ export async function GET(req: NextRequest) {
   const start = parseDateOrFallback(searchParams.get("start"), defaultStart);
   const end = parseDateOrFallback(searchParams.get("end"), now);
 
-  const results = await Promise.all(
-    portfolioIds.map((pid) =>
-      getClosedTradesInRange({
-        portfolioId: pid,
-        start,
-        end,
-        userId: session.user.id,
-      }),
-    ),
-  );
-  const tradeRows = results.flat();
+  // Single query for all portfolios — avoids N+1 (one query per portfolio)
+  const rawTrades = await prisma.trade.findMany({
+    where: {
+      portfolioId: { in: portfolioIds },
+      status: "closed",
+      closedAt: { gte: start, lt: end },
+    },
+    select: {
+      id: true,
+      portfolioId: true,
+      ticker: true,
+      strikePrice: true,
+      entryPrice: true,
+      expirationDate: true,
+      type: true,
+      contracts: true,
+      contractsInitial: true,
+      contractsOpen: true,
+      contractPrice: true,
+      closingPrice: true,
+      closedAt: true,
+      premiumCaptured: true,
+      percentPL: true,
+      notes: true,
+      status: true,
+      createdAt: true,
+      closeReason: true,
+    },
+    orderBy: { closedAt: "desc" },
+  });
+
+  const tradeRows = rawTrades.map((t) => ({
+    id: t.id,
+    portfolioId: t.portfolioId,
+    ticker: t.ticker,
+    strikePrice: t.strikePrice,
+    entryPrice: t.entryPrice ?? undefined,
+    expirationDate: t.expirationDate.toISOString(),
+    type: String(t.type),
+    contracts: t.contracts,
+    contractsInitial: t.contractsInitial ?? t.contracts,
+    contractsOpen: t.contractsOpen ?? 0,
+    contractPrice: t.contractPrice,
+    closingPrice: t.closingPrice ?? undefined,
+    closedAt: t.closedAt ? t.closedAt.toISOString() : null,
+    premiumCaptured: t.premiumCaptured,
+    percentPL: t.percentPL,
+    notes: t.notes,
+    status: t.status,
+    createdAt: t.createdAt.toISOString(),
+    totalContracts: t.contractsInitial ?? t.contracts,
+    closeReason: t.closeReason ?? undefined,
+  }));
 
   // Also include closed stock lots (share closes) in the same date range.
   // These are normalized into the report row shape so the UI can show Share P/L.
