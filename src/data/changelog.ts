@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-26",
+    version: "v2.12.0",
+    highlights: [
+      "Watchlist sparkline charts — each ticker now shows an intraday (5-minute) price chart for the current trading session, colored green or red based on the day's direction.",
+      "Day Range added to the watchlist — shows where the current price sits between today's low and high, alongside the existing 52-week range.",
+      "Volume column removed from the watchlist to make room for the new chart and range columns.",
+    ],
+  },
+  {
+    date: "2026-04-26",
     version: "v2.11.0",
     highlights: [
       "Performance: the Activity tab now loads only the current page of closed trades from the server instead of fetching your entire history upfront. Switching timeframes or pages makes a targeted request rather than filtering thousands of rows in the browser.",

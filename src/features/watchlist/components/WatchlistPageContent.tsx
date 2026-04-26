@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { Reorder, useDragControls } from "framer-motion";
+import { AreaChart, Area } from "recharts";
 import { Plus, X, TrendingUp, RefreshCw, ArrowUpRight, Loader2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { WatchlistResponse, WatchlistPosition } from "@/app/api/watchlist/route";
 import type { QuoteResult } from "@/app/api/quotes/route";
+import type { ChartsResponse } from "@/app/api/charts/route";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -21,14 +23,6 @@ const fmt = (v: number) =>
 
 const fmtCompact = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-
-function fmtVolume(v: number | null | undefined): string {
-  if (v == null) return "—";
-  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}B`;
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-  return String(v);
-}
 
 function formatExpiry(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -44,23 +38,67 @@ function MarketStateBadge({ state }: { state: string | null | undefined }) {
   );
 }
 
-function RangeBar({ low, high, current }: { low: number | null; high: number | null; current: number | null }) {
+function RangeBar({
+  low, high, current, compact = false,
+}: {
+  low: number | null; high: number | null; current: number | null; compact?: boolean;
+}) {
   if (!current || !low || !high || low >= high) {
     return <span className="text-xs text-muted-foreground">—</span>;
   }
   const pct = Math.max(0, Math.min(100, ((current - low) / (high - low)) * 100));
   return (
-    <div className="space-y-1 min-w-[110px]">
-      <div className="relative h-1.5 w-full bg-muted rounded-full">
+    <div className={compact ? "w-[88px] space-y-0.5" : "w-[100px] space-y-1"}>
+      <div className="relative h-1 w-full bg-muted rounded-full">
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary border-2 border-background shadow-sm"
-          style={{ left: `calc(${pct}% - 4px)` }}
+          className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary border-2 border-background shadow-sm"
+          style={{ left: `calc(${pct}% - 3px)` }}
         />
       </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
+      <div className="flex justify-between text-[9px] text-muted-foreground tabular-nums">
         <span>{fmtCompact(low)}</span>
         <span>{fmtCompact(high)}</span>
       </div>
+    </div>
+  );
+}
+
+function Sparkline({
+  closes, up,
+}: {
+  closes: number[]; up: boolean;
+}) {
+  if (closes.length < 3) {
+    return <div className="w-[130px] h-[40px] flex items-center justify-center"><span className="text-[10px] text-muted-foreground/50">—</span></div>;
+  }
+  const color = up ? "#10b981" : "#ef4444";
+  const data = closes.map((v) => ({ v }));
+  return (
+    <AreaChart width={130} height={40} data={data} margin={{ top: 3, right: 2, bottom: 3, left: 2 }}>
+      <Area
+        type="monotone"
+        dataKey="v"
+        stroke={color}
+        fill={color}
+        fillOpacity={0.08}
+        strokeWidth={1.5}
+        dot={false}
+        isAnimationActive={false}
+      />
+    </AreaChart>
+  );
+}
+
+function SparklineSkeleton() {
+  return (
+    <div className="w-[130px] h-[40px] flex items-end gap-px px-1 pb-1">
+      {Array.from({ length: 20 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm bg-muted animate-pulse"
+          style={{ height: `${25 + Math.sin(i * 0.8) * 10}%` }}
+        />
+      ))}
     </div>
   );
 }
@@ -203,26 +241,17 @@ function PositionsTable({
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Positions</h2>
         {portfolioOptions.length > 1 && (
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Active filter pills */}
             {[...selectedPortfolios].map((id) => {
               const name = portfolioOptions.find((p) => p.id === id)?.name ?? id;
               return (
-                <span
-                  key={id}
-                  className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20"
-                >
+                <span key={id} className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20">
                   {name}
-                  <button
-                    onClick={() => togglePortfolio(id)}
-                    className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
-                    title={`Remove ${name} filter`}
-                  >
+                  <button onClick={() => togglePortfolio(id)} className="hover:bg-primary/20 rounded-full p-0.5 transition-colors">
                     <X className="h-3 w-3" />
                   </button>
                 </span>
               );
             })}
-            {/* Add portfolio filter dropdown — only shown when unselected options remain */}
             {unselectedOptions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -244,8 +273,6 @@ function PositionsTable({
         )}
       </div>
       <div className="rounded-xl border bg-card overflow-hidden">
-
-        {/* Desktop table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -283,8 +310,6 @@ function PositionsTable({
             </tbody>
           </table>
         </div>
-
-        {/* Mobile cards */}
         <div className="md:hidden divide-y">
           {filteredPositions.map((pos) => {
             const quote = quotes[pos.ticker];
@@ -299,7 +324,6 @@ function PositionsTable({
             );
           })}
         </div>
-
       </div>
     </section>
   );
@@ -309,16 +333,21 @@ function DraggableWatchlistRow({
   ticker,
   positionTickers,
   quotes,
+  charts,
+  chartsLoading,
   onRemove,
 }: {
   ticker: string;
   positionTickers: Set<string>;
   quotes: Record<string, QuoteResult>;
+  charts: ChartsResponse;
+  chartsLoading: boolean;
   onRemove: (ticker: string) => void;
 }) {
   const controls = useDragControls();
   const quote = quotes[ticker];
   const up = (quote?.change ?? 0) >= 0;
+  const chartData = charts[ticker];
 
   return (
     <Reorder.Item
@@ -359,11 +388,25 @@ function DraggableWatchlistRow({
           </span>
         ) : <span className="text-sm text-muted-foreground">—</span>}
       </td>
-      <td className="px-4 py-3">
-        <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} />
+      {/* Sparkline */}
+      <td className="px-2 py-1">
+        {chartsLoading
+          ? <SparklineSkeleton />
+          : <Sparkline closes={chartData?.closes ?? []} up={up} />}
       </td>
-      <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">
-        {fmtVolume(quote?.volume)}
+      {/* Day Range */}
+      <td className="px-4 py-3">
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">Day</p>
+          <RangeBar low={quote?.dayLow ?? null} high={quote?.dayHigh ?? null} current={quote?.price ?? null} compact />
+        </div>
+      </td>
+      {/* 52W Range */}
+      <td className="px-4 py-3">
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">52W</p>
+          <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} compact />
+        </div>
       </td>
       <td className="px-4 py-3">
         <button onClick={() => onRemove(ticker)} className="text-muted-foreground hover:text-destructive transition-colors" title={`Remove ${ticker}`}>
@@ -378,15 +421,21 @@ function DraggableMobileRow({
   ticker,
   positionTickers,
   quotes,
+  charts,
+  chartsLoading,
   onRemove,
 }: {
   ticker: string;
   positionTickers: Set<string>;
   quotes: Record<string, QuoteResult>;
+  charts: ChartsResponse;
+  chartsLoading: boolean;
   onRemove: (ticker: string) => void;
 }) {
   const controls = useDragControls();
   const quote = quotes[ticker];
+  const up = (quote?.change ?? 0) >= 0;
+  const chartData = charts[ticker];
 
   return (
     <Reorder.Item
@@ -416,14 +465,42 @@ function DraggableMobileRow({
           </button>
         </div>
       </div>
+
+      {/* Sparkline */}
+      <div className="w-full overflow-hidden rounded">
+        {chartsLoading
+          ? <div className="h-[44px]"><SparklineSkeleton /></div>
+          : (chartData?.closes?.length ?? 0) >= 3
+            ? (
+              <AreaChart
+                width={320}
+                height={44}
+                data={chartData.closes.map((v) => ({ v }))}
+                margin={{ top: 3, right: 2, bottom: 3, left: 2 }}
+              >
+                <Area
+                  type="monotone"
+                  dataKey="v"
+                  stroke={up ? "#10b981" : "#ef4444"}
+                  fill={up ? "#10b981" : "#ef4444"}
+                  fillOpacity={0.08}
+                  strokeWidth={1.5}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            )
+            : null}
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">52W Range</p>
-          <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} />
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Day Range</p>
+          <RangeBar low={quote?.dayLow ?? null} high={quote?.dayHigh ?? null} current={quote?.price ?? null} compact />
         </div>
         <div className="space-y-1">
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Volume</p>
-          <p className="text-sm tabular-nums text-muted-foreground">{fmtVolume(quote?.volume)}</p>
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">52W Range</p>
+          <RangeBar low={quote?.fiftyTwoWeekLow ?? null} high={quote?.fiftyTwoWeekHigh ?? null} current={quote?.price ?? null} compact />
         </div>
       </div>
     </Reorder.Item>
@@ -434,18 +511,21 @@ function ManualWatchlistTable({
   tickers,
   positionTickers,
   quotes,
+  charts,
+  chartsLoading,
   onRemove,
   onReorder,
 }: {
   tickers: string[];
   positionTickers: Set<string>;
   quotes: Record<string, QuoteResult>;
+  charts: ChartsResponse;
+  chartsLoading: boolean;
   onRemove: (ticker: string) => void;
   onReorder: (newOrder: string[]) => void;
 }) {
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
-
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
@@ -455,8 +535,9 @@ function ManualWatchlistTable({
               <TH className="w-24">Ticker</TH>
               <TH>Price</TH>
               <TH>Change</TH>
+              <TH className="w-[150px]">Chart</TH>
+              <TH>Day Range</TH>
               <TH>52W Range</TH>
-              <TH>Volume</TH>
               <TH />
             </tr>
           </thead>
@@ -467,6 +548,8 @@ function ManualWatchlistTable({
                 ticker={ticker}
                 positionTickers={positionTickers}
                 quotes={quotes}
+                charts={charts}
+                chartsLoading={chartsLoading}
                 onRemove={onRemove}
               />
             ))}
@@ -483,12 +566,13 @@ function ManualWatchlistTable({
               ticker={ticker}
               positionTickers={positionTickers}
               quotes={quotes}
+              charts={charts}
+              chartsLoading={chartsLoading}
               onRemove={onRemove}
             />
           ))}
         </Reorder.Group>
       </div>
-
     </div>
   );
 }
@@ -498,16 +582,12 @@ export default function WatchlistPageContent() {
 
   const [localTickers, setLocalTickers] = useState<string[] | null>(null);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevManual = useRef<string[] | null>(null);
 
   const tickers = localTickers ?? watchlist?.manual ?? [];
 
-  // Sync local state when server data arrives (but not while a drag is pending)
-  const prevManual = useRef<string[] | null>(null);
   if (watchlist?.manual && watchlist.manual !== prevManual.current) {
     prevManual.current = watchlist.manual;
-    if (localTickers === null) {
-      // no pending local reorder — nothing to do
-    }
   }
 
   const allTickers = useMemo(() => {
@@ -518,10 +598,19 @@ export default function WatchlistPageContent() {
   }, [watchlist, tickers]);
 
   const tickerParam = allTickers.join(",");
+  const watchlistTickerParam = tickers.join(",");
+
   const { data: quotes = {}, mutate: refreshQuotes, isValidating } = useSWR<Record<string, QuoteResult>>(
     tickerParam ? `/api/quotes?tickers=${tickerParam}` : null,
     fetcher,
     { refreshInterval: 60_000, dedupingInterval: 30_000 },
+  );
+
+  // Charts only for manual watchlist tickers — separate SWR with 5-min refresh
+  const { data: charts = {}, isLoading: chartsLoading } = useSWR<ChartsResponse>(
+    watchlistTickerParam ? `/api/charts?tickers=${watchlistTickerParam}` : null,
+    fetcher,
+    { refreshInterval: 5 * 60_000, dedupingInterval: 4 * 60_000 },
   );
 
   const positionTickers = useMemo(
@@ -600,7 +689,6 @@ export default function WatchlistPageContent() {
 
   return (
     <div className="py-6 px-4 sm:px-6 space-y-6">
-
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -651,12 +739,13 @@ export default function WatchlistPageContent() {
             tickers={tickers}
             positionTickers={positionTickers}
             quotes={quotes}
+            charts={charts}
+            chartsLoading={chartsLoading}
             onRemove={removeTicker}
             onReorder={handleReorder}
           />
         )}
       </section>
-
     </div>
   );
 }
