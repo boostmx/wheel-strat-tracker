@@ -21,6 +21,9 @@ export const changelog: ChangelogEntry[] = [
     highlights: [
       "Watchlist reordering — drag and drop tickers in your watchlist to set a custom order. The order is saved automatically and persists across sessions.",
       "Positions portfolio filter — when you have positions across multiple portfolios, a dropdown appears in the Positions section so you can filter to see only one portfolio at a time.",
+      "Watchlist sparkline charts — each ticker now shows an intraday (5-minute) price chart for the current trading session, colored green or red based on the day's direction.",
+      "Day Range added to the watchlist — shows where the current price sits between today's low and high, alongside the existing 52-week range.",
+      "Watchlist column sorting — click Ticker, Price, or Change to sort. Click again to reverse, click a third time to clear and return to your custom drag order.",
     ],
   },
   {
