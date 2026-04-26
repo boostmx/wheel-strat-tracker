@@ -5,7 +5,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { Reorder, useDragControls } from "framer-motion";
 import { AreaChart, Area, YAxis } from "recharts";
-import { Plus, X, TrendingUp, RefreshCw, ArrowUpRight, Loader2, GripVertical } from "lucide-react";
+import { Plus, X, TrendingUp, RefreshCw, ArrowUpRight, Loader2, GripVertical, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -122,11 +122,37 @@ function QuoteSummary({ quote, align = "right" }: { quote: QuoteResult | undefin
   );
 }
 
+type SortCol = "ticker" | "price" | "change";
+type SortDir = "asc" | "desc";
+
 const TH = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
   <th className={cn("px-4 py-2.5 text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider", className)}>
     {children}
   </th>
 );
+
+function SortableTH({
+  col, label, active, dir, onSort, className,
+}: {
+  col: SortCol; label: string; active: boolean; dir: SortDir; onSort: (col: SortCol) => void; className?: string;
+}) {
+  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th
+      className={cn(
+        "px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider cursor-pointer select-none group",
+        active ? "text-foreground" : "text-muted-foreground",
+        className,
+      )}
+      onClick={() => onSort(col)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <Icon className={cn("h-3 w-3 transition-opacity", active ? "opacity-100" : "opacity-0 group-hover:opacity-50")} />
+      </div>
+    </th>
+  );
+}
 
 function PositionChip({ href, children }: { href: string; children: React.ReactNode }) {
   return (
@@ -336,6 +362,7 @@ function DraggableWatchlistRow({
   quotes,
   charts,
   chartsLoading,
+  dragDisabled,
   onRemove,
 }: {
   ticker: string;
@@ -343,6 +370,7 @@ function DraggableWatchlistRow({
   quotes: Record<string, QuoteResult>;
   charts: ChartsResponse;
   chartsLoading: boolean;
+  dragDisabled: boolean;
   onRemove: (ticker: string) => void;
 }) {
   const controls = useDragControls();
@@ -361,9 +389,15 @@ function DraggableWatchlistRow({
     >
       <td className="px-2 py-3 w-8">
         <button
-          onPointerDown={(e) => controls.start(e)}
-          className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors touch-none"
-          title="Drag to reorder"
+          onPointerDown={dragDisabled ? undefined : (e) => controls.start(e)}
+          className={cn(
+            "transition-colors touch-none",
+            dragDisabled
+              ? "text-muted-foreground/20 cursor-default"
+              : "cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground",
+          )}
+          title={dragDisabled ? "Clear sort to reorder" : "Drag to reorder"}
+          disabled={dragDisabled}
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -424,6 +458,7 @@ function DraggableMobileRow({
   quotes,
   charts,
   chartsLoading,
+  dragDisabled,
   onRemove,
 }: {
   ticker: string;
@@ -431,6 +466,7 @@ function DraggableMobileRow({
   quotes: Record<string, QuoteResult>;
   charts: ChartsResponse;
   chartsLoading: boolean;
+  dragDisabled: boolean;
   onRemove: (ticker: string) => void;
 }) {
   const controls = useDragControls();
@@ -449,8 +485,14 @@ function DraggableMobileRow({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onPointerDown={(e) => controls.start(e)}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors touch-none"
+            onPointerDown={dragDisabled ? undefined : (e) => controls.start(e)}
+            className={cn(
+              "transition-colors touch-none",
+              dragDisabled
+                ? "text-muted-foreground/20 cursor-default"
+                : "cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground",
+            )}
+            disabled={dragDisabled}
           >
             <GripVertical className="h-4 w-4" />
           </button>
@@ -526,6 +568,40 @@ function ManualWatchlistTable({
   onRemove: (ticker: string) => void;
   onReorder: (newOrder: string[]) => void;
 }) {
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) {
+      if (sortDir === "asc") { setSortDir("desc"); }
+      else { setSortCol(null); setSortDir("asc"); } // third click clears
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  }
+
+  const displayTickers = useMemo(() => {
+    if (!sortCol) return tickers;
+    return [...tickers].sort((a, b) => {
+      let av: number | string;
+      let bv: number | string;
+      if (sortCol === "ticker") {
+        av = a; bv = b;
+      } else if (sortCol === "price") {
+        av = quotes[a]?.price ?? -Infinity;
+        bv = quotes[b]?.price ?? -Infinity;
+      } else {
+        av = quotes[a]?.changePct ?? -Infinity;
+        bv = quotes[b]?.changePct ?? -Infinity;
+      }
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [tickers, sortCol, sortDir, quotes]);
+
+  const dragDisabled = sortCol !== null;
+
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
       {/* Desktop table */}
@@ -534,17 +610,17 @@ function ManualWatchlistTable({
           <thead>
             <tr className="border-b">
               <TH className="w-8" />
-              <TH className="w-24">Ticker</TH>
-              <TH>Price</TH>
-              <TH>Change</TH>
+              <SortableTH col="ticker" label="Ticker" active={sortCol === "ticker"} dir={sortDir} onSort={handleSort} className="w-24" />
+              <SortableTH col="price" label="Price" active={sortCol === "price"} dir={sortDir} onSort={handleSort} />
+              <SortableTH col="change" label="Change" active={sortCol === "change"} dir={sortDir} onSort={handleSort} />
               <TH className="w-[150px]">Chart</TH>
               <TH>Day Range</TH>
               <TH>52W Range</TH>
               <TH />
             </tr>
           </thead>
-          <Reorder.Group as="tbody" axis="y" values={tickers} onReorder={onReorder} className="divide-y">
-            {tickers.map((ticker) => (
+          <Reorder.Group as="tbody" axis="y" values={displayTickers} onReorder={dragDisabled ? () => {} : onReorder} className="divide-y">
+            {displayTickers.map((ticker) => (
               <DraggableWatchlistRow
                 key={ticker}
                 ticker={ticker}
@@ -552,6 +628,7 @@ function ManualWatchlistTable({
                 quotes={quotes}
                 charts={charts}
                 chartsLoading={chartsLoading}
+                dragDisabled={dragDisabled}
                 onRemove={onRemove}
               />
             ))}
@@ -561,8 +638,8 @@ function ManualWatchlistTable({
 
       {/* Mobile cards */}
       <div className="md:hidden">
-        <Reorder.Group as="div" axis="y" values={tickers} onReorder={onReorder}>
-          {tickers.map((ticker) => (
+        <Reorder.Group as="div" axis="y" values={displayTickers} onReorder={dragDisabled ? () => {} : onReorder}>
+          {displayTickers.map((ticker) => (
             <DraggableMobileRow
               key={ticker}
               ticker={ticker}
@@ -570,6 +647,7 @@ function ManualWatchlistTable({
               quotes={quotes}
               charts={charts}
               chartsLoading={chartsLoading}
+              dragDisabled={dragDisabled}
               onRemove={onRemove}
             />
           ))}
