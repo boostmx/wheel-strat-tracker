@@ -23,10 +23,9 @@ const AccountsReportContent = dynamic(
     ),
   },
 );
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
 
-type ExposureEntry = { ticker: string; weightPct: number };
+type ExposureEntry = { ticker: string; capital: number; pct: number };
 type TickerPremium = { ticker: string; premium: number };
 type OpenTradeSummary = {
   id: string;
@@ -149,88 +148,41 @@ function moneyColor(v: number) {
   return "text-muted-foreground";
 }
 
-// Chart components
-function DonutChart({
-  data,
-  size = 160,
-}: {
-  data: { label: string; value: number }[];
-  size?: number;
-}) {
-  const total = data.reduce((s, d) => s + d.value, 0) || 1;
-  const cx = size / 2;
-  const cy = size / 2;
-  const rOuter = size / 2 - 4;
-  const rInner = rOuter * 0.6;
-  let startAngle = -Math.PI / 2;
-  const hueBase = 200;
+// Interactive capital concentration bars
+function ExposureBars({ data }: { data: ExposureEntry[] }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const max = Math.max(1, ...data.map((d) => d.capital));
 
-  const arcs = data.map((d, i) => {
-    const angle = (d.value / total) * Math.PI * 2;
-    const endAngle = startAngle + angle;
-    const x0 = cx + rOuter * Math.cos(startAngle);
-    const y0 = cy + rOuter * Math.sin(startAngle);
-    const x1 = cx + rOuter * Math.cos(endAngle);
-    const y1 = cy + rOuter * Math.sin(endAngle);
-    const largeArc = angle > Math.PI ? 1 : 0;
-    const path = `M ${x0} ${y0} A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x1} ${y1} L ${cx + rInner * Math.cos(endAngle)} ${cy + rInner * Math.sin(endAngle)} A ${rInner} ${rInner} 0 ${largeArc} 0 ${cx + rInner * Math.cos(startAngle)} ${cy + rInner * Math.sin(startAngle)} Z`;
-    const fill = `hsl(${(hueBase + i * 35) % 360} 70% 50%)`;
-    startAngle = endAngle;
-    return { path, fill, key: `${d.label}-${i}` };
-  });
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      role="img"
-      aria-label="Donut chart"
-    >
-      {arcs.map((a) => (
-        <path key={a.key} d={a.path} fill={a.fill} />
-      ))}
-      <circle
-        cx={cx}
-        cy={cy}
-        r={rInner}
-        className="fill-card"
-      />
-    </svg>
-  );
-}
-
-function HorizontalBars({
-  data,
-  valueKey = "value",
-  labelKey = "label",
-}: {
-  data: Array<Record<string, number | string>>;
-  valueKey?: string;
-  labelKey?: string;
-}) {
-  const typed = data as Array<{ [k: string]: number | string }>;
-  const max = Math.max(1, ...typed.map((d) => Math.abs(Number(d[valueKey]) || 0)));
   return (
     <div className="space-y-2.5">
-      {typed.map((d, i) => {
-        const val = Number(d[valueKey]) || 0;
-        const pct = (Math.abs(val) / max) * 100;
-        const isNeg = val < 0;
+      {data.map((d, i) => {
+        const barPct = (d.capital / max) * 100;
+        const isHovered = hoveredIdx === i;
+        const barColor = `hsl(${(210 + i * 30) % 360} 65% 48%)`;
         return (
-          <div key={`${String(d[labelKey])}-${i}`} className="w-full">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-medium text-foreground text-[12px]">{String(d[labelKey])}</span>
-              <span className={`tabular-nums text-[11px] ${isNeg ? "text-red-500" : "text-muted-foreground"}`}>
-                {formatCompactCurrency(val)}
-              </span>
+          <div
+            key={d.ticker}
+            onMouseEnter={() => setHoveredIdx(i)}
+            onMouseLeave={() => setHoveredIdx(null)}
+            className={cn(
+              "rounded-lg px-2 py-1.5 -mx-2 transition-colors cursor-default",
+              isHovered ? "bg-muted/60" : "",
+            )}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[12px] font-semibold text-foreground">{d.ticker}</span>
+              <div className="flex items-center gap-2 tabular-nums text-[11px]">
+                <span className="text-muted-foreground">{formatCompactCurrency(d.capital)}</span>
+                <span className="font-medium text-foreground w-10 text-right">{d.pct.toFixed(1)}%</span>
+              </div>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-1.5 rounded-full transition-all duration-300"
+                className="h-1.5 rounded-full transition-all duration-500"
                 style={{
-                  width: `${pct}%`,
-                  backgroundColor: isNeg ? "hsl(0 70% 50%)" : `hsl(${(210 + i * 27) % 360} 65% 48%)`,
+                  width: `${barPct}%`,
+                  backgroundColor: barColor,
+                  opacity: hoveredIdx === null || isHovered ? 1 : 0.4,
                 }}
               />
             </div>
@@ -587,13 +539,8 @@ export default function AccountSummaryContent({
 
     const nextExpiration = data.nextExpiration; // may include topTicker
 
-    // Top exposures: already as percentages from API
-    const topExposures: { ticker: string; pct: number }[] = (
-      data.exposures ?? []
-    )
-      .sort((a, b) => b.weightPct - a.weightPct)
-      .slice(0, 5)
-      .map((e) => ({ ticker: e.ticker, pct: e.weightPct }));
+    // Top exposures: sorted by capital, already in new format from API
+    const topExposures = (data.exposures ?? []).slice(0, 7);
 
     // Per-portfolio chips
     const perPortfolio = portfolios.map((p) => {
@@ -718,18 +665,8 @@ export default function AccountSummaryContent({
     const source = selectedPortfolio
       ? selectedPortfolio.exposures
       : (data?.exposures ?? []);
-    return [...source]
-      .sort((a, b) => b.weightPct - a.weightPct)
-      .slice(0, 5)
-      .map((e) => ({ ticker: e.ticker, pct: e.weightPct }));
+    return [...source].slice(0, 7);
   }, [selectedPortfolio, data]);
-
-  const chartPremiumByTicker = useMemo(() => {
-    const source = selectedPortfolio
-      ? selectedPortfolio.premiumByTicker
-      : agg.premiumByTicker;
-    return source ? [...source] : [];
-  }, [selectedPortfolio, agg]);
 
   const chartYtdSeries = useMemo(() => {
     return selectedPortfolio
@@ -743,34 +680,13 @@ export default function AccountSummaryContent({
       : (data?.pnlSeriesDaily90 ?? []);
   }, [selectedPortfolio, data]);
 
-  const chartWeekly52Series = useMemo(() => {
-    return selectedPortfolio
-      ? selectedPortfolio.pnlSeriesWeekly52
-      : (data?.pnlSeriesWeekly52 ?? []);
-  }, [selectedPortfolio, data]);
-
-  const chartMonthly12Series = useMemo(() => {
-    return selectedPortfolio
-      ? selectedPortfolio.pnlSeriesMonthly12
-      : (data?.pnlSeriesMonthly12 ?? []);
-  }, [selectedPortfolio, data]);
-
   const chartMonthlyAllSeries = useMemo(() => {
     return selectedPortfolio
       ? selectedPortfolio.pnlSeriesMonthlyAll
       : (data?.pnlSeriesMonthlyAll ?? []);
   }, [selectedPortfolio, data]);
 
-  const chartYearlySeries = useMemo(() => {
-    return selectedPortfolio
-      ? selectedPortfolio.pnlSeriesYearly
-      : (data?.pnlSeriesYearly ?? []);
-  }, [selectedPortfolio, data]);
-
   const [accountTab, setAccountTab] = useState<"Overview" | "Report">("Overview");
-  const [activeTab, setActiveTab] = useState<"daily" | "weekly" | "monthly" | "yearly" | "ytd" | "alltime">("daily");
-  const [dailyWindow, setDailyWindow] = useState<"mtd" | "30d" | "90d">("mtd");
-  const [showAllPremium, setShowAllPremium] = useState(false);
 
   // Open trades scoped to selected portfolio
   const openTrades = useMemo<OpenTradeSummary[]>(() => {
@@ -800,24 +716,20 @@ export default function AccountSummaryContent({
         value: i === 0 ? d.realized : d.realized - s[i - 1].realized,
       }));
 
-    if (activeTab === "daily") {
-      const all = toPerPeriod(chartDaily90Series);
-      if (dailyWindow === "mtd") {
+    const dailyAll = toPerPeriod(chartDaily90Series);
+
+    switch (dashTimeframe) {
+      case "7d":  return dailyAll.slice(-7);
+      case "mtd": {
         const now = new Date();
         const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const filtered = all.filter((d) => d.label.startsWith(prefix));
-        return filtered.length > 0 ? filtered : all;
+        const filtered = dailyAll.filter((d) => d.label.startsWith(prefix));
+        return filtered.length > 0 ? filtered : dailyAll;
       }
-      if (dailyWindow === "30d") return all.slice(-30);
-      return all; // "90d"
+      case "ytd": return toPerPeriod(chartYtdSeries);
+      case "all": return toPerPeriod(chartMonthlyAllSeries);
     }
-    if (activeTab === "weekly") return toPerPeriod(chartWeekly52Series);
-    if (activeTab === "monthly") return toPerPeriod(chartMonthly12Series);
-    if (activeTab === "yearly") return toPerPeriod(chartYearlySeries);
-    if (activeTab === "ytd") return toPerPeriod(chartYtdSeries);
-    if (activeTab === "alltime") return toPerPeriod(chartMonthlyAllSeries);
-    return toPerPeriod(chartDaily90Series);
-  }, [activeTab, dailyWindow, chartDaily90Series, chartWeekly52Series, chartMonthly12Series, chartYearlySeries, chartYtdSeries, chartMonthlyAllSeries]);
+  }, [dashTimeframe, chartDaily90Series, chartYtdSeries, chartMonthlyAllSeries]);
 
   if (isLoading) {
     return <div className="py-16 px-4 sm:px-6">Loading...</div>;
@@ -1005,7 +917,7 @@ export default function AccountSummaryContent({
     const last = values.reduce((a, b) => a + b, 0);
     const best = values.length ? Math.max(...values) : 0;
     const worst = values.length ? Math.min(...values) : 0;
-    const periodLabel = activeTab === "weekly" ? "wk" : activeTab === "monthly" || activeTab === "ytd" || activeTab === "alltime" ? "mo" : activeTab === "yearly" ? "yr" : "day";
+    const periodLabel = dashTimeframe === "ytd" || dashTimeframe === "all" ? "mo" : "day";
     return { last, best, worst, periodLabel };
   })();
 
@@ -1274,65 +1186,13 @@ export default function AccountSummaryContent({
           <Card className="rounded-xl flex-1">
             <CardContent className="p-5">
               <div className="flex items-baseline justify-between mb-3">
-                <h2 className="text-sm font-semibold text-foreground">Top Exposures</h2>
-                <span className="text-[11px] text-muted-foreground">by collateral</span>
+                <h2 className="text-sm font-semibold text-foreground">Capital Concentration</h2>
+                <span className="text-[11px] text-muted-foreground">% of deployed</span>
               </div>
               {chartExposures.length ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0">
-                    <DonutChart
-                      data={chartExposures.map((t) => ({ label: t.ticker, value: t.pct }))}
-                      size={90}
-                    />
-                  </div>
-                  <ul className="flex-1 min-w-0 space-y-1.5">
-                    {chartExposures.map((t, idx) => (
-                      <li key={t.ticker} className="flex items-center gap-1.5 min-w-0">
-                        <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)` }} />
-                        <span className="text-[11px] font-medium text-foreground w-9 truncate">{t.ticker}</span>
-                        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
-                          <div className="h-1 rounded-full" style={{ width: `${t.pct.toFixed(0)}%`, backgroundColor: `hsl(${(200 + idx * 35) % 360} 70% 50%)` }} />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{t.pct.toFixed(0)}%</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <ExposureBars data={chartExposures} />
               ) : (
-                <p className="text-xs text-muted-foreground">No open CSP positions</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Premium by Ticker */}
-          <Card className="rounded-xl flex-1">
-            <CardContent className="p-5">
-              <div className="flex items-baseline justify-between mb-3">
-                <h2 className="text-sm font-semibold text-foreground">Premium by Ticker</h2>
-                <span className="text-[11px] text-muted-foreground">realized</span>
-              </div>
-              {chartPremiumByTicker.length ? (
-                <>
-                  <HorizontalBars
-                    data={(showAllPremium ? chartPremiumByTicker : chartPremiumByTicker.slice(0, 5)).map(
-                      (p) => ({ label: p.ticker, value: p.premium }),
-                    )}
-                  />
-                  {chartPremiumByTicker.length > 5 && (
-                    <button
-                      onClick={() => setShowAllPremium((v) => !v)}
-                      className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showAllPremium ? (
-                        <><ChevronUp className="h-3 w-3" /> Show less</>
-                      ) : (
-                        <><ChevronDown className="h-3 w-3" /> All {chartPremiumByTicker.length} tickers</>
-                      )}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <p className="text-xs text-muted-foreground">No realized premium yet</p>
+                <p className="text-xs text-muted-foreground">No open positions</p>
               )}
             </CardContent>
           </Card>
@@ -1351,41 +1211,9 @@ export default function AccountSummaryContent({
             <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
               <div>
                 <h2 className="text-base font-semibold text-foreground">Realized P&L</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Per period — hover to inspect</p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {activeTab === "daily" && (
-                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-                    {(["mtd", "30d", "90d"] as const).map((w) => (
-                      <button
-                        key={w}
-                        onClick={() => setDailyWindow(w)}
-                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                          dailyWindow === w
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {w === "mtd" ? "MTD" : w}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center gap-1 bg-muted rounded-lg p-1 flex-wrap">
-                  {(["daily", "weekly", "monthly", "yearly", "ytd", "alltime"] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                        activeTab === tab
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {tab === "daily" ? "Daily" : tab === "weekly" ? "Weekly" : tab === "monthly" ? "Monthly" : tab === "yearly" ? "Yearly" : tab === "ytd" ? "YTD" : "All Time"}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {dashTimeframe === "7d" ? "Last 7 days" : dashTimeframe === "mtd" ? "Month to date" : dashTimeframe === "ytd" ? "Year to date — monthly" : "All time — monthly"} · hover to inspect
+                </p>
               </div>
             </div>
 

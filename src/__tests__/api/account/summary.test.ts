@@ -180,7 +180,7 @@ describe("GET /api/account/summary — with portfolio data", () => {
 
   it("stock lots contribute to capitalInUseStocks", async () => {
     setupOnPortfolio({
-      stockLots: [{ shares: 100, avgCost: new Prisma.Decimal("50") }],
+      stockLots: [{ ticker: "AAPL", shares: 100, avgCost: new Prisma.Decimal("50") }],
     });
     const res = await GET();
     const body = await res.json() as { perPortfolio: Record<string, { capitalInUseStocks: number }> };
@@ -294,6 +294,96 @@ describe("GET /api/account/summary — with portfolio data", () => {
     expect(Array.isArray(body.pnlSeriesDaily90)).toBe(true);
     expect(Array.isArray(body.pnlSeriesWeekly52)).toBe(true);
     expect(Array.isArray(body.pnlSeriesMonthly12)).toBe(true);
+  });
+});
+
+describe("GET /api/account/summary — capital concentration exposures", () => {
+  beforeEach(() => {
+    mockPortfolioFindMany.mockResolvedValue([makePortfolio()]);
+  });
+
+  it("returns exposures with capital and pct fields (not weightPct)", async () => {
+    setupOnPortfolio({ openTrades: [makeOpenCSP("AAPL", 200, 2)] });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { exposures: Array<{ ticker: string; capital: number; pct: number }> }> };
+    const exp = body.perPortfolio["port-1"].exposures;
+    expect(exp.length).toBeGreaterThan(0);
+    expect(exp[0]).toHaveProperty("capital");
+    expect(exp[0]).toHaveProperty("pct");
+    expect(exp[0]).not.toHaveProperty("weightPct");
+  });
+
+  it("computes CSP exposure as strike × 100 × contracts", async () => {
+    // AAPL $200 CSP × 2 contracts = $40,000 collateral
+    setupOnPortfolio({ openTrades: [makeOpenCSP("AAPL", 200, 2)] });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { exposures: Array<{ ticker: string; capital: number }> }> };
+    const aaplExp = body.perPortfolio["port-1"].exposures.find((e) => e.ticker === "AAPL");
+    expect(aaplExp?.capital).toBe(40000);
+  });
+
+  it("includes stock lot capital in exposure (not just CSP collateral)", async () => {
+    setupOnPortfolio({
+      openTrades: [],
+      stockLots: [{ ticker: "MSFT", shares: 100, avgCost: new Prisma.Decimal("300") }],
+    });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { exposures: Array<{ ticker: string; capital: number }> }> };
+    const msftExp = body.perPortfolio["port-1"].exposures.find((e) => e.ticker === "MSFT");
+    // 100 shares × $300 avg cost = $30,000
+    expect(msftExp?.capital).toBe(30000);
+  });
+
+  it("combines CSP collateral + stock lot capital for the same ticker", async () => {
+    setupOnPortfolio({
+      openTrades: [makeOpenCSP("AAPL", 200, 2)],  // $40,000 CSP
+      stockLots: [{ ticker: "AAPL", shares: 100, avgCost: new Prisma.Decimal("150") }], // $15,000 stock
+    });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { exposures: Array<{ ticker: string; capital: number }> }> };
+    const aaplExp = body.perPortfolio["port-1"].exposures.find((e) => e.ticker === "AAPL");
+    expect(aaplExp?.capital).toBe(55000); // $40k + $15k
+  });
+
+  it("calculates pct against total deployed capital (not CSP-only collateral)", async () => {
+    // $40k CSP + $10k stock lot = $50k total deployed
+    // AAPL CSP pct = 40000 / 50000 = 80%
+    // TSLA stock pct = 10000 / 50000 = 20%
+    setupOnPortfolio({
+      openTrades: [makeOpenCSP("AAPL", 200, 2)],
+      stockLots: [{ ticker: "TSLA", shares: 100, avgCost: new Prisma.Decimal("100") }],
+    });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { exposures: Array<{ ticker: string; capital: number; pct: number }> }> };
+    const exposures = body.perPortfolio["port-1"].exposures;
+    const aapl = exposures.find((e) => e.ticker === "AAPL");
+    const tsla = exposures.find((e) => e.ticker === "TSLA");
+    expect(aapl?.pct).toBeCloseTo(80, 0);
+    expect(tsla?.pct).toBeCloseTo(20, 0);
+  });
+
+  it("sorts exposures by capital descending", async () => {
+    setupOnPortfolio({
+      openTrades: [makeOpenCSP("TSLA", 100, 1), makeOpenCSP("AAPL", 200, 2)], // AAPL $40k > TSLA $10k
+    });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { exposures: Array<{ ticker: string }> }> };
+    const tickers = body.perPortfolio["port-1"].exposures.map((e) => e.ticker);
+    expect(tickers[0]).toBe("AAPL");
+    expect(tickers[1]).toBe("TSLA");
+  });
+
+  it("global exposures also use deployed capital as denominator", async () => {
+    setupOnPortfolio({
+      openTrades: [makeOpenCSP("AAPL", 200, 2)],
+      stockLots: [{ ticker: "TSLA", shares: 100, avgCost: new Prisma.Decimal("100") }],
+    });
+    const res = await GET();
+    const body = await res.json() as { exposures: Array<{ ticker: string; capital: number; pct: number }> };
+    expect(Array.isArray(body.exposures)).toBe(true);
+    const aapl = body.exposures.find((e) => e.ticker === "AAPL");
+    expect(aapl?.capital).toBe(40000);
+    expect(aapl?.pct).toBeCloseTo(80, 0);
   });
 });
 

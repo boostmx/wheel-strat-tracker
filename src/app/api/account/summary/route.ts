@@ -259,6 +259,7 @@ export async function GET() {
           prisma.stockLot.findMany({
             where: { portfolioId: p.id, status: "OPEN" },
             select: {
+              ticker: true,
               shares: true,
               avgCost: true,
             },
@@ -306,25 +307,28 @@ export async function GET() {
           }
         : null;
 
-      // Top ticker exposures (by CSP collateral)
-      const byTicker = new Map<string, number>();
+      // Capital concentration by ticker — CSP collateral + open stock lot cost basis
+      const exposureByTicker = new Map<string, number>();
       for (const t of cspOpen) {
-        const add = collateralFor(t.strikePrice, t.contractsOpen);
-        byTicker.set(t.ticker, (byTicker.get(t.ticker) ?? 0) + add);
+        const cap = collateralFor(t.strikePrice, t.contractsOpen);
+        if (t.ticker) exposureByTicker.set(t.ticker, (exposureByTicker.get(t.ticker) ?? 0) + cap);
+      }
+      for (const lot of openStockLots) {
+        const cap = Number(lot.shares ?? 0) * Number(lot.avgCost ?? 0);
+        if (lot.ticker && cap > 0) exposureByTicker.set(lot.ticker, (exposureByTicker.get(lot.ticker) ?? 0) + cap);
       }
       // accumulate to global exposure map
-      for (const [tk, coll] of byTicker.entries()) {
-        globalExposureMap.set(tk, (globalExposureMap.get(tk) ?? 0) + coll);
+      for (const [tk, cap] of exposureByTicker.entries()) {
+        globalExposureMap.set(tk, (globalExposureMap.get(tk) ?? 0) + cap);
       }
-      const totalColl =
-        Array.from(byTicker.values()).reduce((a, b) => a + b, 0) || 1;
-      const topTickers = Array.from(byTicker.entries())
+      const totalColl = capitalInUse || 1;
+      const topTickers = Array.from(exposureByTicker.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
-        .map(([ticker, coll]) => ({
+        .map(([ticker, cap]) => ({
           ticker,
-          collateral: coll,
-          pct: (coll / totalColl) * 100,
+          collateral: cap,
+          pct: (cap / totalColl) * 100,
         }));
 
       // Expirations (per-portfolio) + “expiring in 7 days”
@@ -706,12 +710,13 @@ export async function GET() {
           winCountMTD: wsMTD.wins, closedCountMTD: wsMTD.total,
           winCountYTD: wsYTD.wins, closedCountYTD: wsYTD.total,
           // per-portfolio visuals data
-          exposures: Array.from(byTicker.entries())
-            .map(([ticker, coll]) => ({
+          exposures: Array.from(exposureByTicker.entries())
+            .map(([ticker, capital]) => ({
               ticker,
-              weightPct: (coll / totalColl) * 100,
+              capital,
+              pct: (capital / totalColl) * 100,
             }))
-            .sort((a, b) => b.weightPct - a.weightPct),
+            .sort((a, b) => b.capital - a.capital),
           premiumByTicker: perPremiumArray,
           pnlSeriesMTD: mtdSeries,
           pnlSeriesYTD: ytdSeries,
@@ -922,15 +927,15 @@ export async function GET() {
     return series;
   })();
 
-  // Derive global exposures (as percentages of total open CSP collateral)
-  const totalExposureColl =
-    Array.from(globalExposureMap.values()).reduce((a, b) => a + b, 0) || 1;
+  // Derive global exposures as % of total deployed capital (options + stock lots)
+  const totalDeployedCap = baseTotals.capitalInUse || 1;
   const exposures = Array.from(globalExposureMap.entries())
-    .map(([ticker, coll]) => ({
+    .map(([ticker, capital]) => ({
       ticker,
-      weightPct: (coll / totalExposureColl) * 100,
+      capital,
+      pct: (capital / totalDeployedCap) * 100,
     }))
-    .sort((a, b) => b.weightPct - a.weightPct);
+    .sort((a, b) => b.capital - a.capital);
 
   // Global next expiration (earliest FUTURE date, contracts > 0, with top ticker on that date)
   let nextExpiration: {
