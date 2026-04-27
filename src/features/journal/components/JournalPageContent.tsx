@@ -200,6 +200,87 @@ function DayPanel({
   );
 }
 
+// ─── month picker popover ────────────────────────────────────────────────────
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function MonthPicker({
+  activeYear,
+  activeMonth,
+  maxYear,
+  maxMonth,
+  onSelect,
+  onClose,
+}: {
+  activeYear: number;
+  activeMonth: number;
+  maxYear: number;
+  maxMonth: number;
+  onSelect: (y: number, m: number) => void;
+  onClose: () => void;
+}) {
+  const [pickerYear, setPickerYear] = useState(activeYear);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] bg-card border border-border rounded-xl shadow-lg p-3 w-52"
+    >
+      {/* Year navigation */}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          onClick={() => setPickerYear((y) => y - 1)}
+          className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+        <span className="text-sm font-semibold text-foreground">{pickerYear}</span>
+        <button
+          onClick={() => setPickerYear((y) => y + 1)}
+          disabled={pickerYear >= maxYear}
+          className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Month grid */}
+      <div className="grid grid-cols-3 gap-1">
+        {MONTH_LABELS.map((label, i) => {
+          const m = i + 1;
+          const isActive = pickerYear === activeYear && m === activeMonth;
+          const isFuture = pickerYear > maxYear || (pickerYear === maxYear && m > maxMonth);
+          return (
+            <button
+              key={label}
+              onClick={() => { if (!isFuture) onSelect(pickerYear, m); }}
+              disabled={isFuture}
+              className={cn(
+                "rounded-lg py-1.5 text-xs font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-muted",
+                isFuture && "opacity-30 cursor-not-allowed pointer-events-none",
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── notes textarea ───────────────────────────────────────────────────────────
 
 function NotesEditor({
@@ -278,6 +359,7 @@ export default function JournalPageContent() {
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-based
   const [uiPortfolioId, setUiPortfolioId] = useState("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const yearMonth = toYearMonth(year, month);
   const monthLabel = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString("en-US", {
@@ -347,9 +429,24 @@ export default function JournalPageContent() {
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-base font-semibold text-foreground min-w-[140px] text-center">
-            {monthLabel}
-          </span>
+          <div className="relative">
+            <button
+              onClick={() => setPickerOpen((v) => !v)}
+              className="text-base font-semibold text-foreground min-w-[148px] hover:text-primary transition-colors"
+            >
+              {monthLabel}
+            </button>
+            {pickerOpen && (
+              <MonthPicker
+                activeYear={year}
+                activeMonth={month}
+                maxYear={now.getFullYear()}
+                maxMonth={now.getMonth() + 1}
+                onSelect={(y, m) => { setYear(y); setMonth(m); setPickerOpen(false); }}
+                onClose={() => setPickerOpen(false)}
+              />
+            )}
+          </div>
           <button
             onClick={nextMonth}
             disabled={isFutureOrCurrent}
