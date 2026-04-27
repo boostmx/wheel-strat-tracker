@@ -206,7 +206,7 @@ describe("GET /api/journal/[yearMonth] — day map", () => {
       stockLots: [makeStockLot({ realizedPnl: new Prisma.Decimal("1200"), closedAt: apr15 })],
     });
     const res = await GET(makeUrl(), params);
-    const body = await res.json() as { days: Record<string, { pnl: number; tradeCount: number }> };
+    const body = await res.json() as { days: Record<string, { pnl: number; tradeCount: number; trades: { kind: string }[] }> };
     expect(body.days["2026-04-15"].pnl).toBe(1200);
     expect(body.days["2026-04-15"].tradeCount).toBe(1);
     expect(body.days["2026-04-15"].trades[0].kind).toBe("stock");
