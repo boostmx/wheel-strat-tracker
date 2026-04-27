@@ -46,12 +46,24 @@ const closedTrade = {
   percentPL: 80, premiumCaptured: 560,
 };
 
+// Helper: set up the 4 trade findMany calls the route makes (open, closedAll, closedMTD, closedYTD)
+function setupTrades({
+  open = [] as typeof openCSP[],
+  closed = [] as typeof closedTrade[],
+} = {}) {
+  mockTradeFindMany
+    .mockResolvedValueOnce(open)    // openTrades
+    .mockResolvedValueOnce(closed)  // closedAll
+    .mockResolvedValueOnce(closed)  // closedMTD  (same fixture; date filter is in the DB, not client)
+    .mockResolvedValueOnce(closed); // closedYTD
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetServerSession.mockResolvedValue(mockSession());
   mockGetEffectiveUserId.mockResolvedValue("user-1");
   mockPortfolioFindFirst.mockResolvedValue(basePortfolio);
-  mockTradeFindMany.mockResolvedValue([]);
+  mockTradeFindMany.mockResolvedValue([]); // permanent default; tests override with setupTrades()
   mockStockLotFindMany.mockResolvedValue([]);
 });
 
@@ -78,9 +90,7 @@ describe("GET /api/portfolios/[id]/metrics", () => {
   });
 
   it("computes capitalUsed from open CSP trades", async () => {
-    mockTradeFindMany
-      .mockResolvedValueOnce([openCSP])  // open trades
-      .mockResolvedValueOnce([]);         // closed trades
+    setupTrades({ open: [openCSP] });
     const res = await GET(new Request("http://localhost/api/portfolios/port-1/metrics"), params);
     const body = await res.json() as Record<string, unknown>;
     // CSP: 200 × 100 × 2 = 40,000
@@ -88,9 +98,7 @@ describe("GET /api/portfolios/[id]/metrics", () => {
   });
 
   it("computes realized P&L from closed trades", async () => {
-    mockTradeFindMany
-      .mockResolvedValueOnce([])          // open
-      .mockResolvedValueOnce([closedTrade]); // closed
+    setupTrades({ closed: [closedTrade] });
     const res = await GET(new Request("http://localhost/api/portfolios/port-1/metrics"), params);
     const body = await res.json() as Record<string, unknown>;
     expect(body.totalProfit).toBe(560);
@@ -98,7 +106,6 @@ describe("GET /api/portfolios/[id]/metrics", () => {
   });
 
   it("includes stock lot capital in capitalUsedStocks", async () => {
-    mockTradeFindMany.mockResolvedValue([]);
     mockStockLotFindMany.mockResolvedValue([{ shares: 100, avgCost: new Prisma.Decimal("50") }]);
     const res = await GET(new Request("http://localhost/api/portfolios/port-1/metrics"), params);
     const body = await res.json() as Record<string, unknown>;
@@ -106,9 +113,7 @@ describe("GET /api/portfolios/[id]/metrics", () => {
   });
 
   it("includes nextExpirations list", async () => {
-    mockTradeFindMany
-      .mockResolvedValueOnce([openCSP])
-      .mockResolvedValueOnce([]);
+    setupTrades({ open: [openCSP] });
     const res = await GET(new Request("http://localhost/api/portfolios/port-1/metrics?limit=5"), params);
     const body = await res.json() as Record<string, unknown>;
     expect(Array.isArray(body.nextExpirations)).toBe(true);

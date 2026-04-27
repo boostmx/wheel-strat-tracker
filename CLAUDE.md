@@ -334,11 +334,41 @@ Release history lives in `src/data/changelog.ts`. **Always add a new entry when 
 }
 ```
 
-Current latest: **v2.11.0** (2026-04-26)
+Current latest: **v2.12.0** (2026-04-27)
 
 ---
 
 ## Recent Work (Session History)
+
+### v2.12.0 — 2026-04-27
+**Dashboard timeframe filter + metrics route performance**
+
+1. **Allocation % consistency** (`TradeDetailPageClient.tsx`, `types/index.ts`)
+   - Added `currentCapital` to the `Metrics` interface (was missing despite being returned by the API)
+   - Trade detail "Capital In Use" now divides by `currentCapital` (base + profits) — consistent with the open trades table and dashboard deployed % bar
+
+2. **Closed Activity tab redesign** (`ClosedTradesTable.tsx`)
+   - Replaced old plain-text stacked labels with color-coded badge chips (count, total P/L, avg %)
+   - Timeframe select replaced with 7D / 30D / 1Y / All tab toggle; rows-per-page select made compact
+   - Header is now responsive (stacks on mobile, inline on desktop); removed Sheet/filter drawer
+   - Pagination uses icon-only chevron buttons; only shown when more than one page exists
+
+3. **Dashboard timeframe filter** (`AccountSummaryContent.tsx`, `/api/account/summary/route.ts`)
+   - Added 7D / MTD / YTD / All tabs to the All Accounts summary page
+   - Affected metrics: Total P&L KPI card, Win Rate stat, Realized stat — all update to the selected period
+   - Unaffected: Current Capital, Cash Available, % Deployed, Open Trades, Avg Hold, Expiring ≤7d, Next Expiry
+   - API: added `realized7D`, `winRate7D`, `winRateMTD`, `winRateYTD` per portfolio and in `totals` (zero extra DB queries — derived from already-fetched `closed90`, `closedMTD`, `closedYTD` arrays)
+   - Added portfolio selector pills on the dashboard (multi-portfolio accounts only); `uiPortfolioId` state drives `selectedPortfolio` when no prop override is present
+
+4. **Metrics route performance** (`/api/portfolios/[id]/metrics/route.ts`)
+   - Split single all-trades query into parallel `closedAll` + `closedMTD` + `closedYTD` — MTD/YTD sums now use date-filtered DB queries instead of JS-level filtering over full history
+   - Dropped `orderBy: { closedAt: "desc" }` from the analytics query (sort was never needed)
+   - UTC-safe date boundaries (matches summary route pattern)
+   - Extracted `realizedFor()` helper to avoid repeated inline computation
+
+5. **Tests** (`summary.test.ts`, `metrics.test.ts`)
+   - `summary.test.ts`: 5 new cases covering `realized7D`, `winRate7D`, `winRateMTD`, `winRateYTD` in `perPortfolio` and `totals`
+   - `metrics.test.ts`: added `setupTrades()` helper for the new 4-query trade mock structure; fixed `beforeEach` to use permanent default instead of pre-queued `Once` values
 
 ### v2.11.0 — 2026-04-26
 **Performance pass — server-side pagination, DB indexes, query optimisation**

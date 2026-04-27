@@ -203,6 +203,58 @@ describe("GET /api/account/summary — with portfolio data", () => {
     expect(body.perPortfolio["port-1"].winRate).toBe(50);
   });
 
+  it("exposes realized7D in perPortfolio", async () => {
+    // closed7D is derived from closed90 filtered to last 6 days — use a recent date
+    const recent = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    setupOnPortfolio({ closedAll: [makeClosedTrade("AAPL", 400, recent)] });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { realized7D: number }> };
+    expect(body.perPortfolio["port-1"].realized7D).toBe(400);
+  });
+
+  it("exposes winRate7D in perPortfolio", async () => {
+    const recent = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const trades = [makeClosedTrade("AAPL", 500, recent), makeClosedTrade("GOOGL", -100, recent)];
+    setupOnPortfolio({ closedAll: trades });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { winRate7D: number | null }> };
+    // 1 win, 1 loss among the two recent trades → 50%
+    expect(body.perPortfolio["port-1"].winRate7D).toBe(50);
+  });
+
+  it("exposes winRateMTD in perPortfolio", async () => {
+    setupOnPortfolio({ closedAll: [makeClosedTrade("AAPL", 300, twoWeeksAgo)] });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { winRateMTD: number | null }> };
+    // twoWeeksAgo is within the current month — 1 win = 100%
+    // (only true if twoWeeksAgo is in the same month as now; it is by construction)
+    if (twoWeeksAgo.getMonth() === now.getMonth()) {
+      expect(body.perPortfolio["port-1"].winRateMTD).toBe(100);
+    } else {
+      expect(body.perPortfolio["port-1"].winRateMTD).toBeNull();
+    }
+  });
+
+  it("exposes winRateYTD in perPortfolio", async () => {
+    setupOnPortfolio({ closedAll: [makeClosedTrade("AAPL", 300, twoWeeksAgo)] });
+    const res = await GET();
+    const body = await res.json() as { perPortfolio: Record<string, { winRateYTD: number | null }> };
+    expect(body.perPortfolio["port-1"].winRateYTD).not.toBeUndefined();
+  });
+
+  it("exposes period win rates in totals", async () => {
+    setupOnPortfolio({ closedAll: [makeClosedTrade("AAPL", 500)] });
+    const res = await GET();
+    const body = await res.json() as {
+      totals: { winRate7D: number | null; winRateMTD: number | null; winRateYTD: number | null; realized7D: number }
+    };
+    expect(body.totals).toHaveProperty("winRate7D");
+    expect(body.totals).toHaveProperty("winRateMTD");
+    expect(body.totals).toHaveProperty("winRateYTD");
+    expect(body.totals).toHaveProperty("realized7D");
+    expect(typeof body.totals.realized7D).toBe("number");
+  });
+
   it("identifies next expiration from open trades", async () => {
     setupOnPortfolio({ openTrades: [makeOpenCSP()] });
     const res = await GET();

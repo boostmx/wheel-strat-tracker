@@ -43,6 +43,7 @@ export interface Metrics {
   startingCapital: number;
   capitalUsed?: number;
   capitalBase?: number;
+  currentCapital?: number;
   cashAvailable?: number;
   winRate: number | null;
   totalProfit: number | null;
