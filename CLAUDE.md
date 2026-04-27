@@ -334,11 +334,31 @@ Release history lives in `src/data/changelog.ts`. **Always add a new entry when 
 }
 ```
 
-Current latest: **v2.12.0** (2026-04-27)
+Current latest: **v2.13.0** (2026-04-27)
 
 ---
 
 ## Recent Work (Session History)
+
+### v2.13.0 — 2026-04-27
+**Trade Journal**
+
+1. **Schema** (`prisma/schema.prisma`, migration `20260427000000_add_journal_entry`)
+   - `JournalEntry`: `userId`, `yearMonth` ("YYYY-MM"), `notes` text, `@@unique([userId, yearMonth])`
+   - Account-level (one journal per user, portfolio is a filter not a partition)
+
+2. **API** (`/api/journal/[yearMonth]/route.ts`)
+   - `GET`: returns `{ notes, days, monthStats }` — `days` maps `YYYY-MM-DD` → `{ pnl, tradeCount, trades[] }` computed from closed trades + stock lots; `monthStats` has `totalPnl, winRate, tradeCount, bestDay, worstDay`; accepts `?portfolioId=` filter
+   - `PUT`: upserts notes for the month (debounce auto-save from client)
+
+3. **UI** (`src/features/journal/components/JournalPageContent.tsx`, `src/app/journal/page.tsx`)
+   - Sidebar `BookOpen` nav link at `/journal`
+   - Month navigation (prev/next, "Today" shortcut, blocks future months)
+   - Portfolio filter pills (only shown when user has multiple portfolios)
+   - Stats strip: month P/L, win rate, trade count, best day, worst day
+   - Calendar grid: 7-col CSS grid, day cells color-coded emerald/rose, click to select
+   - Day detail panel: inline below calendar, lists trades with TypeBadge + P/L, links to trade/stock detail
+   - Notes textarea: auto-saves with 600ms debounce, Saving… / Saved indicator
 
 ### v2.12.0 — 2026-04-27
 **Dashboard timeframe filter + metrics route performance**
