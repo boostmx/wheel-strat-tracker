@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, ChevronDown, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
@@ -233,7 +233,7 @@ function MonthPicker({
   return (
     <div
       ref={ref}
-      className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 bg-card border border-border rounded-xl shadow-lg p-3 w-52"
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] bg-card border border-border rounded-xl shadow-lg p-3 w-52"
     >
       {/* Year navigation */}
       <div className="flex items-center justify-between mb-3">
@@ -432,10 +432,9 @@ export default function JournalPageContent() {
           <div className="relative">
             <button
               onClick={() => setPickerOpen((v) => !v)}
-              className="flex items-center gap-1 text-base font-semibold text-foreground min-w-[148px] justify-center hover:text-primary transition-colors"
+              className="text-base font-semibold text-foreground min-w-[148px] hover:text-primary transition-colors"
             >
               {monthLabel}
-              <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", pickerOpen && "rotate-180")} />
             </button>
             {pickerOpen && (
               <MonthPicker
