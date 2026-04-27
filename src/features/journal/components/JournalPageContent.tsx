@@ -344,7 +344,7 @@ function NotesEditor({
       <textarea
         value={notes}
         onChange={handleChange}
-        placeholder={`Reflect on ${new Date(yearMonth + "-15").toLocaleDateString("en-US", { month: "long", year: "numeric" })}…\n\nMarket conditions, what worked, what didn't, lessons learned, trade decisions you'd make differently.`}
+        placeholder="Summarize the month — market conditions, what worked, what didn't, key decisions, and lessons to carry forward."
         className="w-full min-h-[180px] rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 resize-y focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all"
       />
     </div>
@@ -386,10 +386,12 @@ export default function JournalPageContent() {
   function nextMonth() {
     const nextY = month === 12 ? year + 1 : year;
     const nextM = month === 12 ? 1 : month + 1;
+    // Allow navigating up to and including the current month; block only true future
     const isFuture = nextY > now.getFullYear() || (nextY === now.getFullYear() && nextM > now.getMonth() + 1);
     if (!isFuture) { setYear(nextY); setMonth(nextM); }
   }
 
+  // Disable the next chevron only when already on the current month
   const isFutureOrCurrent = year > now.getFullYear() ||
     (year === now.getFullYear() && month >= now.getMonth() + 1);
 
@@ -415,7 +417,7 @@ export default function JournalPageContent() {
 
       {/* Month nav + Portfolio filter */}
       <motion.div
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between relative z-10"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, delay: 0.04 }}
