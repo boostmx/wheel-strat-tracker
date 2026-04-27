@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-04-27",
+    version: "v2.13.0",
+    highlights: [
+      "Trade Journal — a new Journal page (sidebar nav) gives you a monthly calendar view of all closed trade activity. Days with trades are color-coded green or red by net P/L; click any day to see the individual trades. Each month has a free-form notes area that auto-saves as you type — capture market conditions, lessons learned, and trade decisions you'd revisit.",
+      "Journal portfolio filter — when you have multiple portfolios, pill buttons let you scope the calendar and stats to a single portfolio or view everything together.",
+      "Journal month stats — each month shows total P/L, win rate (profitable days / trading days), total trades closed, and best and worst day at a glance.",
+    ],
+  },
+  {
+    date: "2026-04-27",
     version: "v2.12.0",
     highlights: [
       "Dashboard timeframe filter — the All Accounts summary now has 7D / MTD / YTD / All tabs. P&L, win rate, and realized gains update to the selected period while current-state metrics (capital deployed, cash available, open trades) stay fixed.",
