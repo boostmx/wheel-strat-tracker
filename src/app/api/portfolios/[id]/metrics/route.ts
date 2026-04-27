@@ -64,10 +64,18 @@ export async function GET(
     );
     const capitalBase = Number(portfolio.startingCapital ?? 0) + netCapitalAdj;
 
-    // Single parallel round trip for all trade data
-    const [openTrades, closedTrades, openStockLots] = await Promise.all([
+    // Closed trade analytics — date boundaries (UTC-safe) moved above
+    const now = new Date();
+    const thisMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const ytdStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+    const tradePortfolioWhere = isAdmin ? { id: portfolioId } : { id: portfolioId, userId };
+
+    // All queries in one parallel round trip.
+    // closedAll: needed for all-time totals, win rate, avg hold — no sort needed.
+    // closedMTD / closedYTD: date-filtered so only the relevant subset is transferred.
+    const [openTrades, closedAll, closedMTD, closedYTD, openStockLots] = await Promise.all([
       prisma.trade.findMany({
-        where: { status: "open", portfolio: isAdmin ? { id: portfolioId } : { id: portfolioId, userId } },
+        where: { status: "open", portfolio: tradePortfolioWhere },
         select: {
           id: true,
           ticker: true,
@@ -81,7 +89,7 @@ export async function GET(
         orderBy: { createdAt: "desc" },
       }),
       prisma.trade.findMany({
-        where: { status: "closed", portfolio: isAdmin ? { id: portfolioId } : { id: portfolioId, userId } },
+        where: { status: "closed", portfolio: tradePortfolioWhere },
         select: {
           type: true,
           contractsOpen: true,
@@ -92,10 +100,17 @@ export async function GET(
           percentPL: true,
           premiumCaptured: true,
         },
-        orderBy: { closedAt: "desc" },
+      }),
+      prisma.trade.findMany({
+        where: { status: "closed", closedAt: { gte: thisMonthStart }, portfolio: tradePortfolioWhere },
+        select: { type: true, contractsOpen: true, contractPrice: true, strikePrice: true, percentPL: true, premiumCaptured: true },
+      }),
+      prisma.trade.findMany({
+        where: { status: "closed", closedAt: { gte: ytdStart }, portfolio: tradePortfolioWhere },
+        select: { type: true, contractsOpen: true, contractPrice: true, strikePrice: true, percentPL: true, premiumCaptured: true },
       }),
       prisma.stockLot.findMany({
-        where: { status: "OPEN", portfolio: isAdmin ? { id: portfolioId } : { id: portfolioId, userId } },
+        where: { status: "OPEN", portfolio: tradePortfolioWhere },
         select: { shares: true, avgCost: true },
       }),
     ]);
@@ -166,14 +181,25 @@ export async function GET(
         type: t.type,
       }));
 
-    // Closed trade analytics
-    const now = new Date();
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const ytdStart = new Date(now.getFullYear(), 0, 1);
 
+    // Helper: compute realized amount for a single closed trade row
+    const realizedFor = (t: { type: string | null; contractsOpen: number | null; contractPrice: number; strikePrice: number | null; percentPL: number | null; premiumCaptured: number | null }) => {
+      if (t.premiumCaptured != null) return Number(t.premiumCaptured);
+      const pct = t.percentPL ?? null;
+      if (pct != null) {
+        const basisCollateral = isCSP(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0;
+        const basisPremium = premiumNotional(t.contractPrice, t.contractsOpen);
+        return (pct / 100) * (basisCollateral || basisPremium);
+      }
+      return 0;
+    };
+
+    // Period sums from date-filtered queries — avoids iterating full history for MTD/YTD
+    const realizedMTD = closedMTD.reduce((s, t) => s + realizedFor(t), 0);
+    const realizedYTD = closedYTD.reduce((s, t) => s + realizedFor(t), 0);
+
+    // All-time stats require iterating the full history
     let realizedTotal = 0;
-    let realizedMTD = 0;
-    let realizedYTD = 0;
     let sumPLPct = 0;
     let countPLPct = 0;
     let winCount = 0;
@@ -181,22 +207,12 @@ export async function GET(
     let sumDays = 0;
     let countDays = 0;
 
-    for (const t of closedTrades) {
-      const basisCollateral = isCSP(t.type) ? lockedCollateral(t.strikePrice, t.contractsOpen) : 0;
-      const basisPremium = premiumNotional(t.contractPrice, t.contractsOpen);
+    for (const t of closedAll) {
       const pct = t.percentPL ?? null;
-      const realized =
-        t.premiumCaptured != null
-          ? Number(t.premiumCaptured)
-          : pct != null
-            ? (pct / 100) * (basisCollateral || basisPremium)
-            : 0;
-
+      const realized = realizedFor(t);
       realizedTotal += realized;
 
       if (t.closedAt) {
-        if (t.closedAt >= thisMonthStart) realizedMTD += realized;
-        if (t.closedAt >= ytdStart) realizedYTD += realized;
         closeCount += 1;
         if (pct != null && pct > 0) winCount += 1;
         if (pct != null) { sumPLPct += pct; countPLPct += 1; }

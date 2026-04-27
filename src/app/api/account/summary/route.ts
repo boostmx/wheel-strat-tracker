@@ -413,6 +413,30 @@ export async function GET() {
           }, 0) / closedWithDates.length
         : null;
 
+      // Period win stats (no extra DB queries — filter already-fetched closed90/MTD/YTD)
+      const sevenDaysAgo = startOfNDaysAgoUTC(6); // 7-day window inclusive of today
+      const closed7D = closed90.filter(
+        (t) => t.closedAt != null && new Date(t.closedAt) >= sevenDaysAgo,
+      );
+      const realized7D = sumRealized(closed7D);
+
+      const periodWins = (rows: Array<{ type?: string | null; contracts: number; contractPrice: number; closingPrice: number | null; premiumCaptured: number | null }>) => {
+        const wins = rows.filter((t) =>
+          realizedFor({
+            type: t.type,
+            contracts: Number(t.contracts),
+            contractPrice: Number(t.contractPrice),
+            closingPrice: t.closingPrice == null ? null : Number(t.closingPrice),
+            premiumCaptured: t.premiumCaptured == null ? null : Number(t.premiumCaptured),
+          }) > 0,
+        ).length;
+        return { wins, total: rows.length };
+      };
+
+      const ws7D = periodWins(closed7D);
+      const wsMTD = periodWins(closedMTD);
+      const wsYTD = periodWins(closedYTD);
+
       // Per-portfolio realized premium by ticker
       const perPremiumMap = new Map<string, number>();
       for (const row of closedAll) {
@@ -674,6 +698,13 @@ export async function GET() {
           closedTradeCount: closedAll.length,
           realizedMTD,
           realizedYTD,
+          realized7D,
+          winRate7D: ws7D.total > 0 ? (ws7D.wins / ws7D.total) * 100 : null,
+          winRateMTD: wsMTD.total > 0 ? (wsMTD.wins / wsMTD.total) * 100 : null,
+          winRateYTD: wsYTD.total > 0 ? (wsYTD.wins / wsYTD.total) * 100 : null,
+          winCount7D: ws7D.wins, closedCount7D: ws7D.total,
+          winCountMTD: wsMTD.wins, closedCountMTD: wsMTD.total,
+          winCountYTD: wsYTD.wins, closedCountYTD: wsYTD.total,
           // per-portfolio visuals data
           exposures: Array.from(byTicker.entries())
             .map(([ticker, coll]) => ({
@@ -745,6 +776,10 @@ export async function GET() {
       acc.cashAvailable += p.cashAvailable;
       acc.realizedMTD += p.realizedMTD;
       acc.realizedYTD += p.realizedYTD;
+      acc.realized7D += p.realized7D;
+      acc.winCount7D += p.winCount7D; acc.closedCount7D += p.closedCount7D;
+      acc.winCountMTD += p.winCountMTD; acc.closedCountMTD += p.closedCountMTD;
+      acc.winCountYTD += p.winCountYTD; acc.closedCountYTD += p.closedCountYTD;
       return acc;
     },
     {
@@ -755,6 +790,10 @@ export async function GET() {
       cashAvailable: 0,
       realizedMTD: 0,
       realizedYTD: 0,
+      realized7D: 0,
+      winCount7D: 0, closedCount7D: 0,
+      winCountMTD: 0, closedCountMTD: 0,
+      winCountYTD: 0, closedCountYTD: 0,
     },
   );
 
@@ -762,6 +801,9 @@ export async function GET() {
     baseTotals.currentCapital > 0
       ? (baseTotals.capitalInUse / baseTotals.currentCapital) * 100
       : 0;
+  const globalWinRate7D = baseTotals.closedCount7D > 0 ? (baseTotals.winCount7D / baseTotals.closedCount7D) * 100 : null;
+  const globalWinRateMTD = baseTotals.closedCountMTD > 0 ? (baseTotals.winCountMTD / baseTotals.closedCountMTD) * 100 : null;
+  const globalWinRateYTD = baseTotals.closedCountYTD > 0 ? (baseTotals.winCountYTD / baseTotals.closedCountYTD) * 100 : null;
 
   // Global ordered cumulative MTD/YTD series
   const mtdSeries: { label: string; realized: number }[] = (() => {
@@ -960,7 +1002,13 @@ export async function GET() {
 
   return NextResponse.json({
     perPortfolio,
-    totals: { ...baseTotals, percentUsed },
+    totals: {
+      ...baseTotals, percentUsed,
+      realized7D: baseTotals.realized7D,
+      winRate7D: globalWinRate7D,
+      winRateMTD: globalWinRateMTD,
+      winRateYTD: globalWinRateYTD,
+    },
     nextExpiration,
     topTickers,
     exposures,

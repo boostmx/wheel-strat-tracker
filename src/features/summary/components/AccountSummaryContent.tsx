@@ -73,6 +73,10 @@ type SummaryPortfolio = {
   closedTradeCount: number;
   realizedMTD: number;
   realizedYTD: number;
+  realized7D: number;
+  winRate7D: number | null;
+  winRateMTD: number | null;
+  winRateYTD: number | null;
   exposures: ExposureEntry[];
   premiumByTicker: TickerPremium[];
   pnlSeriesMTD: { label: string; realized: number }[];
@@ -96,6 +100,10 @@ type SummaryResponse = {
     percentUsed: number;
     realizedMTD: number;
     realizedYTD: number;
+    realized7D: number;
+    winRate7D: number | null;
+    winRateMTD: number | null;
+    winRateYTD: number | null;
   };
   nextExpiration: {
     date: string;
@@ -499,6 +507,9 @@ export default function AccountSummaryContent({
     "/api/account/summary",
   );
 
+  const [uiPortfolioId, setUiPortfolioId] = useState<string>("all");
+  const [dashTimeframe, setDashTimeframe] = useState<"7d" | "mtd" | "ytd" | "all">("all");
+
   const agg = (() => {
     if (!data) {
       return {
@@ -513,7 +524,11 @@ export default function AccountSummaryContent({
         totalOpenTrades: 0,
         totalRealizedMTD: 0,
         totalRealizedYTD: 0,
+        totalRealized7D: 0,
         totalExpiringSoon: 0,
+        winRate7D: null as number | null,
+        winRateMTD: null as number | null,
+        winRateYTD: null as number | null,
         nextExpiration: null as {
           date: string;
           contracts: number;
@@ -552,6 +567,7 @@ export default function AccountSummaryContent({
     const totalOpenTrades = portfolios.reduce((s, p) => s + p.openCount, 0);
     const totalRealizedMTD = data.totals.realizedMTD;
     const totalRealizedYTD = data.totals.realizedYTD;
+    const totalRealized7D = data.totals.realized7D;
     const totalExpiringSoon = portfolios.reduce(
       (s, p) => s + p.expiringSoonCount,
       0,
@@ -565,6 +581,9 @@ export default function AccountSummaryContent({
     const avgDaysInTrade = totalClosed > 0
       ? portfolios.reduce((s, p) => s + (p.avgDaysInTrade ?? 0) * (p.closedTradeCount ?? 0), 0) / totalClosed
       : null;
+    const winRate7D = data.totals.winRate7D;
+    const winRateMTD = data.totals.winRateMTD;
+    const winRateYTD = data.totals.winRateYTD;
 
     const nextExpiration = data.nextExpiration; // may include topTicker
 
@@ -603,10 +622,14 @@ export default function AccountSummaryContent({
       totalOpenTrades,
       totalRealizedMTD,
       totalRealizedYTD,
+      totalRealized7D,
       totalExpiringSoon,
       nextExpiration,
       winRate,
       avgDaysInTrade,
+      winRate7D,
+      winRateMTD,
+      winRateYTD,
       exposures: data.exposures ?? [],
       premiumByTicker,
       topExposures,
@@ -614,7 +637,7 @@ export default function AccountSummaryContent({
     };
   })();
 
-  const selectedPortfolioId = portfolioId ?? "all";
+  const selectedPortfolioId = portfolioId ?? uiPortfolioId;
   const portfoliosArray = useMemo(
     () => (data ? Object.values(data.perPortfolio) : []),
     [data],
@@ -645,6 +668,7 @@ export default function AccountSummaryContent({
     const totalOpenTrades = p.openCount;
     const totalRealizedMTD = p.realizedMTD;
     const totalRealizedYTD = p.realizedYTD;
+    const totalRealized7D = p.realized7D;
     const totalExpiringSoon = p.expiringSoonCount;
     const nextExpiration = p.nextExpiration ? { ...p.nextExpiration } : null;
     const winRate = p.winRate ?? null;
@@ -662,10 +686,14 @@ export default function AccountSummaryContent({
       totalOpenTrades,
       totalRealizedMTD,
       totalRealizedYTD,
+      totalRealized7D,
       totalExpiringSoon,
       nextExpiration,
       winRate,
       avgDaysInTrade,
+      winRate7D: p.winRate7D ?? null,
+      winRateMTD: p.winRateMTD ?? null,
+      winRateYTD: p.winRateYTD ?? null,
     };
   }
 
@@ -674,6 +702,16 @@ export default function AccountSummaryContent({
     const base = buildAggFromPortfolio(selectedPortfolio);
     return { ...agg, ...base };
   }, [agg, selectedPortfolio]);
+
+  // Period-filtered metrics for the timeframe selector
+  const periodMetrics = useMemo(() => {
+    switch (dashTimeframe) {
+      case "7d":  return { realized: view.totalRealized7D, winRate: view.winRate7D,  label: "7D" };
+      case "mtd": return { realized: view.totalRealizedMTD, winRate: view.winRateMTD, label: "MTD" };
+      case "ytd": return { realized: view.totalRealizedYTD, winRate: view.winRateYTD, label: "YTD" };
+      case "all": return { realized: view.accountProfit,    winRate: view.winRate,    label: "All Time" };
+    }
+  }, [dashTimeframe, view]);
 
   // Charts & series should honor the toggle (All vs Selected portfolio)
   const chartExposures = useMemo(() => {
@@ -1022,6 +1060,58 @@ export default function AccountSummaryContent({
 
       <div className={cn("space-y-5", !embedded && accountTab !== "Overview" && "hidden")}>
 
+      {/* ── Portfolio + Timeframe selectors ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Portfolio pills — only shown on standalone page with multiple portfolios */}
+        {!embedded && (view.perPortfolio?.length ?? 0) > 1 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => setUiPortfolioId("all")}
+              className={cn(
+                "px-3 py-1 text-xs font-medium rounded-full border transition-all",
+                selectedPortfolioId === "all"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+              )}
+            >
+              All Accounts
+            </button>
+            {view.perPortfolio.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setUiPortfolioId(p.id)}
+                className={cn(
+                  "px-3 py-1 text-xs font-medium rounded-full border transition-all",
+                  selectedPortfolioId === p.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                )}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Timeframe tabs */}
+        <div className={cn("flex items-center gap-1 bg-muted rounded-lg p-1 w-fit", !embedded && (view.perPortfolio?.length ?? 0) > 1 ? "" : "sm:ml-auto")}>
+          {([["7d", "7D"], ["mtd", "MTD"], ["ytd", "YTD"], ["all", "All"]] as const).map(([tf, label]) => (
+            <button
+              key={tf}
+              onClick={() => setDashTimeframe(tf)}
+              className={cn(
+                "px-3 py-1 text-xs font-medium rounded-md transition-all",
+                dashTimeframe === tf
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── KPI Strip ── */}
       <motion.div
         className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"
@@ -1037,14 +1127,18 @@ export default function AccountSummaryContent({
           <p className="text-[11px] text-muted-foreground">Base {formatCompactCurrency(view.accountBase)}</p>
         </div>
 
-        {/* Total P&L */}
+        {/* Total P&L — period-filtered */}
         <div className="rounded-xl border bg-card p-4 space-y-1">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total P&L</p>
-          <p className={`text-xl font-bold tabular-nums ${moneyColor(view.accountProfit)}`}>
-            {view.accountProfit >= 0 ? "+" : ""}{formatCompactCurrency(view.accountProfit)}
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            {periodMetrics.label === "All Time" ? "Total P&L" : `P&L (${periodMetrics.label})`}
+          </p>
+          <p className={`text-xl font-bold tabular-nums ${moneyColor(periodMetrics.realized)}`}>
+            {periodMetrics.realized >= 0 ? "+" : ""}{formatCompactCurrency(periodMetrics.realized)}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}
+            {dashTimeframe === "all"
+              ? <>MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}</>
+              : <>All time {view.accountProfit >= 0 ? "+" : ""}{formatCompactCurrency(view.accountProfit)}</>}
           </p>
         </div>
 
@@ -1101,26 +1195,36 @@ export default function AccountSummaryContent({
           <CardContent className="px-5 py-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Win Rate</p>
-                <p className={`text-xl font-bold tabular-nums ${view.winRate != null && view.winRate > 0 ? "text-emerald-600 dark:text-emerald-400" : view.winRate != null ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
-                  {view.winRate != null ? `${view.winRate.toFixed(1)}%` : "—"}
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Win Rate{dashTimeframe !== "all" ? ` (${periodMetrics.label})` : ""}
                 </p>
-                <p className="text-[10px] text-muted-foreground">of closed trades</p>
+                <p className={`text-xl font-bold tabular-nums ${periodMetrics.winRate != null && periodMetrics.winRate > 0 ? "text-emerald-600 dark:text-emerald-400" : periodMetrics.winRate != null ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                  {periodMetrics.winRate != null ? `${periodMetrics.winRate.toFixed(1)}%` : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {dashTimeframe !== "all"
+                    ? `All time ${view.winRate != null ? view.winRate.toFixed(1) + "%" : "—"}`
+                    : "of closed trades"}
+                </p>
               </div>
               <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Avg Hold</p>
                 <p className="text-xl font-bold tabular-nums text-foreground">
                   {view.avgDaysInTrade != null ? `${view.avgDaysInTrade.toFixed(1)}d` : "—"}
                 </p>
-                <p className="text-[10px] text-muted-foreground">per trade</p>
+                <p className="text-[10px] text-muted-foreground">per trade (all time)</p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Realized YTD</p>
-                <p className={`text-xl font-bold tabular-nums ${moneyColor(view.totalRealizedYTD)}`}>
-                  {view.totalRealizedYTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedYTD)}
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Realized{dashTimeframe !== "all" ? ` (${periodMetrics.label})` : " YTD"}
+                </p>
+                <p className={`text-xl font-bold tabular-nums ${moneyColor(periodMetrics.realized)}`}>
+                  {periodMetrics.realized >= 0 ? "+" : ""}{formatCompactCurrency(periodMetrics.realized)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}
+                  {dashTimeframe !== "all"
+                    ? `All time ${view.accountProfit >= 0 ? "+" : ""}${formatCompactCurrency(view.accountProfit)}`
+                    : <>MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}</>}
                 </p>
               </div>
               <div className="space-y-0.5">
