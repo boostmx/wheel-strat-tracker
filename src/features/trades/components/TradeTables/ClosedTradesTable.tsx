@@ -5,7 +5,6 @@ import useSWR from "swr";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
 import { useRouter } from "next/navigation";
 import { formatDateOnlyUTC } from "@/lib/formatDateOnly";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectTrigger,
@@ -14,15 +13,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-} from "@/components/ui/sheet";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { ClosedHistoryItem, ClosedHistoryResponse } from "@/app/api/portfolios/[id]/closed-history/route";
 
 type Timeframe = "week" | "month" | "year" | "all";
@@ -49,8 +40,6 @@ const formatUSD = (n: number) =>
     maximumFractionDigits: 2,
   }).format(n);
 
-const toTimeframe = (v: string): Timeframe =>
-  v === "week" || v === "month" || v === "year" || v === "all" ? v : "all";
 
 function getDateRange(tf: Timeframe): { dateFrom: string | null; dateTo: string | null } {
   const now = new Date();
@@ -87,7 +76,6 @@ export function ClosedTradesTable({ portfolioId }: { portfolioId: string }) {
   const [timeframe, setTimeframe] = useState<Timeframe>("month");
   const [pageSize, setPageSize] = useState(25);
   const [pageIndex, setPageIndex] = useState(0);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Reset to first page when filters or page size change
   useEffect(() => { setPageIndex(0); }, [timeframe, pageSize]);
@@ -114,107 +102,69 @@ export function ClosedTradesTable({ portfolioId }: { portfolioId: string }) {
     avgPercentPL: data?.avgPercentPL ?? null,
   };
 
+  const plBadgeClass = (n: number) =>
+    n >= 0
+      ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+      : "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40";
+
+  const timeframeTabs = [
+    ["week", "7D"],
+    ["month", "30D"],
+    ["year", "1Y"],
+    ["all", "All"],
+  ] as const;
+
   return (
     <div className="w-full">
-      {/* Mobile toolbar */}
-      <div className="mb-3 md:hidden px-4 pt-4 flex items-center justify-between">
-        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm">Filters</Button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="p-4">
-            <SheetHeader><SheetTitle>Closed Trades Filters</SheetTitle></SheetHeader>
-            <div className="mt-3 space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="ct-timeframe-mobile" className="text-sm">Timeframe</Label>
-                <Select value={timeframe} onValueChange={(v) => setTimeframe(toTimeframe(v))}>
-                  <SelectTrigger id="ct-timeframe-mobile" className="w-40">
-                    <SelectValue placeholder="Select timeframe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="week">Last 7 days</SelectItem>
-                    <SelectItem value="month">Last 30 days</SelectItem>
-                    <SelectItem value="year">Last 12 months</SelectItem>
-                    <SelectItem value="all">All time</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="ct-pagesize-mobile" className="text-sm">Rows</Label>
-                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                  <SelectTrigger id="ct-pagesize-mobile" className="w-28">
-                    <SelectValue placeholder="Rows" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <SheetFooter className="mt-4 flex items-center justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setFiltersOpen(false)}>Close</Button>
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.max(0, p - 1))} disabled={pageIndex === 0 || isLoading}>‹ Prev</Button>
-          <span className="text-xs text-muted-foreground">{Math.min(pageIndex + 1, pageCount)}/{pageCount}</span>
-          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))} disabled={pageIndex >= pageCount - 1 || isLoading}>Next ›</Button>
-        </div>
-      </div>
-
-      {/* Desktop controls & metrics */}
-      <div className="mb-3 px-4 pt-4 hidden md:flex md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="timeframe" className="text-sm">Timeframe</Label>
-            <Select value={timeframe} onValueChange={(v) => setTimeframe(toTimeframe(v))}>
-              <SelectTrigger id="timeframe" className="w-44">
-                <SelectValue placeholder="Select timeframe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Last 7 days</SelectItem>
-                <SelectItem value="month">Last 30 days</SelectItem>
-                <SelectItem value="year">Last 12 months</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="pagesize" className="text-sm">Rows per page</Label>
-            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger id="pagesize" className="w-28">
-                <SelectValue placeholder="Rows" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      {/* Shared header — stacks on mobile, inline on desktop */}
+      <div className="px-4 pt-4 pb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Title + stat badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-base font-semibold text-foreground">Closed Activity</h2>
+          {!isLoading && metrics.count > 0 && (
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {metrics.count} closed
+            </span>
+          )}
+          {metrics.totalPremium != null && metrics.count > 0 && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full tabular-nums ${plBadgeClass(metrics.totalPremium)}`}>
+              {metrics.totalPremium >= 0 ? "+" : ""}{formatUSD(metrics.totalPremium)} P/L
+            </span>
+          )}
+          {metrics.avgPercentPL != null && metrics.count > 0 && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full tabular-nums ${plBadgeClass(metrics.avgPercentPL)}`}>
+              {metrics.avgPercentPL >= 0 ? "+" : ""}{Number(metrics.avgPercentPL).toFixed(1)}% avg
+            </span>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground w-full sm:w-auto">
-          <div>
-            <div className="uppercase text-[11px] tracking-wide">Closed trades</div>
-            <div className="text-base font-semibold text-foreground">{metrics.count}</div>
+        {/* Controls: timeframe tabs + rows select */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            {timeframeTabs.map(([tf, label]) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                  timeframe === tf
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <div>
-            <div className="uppercase text-[11px] tracking-wide">Total P/L</div>
-            <div className="text-base font-semibold text-foreground">
-              {metrics.totalPremium != null ? formatUSD(metrics.totalPremium) : "—"}
-            </div>
-          </div>
-          <div>
-            <div className="uppercase text-[11px] tracking-wide">Avg % P/L</div>
-            <div className="text-base font-semibold text-foreground">
-              {metrics.avgPercentPL != null ? `${Number(metrics.avgPercentPL).toFixed(2)}%` : "—"}
-            </div>
-          </div>
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <SelectTrigger className="h-8 w-24 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="25">25 rows</SelectItem>
+              <SelectItem value="50">50 rows</SelectItem>
+              <SelectItem value="100">100 rows</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -341,17 +291,32 @@ export function ClosedTradesTable({ portfolioId }: { portfolioId: string }) {
       </div>
 
       {/* Pagination footer */}
-      <div className="mt-3 px-4 pb-4 hidden md:flex items-center justify-between">
-        <div className="text-xs text-gray-600 dark:text-gray-400">
-          Page {Math.min(pageIndex + 1, pageCount)} of {pageCount} • {total} result{total === 1 ? "" : "s"}
+      {pageCount > 1 && (
+        <div className="mt-3 px-4 pb-4 flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">
+            Page {Math.min(pageIndex + 1, pageCount)} of {pageCount} • {total} result{total === 1 ? "" : "s"}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setPageIndex(0)} disabled={pageIndex === 0 || isLoading}>
+              <ChevronLeft className="h-3 w-3" /><ChevronLeft className="h-3 w-3 -ml-2" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setPageIndex((p) => Math.max(0, p - 1))} disabled={pageIndex === 0 || isLoading}>
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))} disabled={pageIndex >= pageCount - 1 || isLoading}>
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setPageIndex(pageCount - 1)} disabled={pageIndex >= pageCount - 1 || isLoading}>
+              <ChevronRight className="h-3 w-3" /><ChevronRight className="h-3 w-3 -ml-2" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPageIndex(0)} disabled={pageIndex === 0 || isLoading}>« First</Button>
-          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.max(0, p - 1))} disabled={pageIndex === 0 || isLoading}>‹ Prev</Button>
-          <Button variant="outline" size="sm" onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))} disabled={pageIndex >= pageCount - 1 || isLoading}>Next ›</Button>
-          <Button variant="outline" size="sm" onClick={() => setPageIndex(pageCount - 1)} disabled={pageIndex >= pageCount - 1 || isLoading}>Last »</Button>
+      )}
+      {pageCount <= 1 && total > 0 && (
+        <div className="mt-1 px-4 pb-4">
+          <span className="text-xs text-muted-foreground">{total} result{total === 1 ? "" : "s"}</span>
         </div>
-      </div>
+      )}
     </div>
   );
 }

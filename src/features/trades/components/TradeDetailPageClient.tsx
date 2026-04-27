@@ -232,7 +232,7 @@ export default function TradeDetailPageClient({ portfolioId, tradeId }: Props) {
     : 0;
 
   const isCoveredCall = t.includes("covered");
-  const totalCapital = metrics?.capitalBase ?? metrics?.startingCapital ?? 0;
+  const totalCapital = metrics?.currentCapital ?? metrics?.capitalBase ?? metrics?.startingCapital ?? 0;
   const allocPct = totalCapital > 0 && capitalInUse > 0
     ? (capitalInUse / totalCapital) * 100
     : null;
