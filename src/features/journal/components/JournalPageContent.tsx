@@ -362,9 +362,8 @@ export default function JournalPageContent() {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const yearMonth = toYearMonth(year, month);
-  const monthLabel = new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString("en-US", {
-    month: "long", year: "numeric",
-  });
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
 
   // Reset selected date when month changes
   useEffect(() => { setSelectedDate(null); }, [yearMonth]);
