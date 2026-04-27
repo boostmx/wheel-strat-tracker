@@ -6,6 +6,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-27",
+    version: "v2.12.0",
+    highlights: [
+      "Dashboard timeframe filter — the All Accounts summary now has 7D / MTD / YTD / All tabs. P&L, win rate, and realized gains update to the selected period while current-state metrics (capital deployed, cash available, open trades) stay fixed.",
+      "Portfolio selector on the dashboard — when you have multiple portfolios, pill buttons appear so you can scope the timeframe view to a single portfolio without leaving the summary page.",
+      "Activity tab redesign — the closed trades header now shows total P/L and average % P/L as color-coded badges, with a compact 7D / 30D / 1Y / All toggle replacing the old label-and-select layout.",
+      "Allocation % consistency fix — the 'Capital In Use' figure on a trade detail page now uses the same denominator (current capital including profits) as the open trades table and the dashboard deployed % bar.",
+      "Performance: the portfolio metrics API now issues date-filtered database queries for MTD and YTD period sums instead of loading your full trade history and filtering in JavaScript — faster for accounts with long trading histories.",
+    ],
+  },
+  {
     date: "2026-04-26",
     version: "v2.11.0",
     highlights: [
