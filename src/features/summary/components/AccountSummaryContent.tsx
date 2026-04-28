@@ -660,7 +660,7 @@ export default function AccountSummaryContent({
     const source = selectedPortfolio
       ? selectedPortfolio.exposures
       : (data?.exposures ?? []);
-    return [...source].slice(0, 10);
+    return [...source];
   }, [selectedPortfolio, data]);
 
   const chartYtdSeries = useMemo(() => {
