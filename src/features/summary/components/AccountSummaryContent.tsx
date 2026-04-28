@@ -488,7 +488,6 @@ export default function AccountSummaryContent({
         } | null,
         exposures: [] as ExposureEntry[],
         premiumByTicker: [] as TickerPremium[],
-        topExposures: [] as { ticker: string; pct: number }[],
         perPortfolio: [] as {
           id: string;
           name: string;
@@ -539,9 +538,6 @@ export default function AccountSummaryContent({
 
     const nextExpiration = data.nextExpiration; // may include topTicker
 
-    // Top exposures: sorted by capital, already in new format from API
-    const topExposures = (data.exposures ?? []).slice(0, 7);
-
     // Per-portfolio chips
     const perPortfolio = portfolios.map((p) => {
       const denom = p.currentCapital > 0 ? p.currentCapital : p.capitalBase; // fall back if needed
@@ -579,7 +575,6 @@ export default function AccountSummaryContent({
       winRateYTD,
       exposures: data.exposures ?? [],
       premiumByTicker,
-      topExposures,
       perPortfolio,
     };
   })();
@@ -665,7 +660,7 @@ export default function AccountSummaryContent({
     const source = selectedPortfolio
       ? selectedPortfolio.exposures
       : (data?.exposures ?? []);
-    return [...source].slice(0, 7);
+    return [...source].slice(0, 10);
   }, [selectedPortfolio, data]);
 
   const chartYtdSeries = useMemo(() => {
