@@ -8,6 +8,13 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { VersionBadge } from "@/components/layout/VersionBadge";
+import { TrendingUp, Target, CalendarDays, BarChart2 } from "lucide-react";
+
+const FEATURES = [
+  { icon: Target, label: "Cash-secured puts & covered calls" },
+  { icon: CalendarDays, label: "Assignment and expiry workflows" },
+  { icon: BarChart2, label: "Portfolio-wide P&L and win rate" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,42 +45,71 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left decorative panel */}
-      <div className="hidden lg:flex lg:w-2/5 bg-primary flex-col justify-between p-10 text-primary-foreground">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
+      {/* Left — brand panel */}
+      <div
+        className="hidden lg:flex lg:w-2/5 flex-col justify-between p-10 text-white relative overflow-hidden"
+        style={{ background: "linear-gradient(160deg, oklch(0.44 0.18 155), oklch(0.36 0.16 162) 60%, oklch(0.28 0.12 168))" }}
+      >
+        {/* Subtle grid texture */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: "linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)", backgroundSize: "28px 28px" }}
+        />
+        {/* Amber glow orb — shared HLF brand thread */}
+        <div
+          className="absolute -top-24 -right-24 w-80 h-80 rounded-full opacity-20 blur-3xl"
+          style={{ background: "oklch(0.72 0.17 65)" }}
+        />
+
+        {/* Logo */}
+        <div className="relative flex items-center gap-3 z-10">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+            style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}
+          >
+            <TrendingUp className="w-5 h-5 text-white" />
           </div>
-          <span className="text-lg font-bold tracking-tight">HLF Wheel Trade Tracker</span>
+          <div>
+            <p className="font-bold text-base leading-tight">HLF Wheel Trade Tracker</p>
+            <p className="text-[11px] text-white/60 leading-none mt-0.5">HL Financial Strategies</p>
+          </div>
         </div>
 
-        <div className="space-y-5">
-          <blockquote className="text-xl font-semibold leading-snug">
-            "Everything you need to track the wheel strategy — without the spreadsheets."
-          </blockquote>
-          <div className="space-y-2.5">
-            {["Cash-secured puts & covered calls", "Assignment and expiry workflows", "Portfolio-wide P&L and win rate"].map((feat) => (
-              <div key={feat} className="flex items-center gap-2 text-sm text-primary-foreground/80">
-                <div className="w-4 h-4 rounded-full bg-primary-foreground/30 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
+        {/* Hero copy */}
+        <div className="relative z-10 space-y-8">
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">Options Trading</p>
+            <h2 className="text-3xl font-bold leading-snug tracking-tight">
+              Track the wheel.<br />Skip the spreadsheets.
+            </h2>
+            <p className="text-sm text-white/70 leading-relaxed max-w-xs">
+              Everything you need to run the wheel strategy — positions, P&L, expiry tracking, and more.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {FEATURES.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-3">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(255,255,255,0.12)" }}
+                >
+                  <Icon className="w-3.5 h-3.5 text-white" />
                 </div>
-                {feat}
+                <span className="text-sm text-white/80">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div>
-          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-widest">Wheel Trade Tracker</p>
-          <p className="text-xs text-primary-foreground/40 mt-0.5">By HL Financial Strategies</p>
+        {/* Footer */}
+        <div className="relative z-10">
+          <div className="h-px bg-white/10 mb-4" />
+          <p className="text-[11px] text-white/40">© {new Date().getFullYear()} HL Financial Strategies</p>
         </div>
       </div>
 
-      {/* Right login panel */}
+      {/* Right — login form */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative">
         <div className="absolute top-4 right-4">
           <ThemeToggle />
@@ -81,18 +117,19 @@ export default function LoginPage() {
 
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <svg className="w-5 h-5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
+          <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-md">
+              <TrendingUp className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-primary">Wheel Trade Tracker</span>
+            <div>
+              <p className="font-bold text-base text-foreground leading-tight">Wheel Trade Tracker</p>
+              <p className="text-[11px] text-muted-foreground leading-none">HL Financial Strategies</p>
+            </div>
           </div>
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground">Welcome back</h2>
-            <p className="text-muted-foreground text-sm mt-1">Sign in to your portfolio</p>
+            <h2 className="text-2xl font-bold text-foreground tracking-tight">Welcome back</h2>
+            <p className="text-muted-foreground text-sm mt-1.5">Sign in to your portfolio</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,7 +158,7 @@ export default function LoginPage() {
               />
             </div>
             <Button className="w-full h-11 text-base font-semibold mt-2" type="submit" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in…" : "Sign In"}
             </Button>
           </form>
 
