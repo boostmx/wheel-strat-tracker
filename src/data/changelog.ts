@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-04-29",
+    version: "v2.13.1",
+    highlights: [
+      "Auto-fill stock entry price — when adding a trade, typing a valid ticker now automatically fetches the current market price and pre-populates the Stock Entry Price field. The field stays fully editable; editing it manually stops any further auto-fill so your input is never overridden.",
+    ],
+  },
+  {
     date: "2026-04-27",
     version: "v2.13.0",
     highlights: [

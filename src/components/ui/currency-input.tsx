@@ -1,13 +1,14 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { ChangeEvent, FocusEvent, useState } from "react";
+import { ChangeEvent, FocusEvent, useEffect, useState } from "react";
 
 interface CurrencyInputProps {
   value: { formatted: string; raw: number };
   onChange: (val: { formatted: string; raw: number }) => void;
   placeholder?: string;
   disabled?: boolean;
+  onFocus?: () => void;
 }
 
 export function CurrencyInput({
@@ -15,8 +16,14 @@ export function CurrencyInput({
   onChange,
   placeholder,
   disabled,
+  onFocus,
 }: CurrencyInputProps) {
   const [localInput, setLocalInput] = useState(value.formatted);
+
+  // Sync when parent sets the value programmatically (e.g. auto-fill)
+  useEffect(() => {
+    setLocalInput(value.formatted);
+  }, [value.formatted]);
 
   // When user types
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -53,6 +60,7 @@ export function CurrencyInput({
   // When user clicks into the input — strip formatting
   const handleFocus = () => {
     setLocalInput(value.raw ? value.raw.toString() : "");
+    onFocus?.();
   };
 
   return (

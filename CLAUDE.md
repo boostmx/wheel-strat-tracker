@@ -334,11 +334,28 @@ Release history lives in `src/data/changelog.ts`. **Always add a new entry when 
 }
 ```
 
-Current latest: **v2.13.0** (2026-04-27)
+Current latest: **v2.13.1** (2026-04-29)
 
 ---
 
 ## Recent Work (Session History)
+
+### v2.13.1 — 2026-04-29
+**Auto-fill stock entry price on Add Trade**
+
+1. **AddTradeModal** (`src/features/trades/components/AddTradeModal.tsx`)
+   - Debounces ticker input (500ms) then fetches `/api/quotes?tickers=TICKER` via SWR
+   - Auto-fills `entryPrice` with the live `regularMarketPrice` when it resolves
+   - `priceManuallySet` ref guards against overriding user edits — set on focus or onChange
+   - Spinner (`Loader2`) shown inline next to the "Stock Entry Price" label while fetching
+   - State resets cleanly on modal close
+
+2. **CurrencyInput** (`src/components/ui/currency-input.tsx`)
+   - Added `useEffect` to sync `localInput` from parent `value.formatted` — enables programmatic updates (e.g. auto-fill) to be reflected in the displayed input
+   - Added optional `onFocus` callback prop
+
+3. **Tests** (`src/__tests__/api/quotes/quotes.test.ts`)
+   - 5 new cases: pre-market price, post-market price, absent `regularMarketPrice` → null, `marketState: "None"` → null, 25-ticker batch cap
 
 ### v2.13.0 — 2026-04-27
 **Trade Journal**
