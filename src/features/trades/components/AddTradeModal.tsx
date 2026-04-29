@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
 import { CurrencyInput } from "@/components/ui/currency-input";
 
@@ -25,6 +25,14 @@ async function fetchStocks(url: string): Promise<StocksListResponse> {
     throw new Error(text || `Request failed (${res.status})`);
   }
   return (await res.json()) as StocksListResponse;
+}
+
+type QuoteMap = Record<string, { price: number | null }>;
+
+async function fetchQuote(url: string): Promise<QuoteMap> {
+  const res = await fetch(url);
+  if (!res.ok) return {};
+  return res.json() as Promise<QuoteMap>;
 }
 
 function toNumber(v: string | number): number {
@@ -64,7 +72,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -128,6 +136,41 @@ export function AddTradeModal({
   const [entryPrice, setEntryPrice] = useState({ formatted: "", raw: 0 });
   const [isLoading, setIsLoading] = useState(false);
 
+  const [debouncedTicker, setDebouncedTicker] = useState("");
+  const priceManuallySet = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+    priceManuallySet.current = false;
+    const t = ticker.trim();
+    if (t.length < 1) {
+      setDebouncedTicker("");
+      return;
+    }
+    const timer = setTimeout(() => setDebouncedTicker(t), 500);
+    return () => clearTimeout(timer);
+  }, [ticker, open]);
+
+  const { data: quoteData, isLoading: quoteFetching } = useSWR<QuoteMap>(
+    open && debouncedTicker ? `/api/quotes?tickers=${debouncedTicker}` : null,
+    fetchQuote,
+    { revalidateOnFocus: false },
+  );
+
+  useEffect(() => {
+    if (!quoteData || priceManuallySet.current) return;
+    const price = quoteData[debouncedTicker]?.price;
+    if (price != null) {
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(price);
+      setEntryPrice({ formatted, raw: price });
+    }
+  }, [quoteData, debouncedTicker]);
+
   useEffect(() => {
     if (open) {
       if (prefill?.ticker != null) setTicker(prefill.ticker.toUpperCase());
@@ -150,6 +193,8 @@ export function AddTradeModal({
     setContractPrice({ formatted: "", raw: 0 });
     setEntryPrice({ formatted: "", raw: 0 });
     setIsLoading(false);
+    setDebouncedTicker("");
+    priceManuallySet.current = false;
   }, [open, prefill, defaultContracts]);
 
   function handleTypeChange(nextType: string) {
@@ -280,10 +325,17 @@ export function AddTradeModal({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="entryPrice">Stock Entry Price</Label>
+              <Label htmlFor="entryPrice" className="flex items-center gap-1.5">
+                Stock Entry Price
+                {quoteFetching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </Label>
               <CurrencyInput
                 value={entryPrice}
-                onChange={setEntryPrice}
+                onChange={(val) => {
+                  setEntryPrice(val);
+                  priceManuallySet.current = true;
+                }}
+                onFocus={() => { priceManuallySet.current = true; }}
                 placeholder="e.g. $184.34"
               />
             </div>

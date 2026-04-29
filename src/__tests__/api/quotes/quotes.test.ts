@@ -83,4 +83,120 @@ describe("GET /api/quotes", () => {
     expect(Object.keys(body)).toEqual(expect.arrayContaining(["AAPL", "MSFT"]));
     expect(Object.keys(body)).toHaveLength(2);
   });
+
+  // These cases are exercised by the AddTradeModal auto-fill: when a user types a ticker and
+  // the market is not in regular session, or the price field is absent, the UI must handle
+  // it gracefully (null price → no auto-fill, non-null price → auto-fill regardless of state).
+
+  it("returns price during pre-market session", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        chart: {
+          result: [{
+            meta: {
+              regularMarketPrice: 155,
+              chartPreviousClose: 150,
+              marketState: "PRE",
+              regularMarketVolume: null,
+              regularMarketDayHigh: null,
+              regularMarketDayLow: null,
+              fiftyTwoWeekHigh: null,
+              fiftyTwoWeekLow: null,
+            },
+          }],
+        },
+      }),
+    });
+    const res = await GET(new Request("http://localhost/api/quotes?tickers=AAPL"));
+    const body = await res.json() as Record<string, { price: number; marketState: string }>;
+    expect(body.AAPL.price).toBe(155);
+    expect(body.AAPL.marketState).toBe("PRE");
+  });
+
+  it("returns price during post-market session", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        chart: {
+          result: [{
+            meta: {
+              regularMarketPrice: 148,
+              chartPreviousClose: 150,
+              marketState: "POST",
+              regularMarketVolume: null,
+              regularMarketDayHigh: null,
+              regularMarketDayLow: null,
+              fiftyTwoWeekHigh: null,
+              fiftyTwoWeekLow: null,
+            },
+          }],
+        },
+      }),
+    });
+    const res = await GET(new Request("http://localhost/api/quotes?tickers=AAPL"));
+    const body = await res.json() as Record<string, { price: number; marketState: string }>;
+    expect(body.AAPL.price).toBe(148);
+    expect(body.AAPL.marketState).toBe("POST");
+  });
+
+  it("returns null price when regularMarketPrice is absent", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        chart: {
+          result: [{
+            meta: {
+              chartPreviousClose: 150,
+              marketState: "REGULAR",
+              regularMarketVolume: null,
+              regularMarketDayHigh: null,
+              regularMarketDayLow: null,
+              fiftyTwoWeekHigh: null,
+              fiftyTwoWeekLow: null,
+            },
+          }],
+        },
+      }),
+    });
+    const res = await GET(new Request("http://localhost/api/quotes?tickers=AAPL"));
+    const body = await res.json() as Record<string, { price: null; change: null; changePct: null }>;
+    expect(body.AAPL.price).toBeNull();
+    expect(body.AAPL.change).toBeNull();
+    expect(body.AAPL.changePct).toBeNull();
+  });
+
+  it("converts marketState 'None' to null", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        chart: {
+          result: [{
+            meta: {
+              regularMarketPrice: 150,
+              chartPreviousClose: 145,
+              marketState: "None",
+              regularMarketVolume: null,
+              regularMarketDayHigh: null,
+              regularMarketDayLow: null,
+              fiftyTwoWeekHigh: null,
+              fiftyTwoWeekLow: null,
+            },
+          }],
+        },
+      }),
+    });
+    const res = await GET(new Request("http://localhost/api/quotes?tickers=AAPL"));
+    const body = await res.json() as Record<string, { price: number; marketState: null }>;
+    expect(body.AAPL.price).toBe(150);
+    expect(body.AAPL.marketState).toBeNull();
+  });
+
+  it("caps batch requests at 25 tickers", async () => {
+    const tickers = Array.from({ length: 30 }, (_, i) => `T${i}`).join(",");
+    const res = await GET(new Request(`http://localhost/api/quotes?tickers=${tickers}`));
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, unknown>;
+    expect(Object.keys(body)).toHaveLength(25);
+  });
 });
