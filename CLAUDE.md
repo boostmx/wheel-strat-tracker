@@ -22,7 +22,7 @@ A personal options trading tracker built around the **wheel strategy** — selli
 |-------|-----------|
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5 |
-| Database | PostgreSQL via Prisma 6 |
+| Database | PostgreSQL on Railway (shared with hlf-bookkeeping + hlf-budgettracker) via Prisma 6 |
 | Auth | NextAuth v4 with credentials provider (bcrypt passwords) |
 | UI | shadcn/ui components + Tailwind CSS v4 |
 | Data fetching | SWR (client-side), fetch (server components) |
@@ -481,10 +481,35 @@ Current latest: **v2.13.1** (2026-04-29)
 
 ---
 
+## Database Safety (CRITICAL)
+
+All three HLF apps share the **same Railway PostgreSQL database**. The `User`, `Account`, `Session`, and `VerificationToken` tables are shared — same rows, same columns.
+
+**Never run `prisma db push` or `prisma migrate dev` in production.** Both sync the DB schema to the local schema file. Since each app's Prisma schema is slim (only the models it owns), running either command could drop columns or tables used by `hlf-bookkeeping` or `hlf-budgettracker`.
+
+**Always use `prisma migrate deploy`** for production — it only runs the explicit SQL files in `/prisma/migrations/`, which are all additive.
+
+**Enum naming convention:** PostgreSQL enum types are global within the shared schema. This app owns `TransactionType` (deposit|withdrawal), `TradeType`, `TradeStatus`, `LotStatus`, `CloseReason` — these must never be dropped or renamed. Any new enum added to this app must be prefixed with `Wt` in the DB name (e.g. `WtSomeType`), mapped via `@@map` in the Prisma schema so the TypeScript name stays clean. New table names should be descriptive enough to avoid collision with the other two apps — avoid generic names like `Note`, `Tag`, `Setting` without a `Wt` prefix.
+
+`NEXTAUTH_SECRET` must be the same value across all three apps so JWT tokens are valid on all of them.
+
+---
+
 ## Environment
 
 - **Dev**: `pnpm dev` (Next.js on port 3000)
-- **DB reset**: `pnpm reset` (force-push schema + re-seed)
+- **DB reset**: `pnpm reset` (force-push schema + re-seed) — **dev only, never on shared prod DB**
 - **Type check**: `npx tsc --noEmit`
-- **DB**: PostgreSQL (local dev + Vercel Postgres in prod)
+- **DB**: PostgreSQL on Railway (shared with hlf-bookkeeping + hlf-budgettracker)
 - **Quotes**: Yahoo Finance scraping via `/api/quotes?tickers=AAPL,META` — no API key needed but rate-limited; 60s refresh interval client-side
+
+---
+
+## Related Projects
+
+| App | Path | Color | Auth |
+|---|---|---|---|
+| `hlf-bookkeeping` | `/Users/hungnguyen/workspace/hlf-bookkeeping` | Indigo | Admin-only |
+| `hlf-budgettracker` | `/Users/hungnguyen/workspace/hlf-budgettracker` | Teal | Any authenticated user |
+
+All three share the same Railway PostgreSQL database and User table. A single login works across all apps. `hlf-bookkeeping` reads trade P&L directly from this app's Trade/Portfolio tables.
