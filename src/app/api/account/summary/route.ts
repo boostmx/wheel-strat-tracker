@@ -179,7 +179,7 @@ export async function GET() {
   // 2) Per-portfolio snapshots (parallelized)
   const perPortfolioEntries = await Promise.all(
     portfolios.map(async (p) => {
-      const [openTrades, closedAll, closedMTD, closedYTD, closed90, openStockLots] =
+      const [openTrades, closedAll, closedMTD, closedYTD, closed90, openStockLots, closedStockLotsAll] =
         await Promise.all([
           prisma.trade.findMany({
             where: { portfolioId: p.id, status: "open" },
@@ -263,6 +263,10 @@ export async function GET() {
               shares: true,
               avgCost: true,
             },
+          }),
+          prisma.stockLot.findMany({
+            where: { portfolioId: p.id, status: "CLOSED" },
+            select: { realizedPnl: true, closedAt: true },
           }),
         ]);
 
@@ -395,10 +399,23 @@ export async function GET() {
               ).toFixed(1),
             );
 
-      // Realized P/L buckets
-      const totalProfitAll = sumRealized(closedAll);
-      const realizedMTD = sumRealized(closedMTD);
-      const realizedYTD = sumRealized(closedYTD);
+      // Stock lot realized gains by period (fully closed lots only)
+      const stockLotPnl = (lots: Array<{ realizedPnl: unknown }>) =>
+        lots.reduce((sum, l) => sum + Number(l.realizedPnl ?? 0), 0);
+      const closedStockLotsMTD = closedStockLotsAll.filter(
+        (l) => l.closedAt != null && new Date(l.closedAt) >= monthStart,
+      );
+      const closedStockLotsYTD = closedStockLotsAll.filter(
+        (l) => l.closedAt != null && new Date(l.closedAt) >= yearStart,
+      );
+      const closedStockLots90 = closedStockLotsAll.filter(
+        (l) => l.closedAt != null && new Date(l.closedAt) >= ninetyStart,
+      );
+
+      // Realized P/L buckets (options + stock lots)
+      const totalProfitAll = sumRealized(closedAll) + stockLotPnl(closedStockLotsAll);
+      const realizedMTD = sumRealized(closedMTD) + stockLotPnl(closedStockLotsMTD);
+      const realizedYTD = sumRealized(closedYTD) + stockLotPnl(closedStockLotsYTD);
 
       // Win rate: trades where realized P&L > 0
       const winCount = closedAll.filter((t) => realizedFor({
@@ -422,7 +439,10 @@ export async function GET() {
       const closed7D = closed90.filter(
         (t) => t.closedAt != null && new Date(t.closedAt) >= sevenDaysAgo,
       );
-      const realized7D = sumRealized(closed7D);
+      const closedStockLots7D = closedStockLots90.filter(
+        (l) => l.closedAt != null && new Date(l.closedAt) >= sevenDaysAgo,
+      );
+      const realized7D = sumRealized(closed7D) + stockLotPnl(closedStockLots7D);
 
       const periodWins = (rows: Array<{ type?: string | null; contracts: number; contractPrice: number; closingPrice: number | null; premiumCaptured: number | null }>) => {
         const wins = rows.filter((t) =>
@@ -478,6 +498,11 @@ export async function GET() {
         });
         mtdDailyBucket.set(key, (mtdDailyBucket.get(key) ?? 0) + val);
       }
+      for (const lot of closedStockLotsMTD) {
+        const key = lot.closedAt ? toIsoDayUTC(new Date(lot.closedAt)) : null;
+        if (!key) continue;
+        mtdDailyBucket.set(key, (mtdDailyBucket.get(key) ?? 0) + Number(lot.realizedPnl ?? 0));
+      }
 
       const ytdMonthlyBucket = new Map<string, number>(); // YYYY-MM -> sum
       for (const r of closedYTD) {
@@ -494,6 +519,12 @@ export async function GET() {
         });
         ytdMonthlyBucket.set(key, (ytdMonthlyBucket.get(key) ?? 0) + val);
       }
+      for (const lot of closedStockLotsYTD) {
+        const d = lot.closedAt ? new Date(lot.closedAt) : null;
+        if (!d) continue;
+        const key = toIsoMonthUTC(d);
+        ytdMonthlyBucket.set(key, (ytdMonthlyBucket.get(key) ?? 0) + Number(lot.realizedPnl ?? 0));
+      }
 
       // 90-day daily bucket (per-portfolio)
       const daily90Bucket = new Map<string, number>(); // YYYY-MM-DD -> sum
@@ -509,6 +540,11 @@ export async function GET() {
             r.premiumCaptured == null ? null : Number(r.premiumCaptured),
         });
         daily90Bucket.set(key, (daily90Bucket.get(key) ?? 0) + val);
+      }
+      for (const lot of closedStockLots90) {
+        const key = lot.closedAt ? toIsoDayUTC(new Date(lot.closedAt)) : null;
+        if (!key) continue;
+        daily90Bucket.set(key, (daily90Bucket.get(key) ?? 0) + Number(lot.realizedPnl ?? 0));
       }
 
       // Accumulate into global 90-day bucket
@@ -547,6 +583,19 @@ export async function GET() {
         monthlyAllBucket.set(mKey, (monthlyAllBucket.get(mKey) ?? 0) + val);
         const yKey = String(d.getUTCFullYear());
         yearlyBucket.set(yKey, (yearlyBucket.get(yKey) ?? 0) + val);
+      }
+      for (const lot of closedStockLotsAll) {
+        if (!lot.closedAt) continue;
+        const d = new Date(lot.closedAt);
+        const pnl = Number(lot.realizedPnl ?? 0);
+        if (d >= fiftyTwoWeeksAgo) {
+          const wKey = toIsoWeekMondayUTC(d);
+          weekly52Bucket.set(wKey, (weekly52Bucket.get(wKey) ?? 0) + pnl);
+        }
+        const mKey = toIsoMonthUTC(d);
+        monthlyAllBucket.set(mKey, (monthlyAllBucket.get(mKey) ?? 0) + pnl);
+        const yKey = String(d.getUTCFullYear());
+        yearlyBucket.set(yKey, (yearlyBucket.get(yKey) ?? 0) + pnl);
       }
       for (const [k, v] of weekly52Bucket) globalWeekly52.set(k, (globalWeekly52.get(k) ?? 0) + v);
       for (const [k, v] of monthlyAllBucket) globalMonthlyAll.set(k, (globalMonthlyAll.get(k) ?? 0) + v);
