@@ -122,7 +122,7 @@ export default function LoginPage() {
               <TrendingUp className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <p className="font-bold text-base text-foreground leading-tight">Wheel Trade Tracker</p>
+              <p className="font-bold text-base text-foreground leading-tight">HLF Wheel Trade Tracker</p>
               <p className="text-[11px] text-muted-foreground leading-none">HL Financial Strategies</p>
             </div>
           </div>

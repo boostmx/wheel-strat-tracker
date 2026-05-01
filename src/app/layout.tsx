@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wheel Trade Tracker",
+  title: "HLF Wheel Trade Tracker",
   description: "Created by HL Financial Strategies",
 };
 
