@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CreatePortfolioModal } from "@/features/portfolios/components/CreatePortfolioModal";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const AccountsReportContent = dynamic(
   () =>
@@ -1042,11 +1043,16 @@ export default function AccountSummaryContent({
           <p className={`text-xl font-bold tabular-nums ${moneyColor(periodMetrics.realized)}`}>
             {periodMetrics.realized >= 0 ? "+" : ""}{formatCompactCurrency(periodMetrics.realized)}
           </p>
-          <p className="text-[11px] text-muted-foreground">
-            {dashTimeframe === "all"
-              ? <>MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}</>
-              : <>All time {view.accountProfit >= 0 ? "+" : ""}{formatCompactCurrency(view.accountProfit)}</>}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-muted-foreground">
+              {dashTimeframe === "all"
+                ? <>MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}</>
+                : <>All time {view.accountProfit >= 0 ? "+" : ""}{formatCompactCurrency(view.accountProfit)}</>}
+            </p>
+            <Link href="/journal" className="text-[11px] text-primary hover:underline">
+              View trades →
+            </Link>
+          </div>
         </div>
 
         {/* Cash Available */}
@@ -1133,6 +1139,9 @@ export default function AccountSummaryContent({
                     ? `All time ${view.accountProfit >= 0 ? "+" : ""}${formatCompactCurrency(view.accountProfit)}`
                     : <>MTD {view.totalRealizedMTD >= 0 ? "+" : ""}{formatCompactCurrency(view.totalRealizedMTD)}</>}
                 </p>
+                <Link href="/journal" className="text-[10px] text-primary hover:underline">
+                  View trades →
+                </Link>
               </div>
               <div className="space-y-0.5">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Expiring ≤7d</p>

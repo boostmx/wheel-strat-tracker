@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-05-01",
+    version: "v2.13.2",
+    highlights: [
+      "Fix: stock realized gains now count on the dashboard — sold stock positions were missing from the 7D, MTD, YTD, and All-time P&L totals. The overview and all chart series now include P&L from fully closed stock lots alongside option premiums.",
+    ],
+  },
+  {
     date: "2026-04-29",
     version: "v2.13.1",
     highlights: [
