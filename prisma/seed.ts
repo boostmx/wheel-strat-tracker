@@ -2,106 +2,78 @@ import { prisma } from "../src/server/prisma";
 import bcrypt from "bcrypt";
 
 async function main() {
-  // 🧼 Clean up existing data
-  //await prisma.trade.deleteMany({});
-  //await prisma.portfolio.deleteMany({});
-  //await prisma.user.deleteMany({});
+  let user = await prisma.user.findUnique({ where: { username: "admin" } });
 
-  const testUserId = "test-user-id";
-  const testUsername = "admin";
-  const testPassword = "admin"; // plaintext for testing
-  const passwordHash = await bcrypt.hash(testPassword, 10);
-
-  // ✅ Upsert test user
-  const user = await prisma.user.upsert({
-    where: { id: testUserId },
-    update: {},
-    create: {
-      id: testUserId,
-      username: testUsername,
-      password: passwordHash,
-      firstName: "Admin",
-      lastName: "Administrator",
-      email: "hung@example.com",
-      bio: "Builder of the Wheel Strat Tracker",
-      avatarUrl: "https://example.com/avatar-hung.png",
-      isAdmin: true,
-    },
-  });
-
-  console.log(`👤 Seeded user: ${user.username}`);
-
-  // await prisma.user.createMany({
-  //   data: [
-  //     // password: test123
-  //     {
-  //       id: "user-2",
-  //       username: "wheelie",
-  //       password: await bcrypt.hash("test123", 10),
-  //       firstName: "Will",
-  //       lastName: "Lee",
-  //       email: "wheelie@example.com",
-  //       avatarUrl: "https://example.com/avatar-wheelie.png",
-  //       isAdmin: false,
-  //     },
-  //     // password: securepass
-  //     {
-  //       id: "user-3",
-  //       username: "stratlord",
-  //       password: await bcrypt.hash("securepass", 10),
-  //       firstName: "Strat",
-  //       lastName: "Lord",
-  //       email: "stratlord@example.com",
-  //       avatarUrl: "https://example.com/avatar-stratlord.png",
-  //       isAdmin: false,
-  //     },
-  //   ],
-  //   skipDuplicates: true,
-  // });
-
-  // console.log("👥 Additional test users seeded");
-
-  // ✅ Check if portfolio already exists
-  const existingPortfolio = await prisma.portfolio.findFirst({
-    where: { userId: user.id },
-  });
-
-  if (existingPortfolio) {
-    console.log(
-      "📦 Portfolio already exists. Skipping portfolio/trade seeding.",
-    );
-    return;
+  if (!user) {
+    const passwordHash = await bcrypt.hash("admin", 10);
+    user = await prisma.user.create({
+      data: {
+        username: "admin",
+        password: passwordHash,
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@example.com",
+        isAdmin: true,
+      },
+    });
+    console.log("👤 Created admin user (username: admin, password: admin)");
+  } else {
+    console.log(`👤 Found user: ${user.username}`);
   }
 
-  // ✅ Create a test portfolio
+  await prisma.portfolio.deleteMany({ where: { userId: user.id } });
+  await prisma.watchlistItem.deleteMany({ where: { userId: user.id } });
+  await prisma.journalEntry.deleteMany({ where: { userId: user.id } });
+  console.log("🧹 Cleared existing data");
+
   const portfolio = await prisma.portfolio.create({
     data: {
-      name: "Test Portfolio",
+      name: "Main Portfolio",
       userId: user.id,
-      startingCapital: 500000,
+      startingCapital: 350000,
+      notes: "Primary wheel strategy account. Focus on large-cap, high-IV tickers.",
+    },
+  });
+  console.log(`📦 Created portfolio: ${portfolio.name}`);
+
+  // Open stock lots
+  const aaplLot = await prisma.stockLot.create({
+    data: {
+      portfolioId: portfolio.id,
+      ticker: "AAPL",
+      shares: 100,
+      avgCost: 159.45,
+      status: "OPEN",
+      openedAt: new Date("2026-01-17"),
+      notes: "Assigned from $165 CSP. Selling CCs while watching for recovery.",
     },
   });
 
-  console.log(`📦 Created portfolio: ${portfolio.name}`);
-
-  // ✅ Seed underlying stock lots for covered call examples
   const tslaLot = await prisma.stockLot.create({
     data: {
       portfolioId: portfolio.id,
       ticker: "TSLA",
-      shares: 200, // 2 CC contracts * 100 shares
-      avgCost: 255,
-      notes: "Seed lot for covered call history",
+      shares: 200,
+      avgCost: 225.00,
+      status: "OPEN",
+      openedAt: new Date("2026-02-07"),
+      notes: "2 contracts assigned at $235. Weekly CCs running.",
     },
   });
 
+  // Closed stock lots
   const msftLot = await prisma.stockLot.create({
     data: {
       portfolioId: portfolio.id,
       ticker: "MSFT",
-      shares: 100, // 1 CC contract * 100 shares
-      avgCost: 352,
-      notes: "Seed lot for open covered call",
+      shares: 100,
+      avgCost: 381.20,
+      status: "CLOSED",
+      openedAt: new Date("2026-01-10"),
+      closedAt: new Date("2026-04-04"),
+      closePrice: 415.00,
+      realizedPnl: 3380.00,
+      notes: "Full wheel cycle — assigned → 2 CC cycles → called away at $415.",
     },
   });
 
@@ -109,120 +81,467 @@ async function main() {
     data: {
       portfolioId: portfolio.id,
       ticker: "AMZN",
-      shares: 200, // 2 CC contracts * 100 shares
-      avgCost: 142,
-      notes: "Seed lot for closed covered call",
+      shares: 200,
+      avgCost: 169.10,
+      status: "CLOSED",
+      openedAt: new Date("2026-02-07"),
+      closedAt: new Date("2026-04-04"),
+      closePrice: 192.00,
+      realizedPnl: 4580.00,
+      notes: "Captured $340 in CC premiums + shares called away at $192.",
     },
   });
 
-  console.log("📦 Seeded stock lots: TSLA/MSFT/AMZN");
+  console.log("📊 Created stock lots (2 open, 2 closed)");
 
-  // ✅ Add some trades to the portfolio
   await prisma.trade.createMany({
     data: [
-      // Open CSP on AAPL
+      // Nov 2025 — closed CSPs, expired worthless
       {
         ticker: "AAPL",
-        strikePrice: 180,
-        expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week out
+        strikePrice: 170,
+        expirationDate: new Date("2025-11-21"),
         type: "CashSecuredPut",
         contracts: 1,
         contractsInitial: 1,
-        contractsOpen: 1,
-        contractPrice: 2.6,
-        entryPrice: 182.5,
-        status: "open",
+        contractsOpen: 0,
+        contractPrice: 2.15,
+        entryPrice: 175.30,
+        status: "closed",
+        premiumCaptured: 215,
+        closingPrice: 0,
+        closedAt: new Date("2025-11-21"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
         portfolioId: portfolio.id,
       },
-      // Closed CC on TSLA
       {
-        ticker: "TSLA",
-        strikePrice: 250,
-        expirationDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2 weeks out
-        type: "CoveredCall",
+        ticker: "MSFT",
+        strikePrice: 390,
+        expirationDate: new Date("2025-11-21"),
+        type: "CashSecuredPut",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 1.90,
+        entryPrice: 395.20,
+        status: "closed",
+        premiumCaptured: 190,
+        closingPrice: 0,
+        closedAt: new Date("2025-11-21"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+      },
+      // Dec 2025 — closed CSPs
+      {
+        ticker: "NVDA",
+        strikePrice: 120,
+        expirationDate: new Date("2025-12-06"),
+        type: "CashSecuredPut",
         contracts: 2,
         contractsInitial: 2,
         contractsOpen: 0,
-        contractPrice: 3.15,
-        entryPrice: 255,
+        contractPrice: 2.40,
+        entryPrice: 127.80,
         status: "closed",
-        premiumCaptured: 630,
-        closingPrice: 0.05,
-        closedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // closed yesterday
-        portfolioId: portfolio.id,
-        percentPL: 34.23,
-        stockLotId: tslaLot.id,
-      },
-      // Open CSP on NVDA
-      {
-        ticker: "NVDA",
-        strikePrice: 400,
-        expirationDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 3 weeks out
-        type: "CashSecuredPut",
-        contracts: 3,
-        contractsInitial: 3,
-        contractsOpen: 3,
-        contractPrice: 6.1,
-        entryPrice: 410,
-        status: "open",
+        premiumCaptured: 480,
+        closingPrice: 0,
+        closedAt: new Date("2025-12-06"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
         portfolioId: portfolio.id,
       },
-      // Closed CSP on META
       {
         ticker: "META",
-        strikePrice: 300,
-        expirationDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // expired 1 week ago
+        strikePrice: 575,
+        expirationDate: new Date("2025-12-20"),
         type: "CashSecuredPut",
         contracts: 1,
         contractsInitial: 1,
         contractsOpen: 0,
-        contractPrice: 2.0,
-        entryPrice: 303,
+        contractPrice: 4.85,
+        entryPrice: 582.40,
         status: "closed",
-        premiumCaptured: 200,
+        premiumCaptured: 485,
         closingPrice: 0,
-        closedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        closedAt: new Date("2025-12-20"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
         portfolioId: portfolio.id,
-        percentPL: 45.87,
       },
-      // Open CC on MSFT
+      // Jan 2026 — CSPs assigned (created stock lots)
       {
-        ticker: "MSFT",
-        strikePrice: 350,
-        expirationDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000), // 4 weeks out
-        type: "CoveredCall",
+        ticker: "AAPL",
+        strikePrice: 165,
+        expirationDate: new Date("2026-01-17"),
+        type: "CashSecuredPut",
         contracts: 1,
         contractsInitial: 1,
-        contractsOpen: 1,
-        contractPrice: 4.5,
-        entryPrice: 352,
-        status: "open",
+        contractsOpen: 0,
+        contractPrice: 2.35,
+        entryPrice: 168.50,
+        status: "closed",
+        premiumCaptured: 235,
+        closingPrice: 165,
+        closedAt: new Date("2026-01-17"),
+        closeReason: "assigned",
+        percentPL: -1.05,
+        portfolioId: portfolio.id,
+        stockLotId: aaplLot.id,
+      },
+      {
+        ticker: "MSFT",
+        strikePrice: 390,
+        expirationDate: new Date("2026-01-10"),
+        type: "CashSecuredPut",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 3.50,
+        entryPrice: 393.80,
+        status: "closed",
+        premiumCaptured: 350,
+        closingPrice: 390,
+        closedAt: new Date("2026-01-10"),
+        closeReason: "assigned",
+        percentPL: -0.90,
         portfolioId: portfolio.id,
         stockLotId: msftLot.id,
       },
-      // Closed CC on AMZN
+      // Feb 2026 — more CSPs assigned
       {
         ticker: "AMZN",
-        strikePrice: 140,
-        expirationDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // expired 2 weeks ago
+        strikePrice: 175,
+        expirationDate: new Date("2026-02-07"),
+        type: "CashSecuredPut",
+        contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 0,
+        contractPrice: 4.20,
+        entryPrice: 181.30,
+        status: "closed",
+        premiumCaptured: 840,
+        closingPrice: 175,
+        closedAt: new Date("2026-02-07"),
+        closeReason: "assigned",
+        percentPL: -2.14,
+        portfolioId: portfolio.id,
+        stockLotId: amznLot.id,
+      },
+      {
+        ticker: "TSLA",
+        strikePrice: 235,
+        expirationDate: new Date("2026-02-07"),
+        type: "CashSecuredPut",
+        contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 0,
+        contractPrice: 4.80,
+        entryPrice: 242.50,
+        status: "closed",
+        premiumCaptured: 960,
+        closingPrice: 235,
+        closedAt: new Date("2026-02-07"),
+        closeReason: "assigned",
+        percentPL: -1.95,
+        portfolioId: portfolio.id,
+        stockLotId: tslaLot.id,
+      },
+      // CCs on AAPL lot — expired worthless
+      {
+        ticker: "AAPL",
+        strikePrice: 175,
+        expirationDate: new Date("2026-02-07"),
+        type: "CoveredCall",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 1.85,
+        entryPrice: 168.90,
+        status: "closed",
+        premiumCaptured: 185,
+        closingPrice: 0,
+        closedAt: new Date("2026-02-07"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+        stockLotId: aaplLot.id,
+      },
+      {
+        ticker: "AAPL",
+        strikePrice: 172,
+        expirationDate: new Date("2026-03-07"),
+        type: "CoveredCall",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 1.55,
+        entryPrice: 163.20,
+        status: "closed",
+        premiumCaptured: 155,
+        closingPrice: 0,
+        closedAt: new Date("2026-03-07"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+        stockLotId: aaplLot.id,
+      },
+      // CCs on MSFT lot
+      {
+        ticker: "MSFT",
+        strikePrice: 400,
+        expirationDate: new Date("2026-02-07"),
+        type: "CoveredCall",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 2.85,
+        entryPrice: 393.50,
+        status: "closed",
+        premiumCaptured: 285,
+        closingPrice: 0,
+        closedAt: new Date("2026-02-07"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+        stockLotId: msftLot.id,
+      },
+      {
+        ticker: "MSFT",
+        strikePrice: 405,
+        expirationDate: new Date("2026-03-07"),
+        type: "CoveredCall",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 2.45,
+        entryPrice: 398.70,
+        status: "closed",
+        premiumCaptured: 245,
+        closingPrice: 0,
+        closedAt: new Date("2026-03-07"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+        stockLotId: msftLot.id,
+      },
+      {
+        ticker: "MSFT",
+        strikePrice: 415,
+        expirationDate: new Date("2026-04-04"),
+        type: "CoveredCall",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 3.20,
+        entryPrice: 410.50,
+        status: "closed",
+        premiumCaptured: 320,
+        closingPrice: 415,
+        closedAt: new Date("2026-04-04"),
+        closeReason: "assigned",
+        percentPL: 85.60,
+        portfolioId: portfolio.id,
+        stockLotId: msftLot.id,
+      },
+      // CCs on TSLA lot
+      {
+        ticker: "TSLA",
+        strikePrice: 250,
+        expirationDate: new Date("2026-03-07"),
         type: "CoveredCall",
         contracts: 2,
         contractsInitial: 2,
         contractsOpen: 0,
-        contractPrice: 2.8,
-        entryPrice: 142,
+        contractPrice: 2.80,
+        entryPrice: 243.80,
         status: "closed",
         premiumCaptured: 560,
         closingPrice: 0,
-        closedAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000),
+        closedAt: new Date("2026-03-07"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
         portfolioId: portfolio.id,
-        percentPL: -15.67,
+        stockLotId: tslaLot.id,
+      },
+      {
+        ticker: "TSLA",
+        strikePrice: 255,
+        expirationDate: new Date("2026-04-04"),
+        type: "CoveredCall",
+        contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 0,
+        contractPrice: 2.40,
+        entryPrice: 248.10,
+        status: "closed",
+        premiumCaptured: 480,
+        closingPrice: 0,
+        closedAt: new Date("2026-04-04"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+        stockLotId: tslaLot.id,
+      },
+      // CCs on AMZN lot
+      {
+        ticker: "AMZN",
+        strikePrice: 185,
+        expirationDate: new Date("2026-03-07"),
+        type: "CoveredCall",
+        contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 0,
+        contractPrice: 1.70,
+        entryPrice: 178.40,
+        status: "closed",
+        premiumCaptured: 340,
+        closingPrice: 0,
+        closedAt: new Date("2026-03-07"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
         stockLotId: amznLot.id,
+      },
+      {
+        ticker: "AMZN",
+        strikePrice: 192,
+        expirationDate: new Date("2026-04-04"),
+        type: "CoveredCall",
+        contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 0,
+        contractPrice: 3.10,
+        entryPrice: 186.20,
+        status: "closed",
+        premiumCaptured: 620,
+        closingPrice: 192,
+        closedAt: new Date("2026-04-04"),
+        closeReason: "assigned",
+        percentPL: 78.40,
+        portfolioId: portfolio.id,
+        stockLotId: amznLot.id,
+      },
+      // Apr 2026 — additional closed CSPs
+      {
+        ticker: "GOOGL",
+        strikePrice: 175,
+        expirationDate: new Date("2026-04-04"),
+        type: "CashSecuredPut",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 1.95,
+        entryPrice: 179.80,
+        status: "closed",
+        premiumCaptured: 195,
+        closingPrice: 0,
+        closedAt: new Date("2026-04-04"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+      },
+      {
+        ticker: "META",
+        strikePrice: 550,
+        expirationDate: new Date("2026-04-25"),
+        type: "CashSecuredPut",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 0,
+        contractPrice: 3.10,
+        entryPrice: 557.20,
+        status: "closed",
+        premiumCaptured: 310,
+        closingPrice: 0,
+        closedAt: new Date("2026-04-25"),
+        closeReason: "expiredWorthless",
+        percentPL: 100,
+        portfolioId: portfolio.id,
+      },
+      // May 2026 — current open positions
+      {
+        ticker: "NVDA",
+        strikePrice: 870,
+        expirationDate: new Date("2026-05-16"),
+        type: "CashSecuredPut",
+        contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 2,
+        contractPrice: 7.20,
+        entryPrice: 887.50,
+        status: "open",
+        portfolioId: portfolio.id,
+      },
+      {
+        ticker: "TSLA",
+        strikePrice: 260,
+        expirationDate: new Date("2026-05-16"),
+        type: "CoveredCall",
+        contracts: 2,
+        contractsInitial: 2,
+        contractsOpen: 2,
+        contractPrice: 4.10,
+        entryPrice: 250.30,
+        status: "open",
+        portfolioId: portfolio.id,
+        stockLotId: tslaLot.id,
+      },
+      {
+        ticker: "AAPL",
+        strikePrice: 178,
+        expirationDate: new Date("2026-05-16"),
+        type: "CoveredCall",
+        contracts: 1,
+        contractsInitial: 1,
+        contractsOpen: 1,
+        contractPrice: 2.20,
+        entryPrice: 171.80,
+        status: "open",
+        portfolioId: portfolio.id,
+        stockLotId: aaplLot.id,
       },
     ],
   });
+  console.log("📈 Created 21 trades (18 closed, 3 open)");
 
-  console.log(`📈 Added trades to portfolio`);
+  await prisma.watchlistItem.createMany({
+    data: [
+      { userId: user.id, ticker: "AAPL", order: 0 },
+      { userId: user.id, ticker: "TSLA", order: 1 },
+      { userId: user.id, ticker: "NVDA", order: 2 },
+      { userId: user.id, ticker: "MSFT", order: 3 },
+      { userId: user.id, ticker: "AMZN", order: 4 },
+      { userId: user.id, ticker: "META", order: 5 },
+      { userId: user.id, ticker: "GOOGL", order: 6 },
+      { userId: user.id, ticker: "SPY", order: 7 },
+    ],
+    skipDuplicates: true,
+  });
+  console.log("👀 Created watchlist (8 tickers)");
+
+  await prisma.journalEntry.createMany({
+    data: [
+      {
+        userId: user.id,
+        yearMonth: "2026-02",
+        notes: "Feb was rough — both TSLA and AMZN CSPs got assigned. Not unexpected given the IV spike mid-month. TSLA is a core holding I'm happy to wheel. AMZN looks cheap relative to its range.\n\nKey learnings:\n- 0.25–0.30 delta was too aggressive during the Feb vol spike\n- Need to be more selective on TSLA strikes when macro is shaky\n- Cash deployed ~82%, which feels about right for this environment",
+      },
+      {
+        userId: user.id,
+        yearMonth: "2026-03",
+        notes: "March was a grind but profitable. All four CC positions expired worthless. MSFT on its second CC cycle now and looking strong.\n\nTotal premiums collected: ~$1,375\n- AAPL CC: $155\n- MSFT CC: $245\n- TSLA CC: $560\n- AMZN CC: $340\n- GOOGL CSP: $195 (added mid-month)\n\nWaiting for NVDA to pull back before sizing in. IV still rich post-earnings.",
+      },
+      {
+        userId: user.id,
+        yearMonth: "2026-04",
+        notes: "Best month so far. MSFT called away at $415 — full wheel cycle complete. AMZN called away at $192 as well. Both were clean wins.\n\nOpened NVDA 2x for May at $7.20 premium — IV was elevated after the earnings release.\n\nCurrent positions heading into May:\n- NVDA CSP $870 (2 contracts, exp 5/16)\n- TSLA CC $260 (2 contracts, exp 5/16)\n- AAPL CC $178 (1 contract, exp 5/16)\n\nLooking at META or GOOGL for the next CSP if either pulls back.",
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log("📓 Created 3 journal entries");
 }
 
 main()
