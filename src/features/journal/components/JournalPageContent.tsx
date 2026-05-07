@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
 import type { JournalResponse, JournalTrade } from "@/app/api/journal/[yearMonth]/route";
 import type { Portfolio } from "@/types";
 
@@ -182,6 +183,7 @@ function DayPanel({
             className="w-full flex items-center justify-between gap-3 rounded-lg border border-border/50 px-3 py-2 text-sm hover:bg-muted/40 transition-colors text-left"
           >
             <div className="flex items-center gap-2 min-w-0">
+              <TickerAvatar symbol={t.ticker} size="sm" />
               <span className="font-semibold text-foreground">{t.ticker}</span>
               <TypeBadge type={t.type} />
               {showPortfolio && (
