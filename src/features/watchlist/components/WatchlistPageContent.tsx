@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TypeBadge } from "@/features/trades/components/TypeBadge";
+import { TickerAvatar } from "@/components/ui/ticker-avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { WatchlistResponse, WatchlistPosition } from "@/app/api/watchlist/route";
@@ -316,7 +317,12 @@ function PositionsTable({
                 const up = (quote?.change ?? 0) >= 0;
                 return (
                   <tr key={pos.ticker} className="hover:bg-muted/40 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-sm">{pos.ticker}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <TickerAvatar symbol={pos.ticker} size="sm" />
+                        <span className="font-semibold text-sm">{pos.ticker}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold tabular-nums">{quote?.price != null ? fmt(quote.price) : "—"}</span>
@@ -343,7 +349,10 @@ function PositionsTable({
             return (
               <div key={pos.ticker} className="px-4 py-3 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="font-semibold text-base">{pos.ticker}</span>
+                  <div className="flex items-center gap-2.5">
+                    <TickerAvatar symbol={pos.ticker} size="sm" />
+                    <span className="font-semibold text-base">{pos.ticker}</span>
+                  </div>
                   <QuoteSummary quote={quote} align="right" />
                 </div>
                 {positionChips(pos, quote, activeFilter)}
@@ -403,11 +412,14 @@ function DraggableWatchlistRow({
         </button>
       </td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{ticker}</span>
-          {positionTickers.has(ticker) && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Position</span>
-          )}
+        <div className="flex items-center gap-2.5">
+          <TickerAvatar symbol={ticker} size="sm" />
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm">{ticker}</span>
+            {positionTickers.has(ticker) && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Position</span>
+            )}
+          </div>
         </div>
       </td>
       <td className="px-4 py-3">
@@ -496,6 +508,7 @@ function DraggableMobileRow({
           >
             <GripVertical className="h-4 w-4" />
           </button>
+          <TickerAvatar symbol={ticker} size="sm" />
           <span className="font-semibold text-base">{ticker}</span>
           {positionTickers.has(ticker) && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Position</span>
