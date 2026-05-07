@@ -73,7 +73,7 @@ export async function GET(
     // All queries in one parallel round trip.
     // closedAll: needed for all-time totals, win rate, avg hold — no sort needed.
     // closedMTD / closedYTD: date-filtered so only the relevant subset is transferred.
-    const [openTrades, closedAll, closedMTD, closedYTD, openStockLots] = await Promise.all([
+    const [openTrades, closedAll, closedMTD, closedYTD, openStockLots, closedStockLots] = await Promise.all([
       prisma.trade.findMany({
         where: { status: "open", portfolio: tradePortfolioWhere },
         select: {
@@ -112,6 +112,10 @@ export async function GET(
       prisma.stockLot.findMany({
         where: { status: "OPEN", portfolio: tradePortfolioWhere },
         select: { shares: true, avgCost: true },
+      }),
+      prisma.stockLot.findMany({
+        where: { status: "CLOSED", portfolio: tradePortfolioWhere },
+        select: { realizedPnl: true },
       }),
     ]);
 
@@ -223,7 +227,11 @@ export async function GET(
       }
     }
 
-    const totalProfit = realizedTotal;
+    const closedStockLotsPnl = closedStockLots.reduce(
+      (sum, lot) => sum + Number(lot.realizedPnl ?? 0),
+      0,
+    );
+    const totalProfit = realizedTotal + closedStockLotsPnl;
     const avgPLPercent = countPLPct > 0 ? sumPLPct / countPLPct : 0;
     const winRate = closeCount > 0 ? winCount / closeCount : 0;
     const avgDaysInTrade = countDays > 0 ? sumDays / countDays : 0;
