@@ -80,20 +80,21 @@ function makeClosedTrade(ticker = "AAPL", premiumCaptured = 500, closedAt = twoW
   };
 }
 
-// The route makes 6 findMany calls per portfolio (open, closedAll, closedMTD, closedYTD, closed90, stockLots)
-// plus initial portfolios load. We set up a helper that returns the right sequence.
+// The route makes 7 findMany calls per portfolio:
+//   trade.findMany × 5 (open, closedAll, closedMTD, closedYTD, closed90)
+//   stockLot.findMany × 2 (openStockLots, closedStockLotsAll)
+// plus the initial portfolios load. We set up a helper that returns the right sequence.
 function setupOnPortfolio({
   openTrades = [],
   closedAll = [],
   stockLots = [],
+  closedStockLots = [],
 }: {
   openTrades?: ReturnType<typeof makeOpenCSP>[];
   closedAll?: ReturnType<typeof makeClosedTrade>[];
   stockLots?: unknown[];
+  closedStockLots?: unknown[];
 } = {}) {
-  // For each portfolio, the route calls trade.findMany 5 times (open, all, MTD, YTD, 90d)
-  // and stockLot.findMany once.
-  // We use mockResolvedValueOnce chains.
   mockTradeFindMany
     .mockResolvedValueOnce(openTrades)   // open
     .mockResolvedValueOnce(closedAll)    // closedAll
@@ -101,7 +102,9 @@ function setupOnPortfolio({
     .mockResolvedValueOnce(closedAll.filter(t => t.closedAt && t.closedAt >= new Date(now.getFullYear(), 0, 1))) // YTD
     .mockResolvedValueOnce(closedAll);   // 90d
 
-  mockStockLotFindMany.mockResolvedValueOnce(stockLots);
+  mockStockLotFindMany
+    .mockResolvedValueOnce(stockLots)        // open stock lots
+    .mockResolvedValueOnce(closedStockLots); // closed stock lots (for totalProfitAll)
 }
 
 beforeEach(() => {
