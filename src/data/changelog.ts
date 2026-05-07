@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-05-07",
+    version: "v2.14.0",
+    highlights: [
+      "HLF Platform foundation — Wheel Tracker now serves as the data source for the broader HLF suite. Bookkeeping can pull your trading P&L directly, and the Alerts app can read your open positions, so data stays in sync across tools without manual entry.",
+    ],
+  },
+  {
     date: "2026-05-01",
     version: "v2.13.2",
     highlights: [
