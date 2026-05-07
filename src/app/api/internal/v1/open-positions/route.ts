@@ -5,9 +5,9 @@ import {
 } from "@/server/api/internal";
 import { db } from "@/server/db";
 
-// GET /api/internal/v1/open-positions?userId=
+// GET /api/internal/v1/open-positions?userId=  (HLF suite apps — shared DB)
+// GET /api/internal/v1/open-positions?email=   (hlf-wheel-alerts — separate DB, lookup by email)
 // Returns open trades and stock lots for a given user.
-// Consumer: hlf-wheel-alerts (replaces its local UserPosition table)
 export async function GET(request: Request) {
   if (!validateInternalApiKey(request)) {
     return internalError("Unauthorized", 401);
@@ -15,9 +15,17 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
+  const email = searchParams.get("email");
 
-  if (!userId) {
-    return internalError("userId is required", 400);
+  if (!userId && !email) {
+    return internalError("userId or email is required", 400);
+  }
+
+  let resolvedUserId = userId;
+  if (!resolvedUserId && email) {
+    const user = await db.user.findUnique({ where: { email }, select: { id: true } });
+    if (!user) return internalResponse({ trades: [], stockLots: [] });
+    resolvedUserId = user.id;
   }
 
   try {
@@ -25,7 +33,7 @@ export async function GET(request: Request) {
       db.trade.findMany({
         where: {
           status: "open",
-          portfolio: { userId },
+          portfolio: { userId: resolvedUserId! },
         },
         select: {
           id: true,
@@ -48,7 +56,7 @@ export async function GET(request: Request) {
       db.stockLot.findMany({
         where: {
           status: "OPEN",
-          portfolio: { userId },
+          portfolio: { userId: resolvedUserId! },
         },
         select: {
           id: true,
