@@ -18,6 +18,8 @@ export async function GET(request: Request) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
   const portfolioId = searchParams.get("portfolioId");
+  const portfolioIdsParam = searchParams.get("portfolioIds");
+  const portfolioIds = portfolioIdsParam?.split(",").filter(Boolean);
 
   if (!userId) {
     return internalError("userId is required", 400);
@@ -31,9 +33,14 @@ export async function GET(request: Request) {
         }
       : undefined;
 
+  // portfolioIds (plural) takes precedence over portfolioId (singular)
   const portfolioFilter = {
     userId,
-    ...(portfolioId && { id: portfolioId }),
+    ...(portfolioIds?.length
+      ? { id: { in: portfolioIds } }
+      : portfolioId
+        ? { id: portfolioId }
+        : {}),
   };
 
   try {
